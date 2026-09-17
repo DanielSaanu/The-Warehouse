@@ -126,9 +126,11 @@ screen-filling tile grid on top of that. Pixels stay crisp because `Apply` sets 
 
 - **Decal id vs image id (black play area, no errors, decal looks fine on Creator Hub).** An Open Cloud upload
   creates a *Decal*; the picture inside it is a separate *Image* asset with a different id, and `ImageLabel.Image`
-  needs the image id. `roblox build --upload` looks it up automatically. If the terminal said it could not, get it
-  by hand: in Studio insert a ScreenGui > ImageLabel, paste the decal id into its **Image** property, and Studio
-  rewrites it to the image id. Then run `npx warehouse roblox setid 0 <image id>` and Play. Delete the test ScreenGui.
+  needs the image id. `roblox build --upload` looks it up automatically; `npx warehouse roblox resolve <decal id>`
+  shows what Roblox answered if that failed. Manual fallback, in Studio's command bar (bottom of the Output window):
+  `local d = game:GetObjects("rbxassetid://<decal id>")[1] print(d.Texture)` prints the image url; take its number
+  and run `npx warehouse roblox setid 0 <image id>`, then Play. (Pasting the decal id into an ImageLabel's Image
+  property in the Properties panel also makes Studio swap in the image id.)
 
 - **Images show as blank for a minute after upload**: Roblox moderates images. Wait, then re-Play.
 - **`Roblox upload failed 401/403`**: wrong key, key expired, IP restriction, or the Assets API system is missing

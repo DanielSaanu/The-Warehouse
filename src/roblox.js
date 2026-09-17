@@ -56,26 +56,31 @@ export function parseImageIdFromDecalXml(xml) {
  * ImageLabel.Image needs THAT id (Studio's property panel does this swap for you; scripts do not).
  * Tries the public asset delivery endpoints. Returns { imageId, resolved }; falls back to the decal id.
  */
-export async function resolveImageId(decalId) {
+export async function resolveImageId(decalId, { log = null } = {}) {
   const headers = { 'user-agent': 'the-warehouse/0.1', accept: '*/*' };
   const attempts = [
-    async () => { const res = await fetch(`https://assetdelivery.roblox.com/v1/asset/?id=${decalId}`, { headers, redirect: 'follow' }); return res.ok ? res.text() : null; },
-    async () => {
+    ['assetdelivery v1', async () => { const res = await fetch(`https://assetdelivery.roblox.com/v1/asset/?id=${decalId}`, { headers, redirect: 'follow' }); const text = await res.text(); return { status: res.status, ok: res.ok, text }; }],
+    ['assetdelivery v2', async () => {
       const res = await fetch(`https://assetdelivery.roblox.com/v2/assetId/${decalId}`, { headers });
-      if (!res.ok) return null;
-      const json = await res.json();
+      const text = await res.text();
+      if (!res.ok) return { status: res.status, ok: false, text };
+      const json = JSON.parse(text);
       const loc = json.locations?.[0]?.location || json.location;
-      if (!loc) return null;
+      if (!loc) return { status: res.status, ok: false, text };
       const body = await fetch(loc, { headers, redirect: 'follow' });
-      return body.ok ? body.text() : null;
-    },
+      return { status: body.status, ok: body.ok, text: await body.text() };
+    }],
   ];
-  for (const attempt of attempts) {
+  for (const [name, attempt] of attempts) {
     try {
-      const xml = await attempt();
-      const id = xml && parseImageIdFromDecalXml(xml);
-      if (id) return { imageId: id, resolved: true };
-    } catch {}
+      const r = await attempt();
+      const id = r.ok ? parseImageIdFromDecalXml(r.text) : null;
+      if (log) log(`  ${name}: HTTP ${r.status}${id ? `, parsed image id ${id}` : ', no image id in body'}: ${r.text.slice(0, 240).replace(/\s+/g, ' ')}`);
+      // A body that only echoes the decal id back (an error page) is not a resolution.
+      if (id && id !== String(decalId)) return { imageId: id, resolved: true };
+    } catch (e) {
+      if (log) log(`  ${name}: ${e.message}`);
+    }
   }
   return { imageId: String(decalId), resolved: false };
 }

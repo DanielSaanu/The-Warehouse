@@ -7,7 +7,7 @@ import { getSource, describeSources } from './sources/index.js';
 import { listLibrary } from './library.js';
 import { listScenes, loadScene, saveScene } from './store.js';
 import { buildRoblox, setSheetId } from './build.js';
-import { uploadFile } from './roblox.js';
+import { uploadFile, resolveImageId } from './roblox.js';
 import { startServer } from './server.js';
 import { FONTS } from './fonts.js';
 import { newScene, newLayer } from './scene.js';
@@ -28,6 +28,7 @@ const HELP = `The Warehouse: asset composer for pixel games (Roblox first).
   warehouse roblox build [--upload]          pack all scenes -> exports/roblox + roblox/src/shared/Sprites.lua
   warehouse roblox upload <png> [--name X]   upload one image, print the asset id
   warehouse roblox setid <sheet#> <assetId>  record a manually uploaded sheet id, rewrite Sprites.lua
+  warehouse roblox resolve <decalId>         show what Roblox answers when looking up a decal's image id
   warehouse fonts                            list curated fonts
 `;
 
@@ -97,6 +98,7 @@ export async function run(argv) {
       const [sub, ...r2] = rest;
       if (sub === 'build') { await buildRoblox({ upload: !!flags.upload }); return; }
       if (sub === 'upload') { const [file] = r2; if (!file) throw new Error('usage: roblox upload <png>'); const { assetId } = await uploadFile(path.resolve(ROOT, file), { name: flags.name || path.basename(file, '.png') }); console.log(`asset id: ${assetId}\nuse in Lua: "rbxassetid://${assetId}"`); return; }
+      if (sub === 'resolve') { const [id] = r2; if (!id) throw new Error('usage: roblox resolve <decalId>'); const r = await resolveImageId(id, { log: console.log }); console.log(r.resolved ? `image id: ${r.imageId}` : `unresolved; Studio command bar fallback:\n  local d = game:GetObjects("rbxassetid://${id}")[1] print(d.Texture)`); return; }
       if (sub === 'setid') { const [idx, assetId] = r2; if (idx == null || !assetId) throw new Error('usage: roblox setid <sheetIndex> <assetId>'); await setSheetId(Number(idx), String(assetId)); await buildRoblox({ upload: false }); return; }
       throw new Error('usage: roblox build [--upload] | roblox upload <png> | roblox setid <sheet#> <assetId>');
     }
