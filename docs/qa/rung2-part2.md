@@ -12,7 +12,7 @@ viewport, validated movement). Everything below is server-authoritative; clients
 2. **Attack with feel rules.** Left click (or Space) swings at the tile you face: 0.4 s cooldown, the target
    flashes and is knocked back one tile, 0.6 s invulnerability after being hit, NPC and animal attackers telegraph
    for half a second (a visible wind-up) before they swing. Hearts HUD. Death drops a bag that only you can see for
-   10 minutes, respawn at your rest point after 3 s, reputation hit with the tribe that killed you.
+   10 minutes, respawn at your rest point after 3 s. Dying costs no standing.
 3. **F interact with one prompt at a time** ("F: Talk", "F: Trade", "F: Rest", "F: Camp", "F: Pick up"), the
    nearest thing in front of you. Talk: villagers give a random line from their village's knowledge bank
    (flavour, rumours, the calamity forecast, local wildlife). The village **guard** opens a four-choice window
