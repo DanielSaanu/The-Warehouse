@@ -91,39 +91,58 @@ function Hud.new(overlay: Frame, callbacks)
 	self.clock.TextXAlignment = Enum.TextXAlignment.Left
 	self.clock.TextStrokeTransparency = 1
 
-	-- hearts + coin under the clock
+	-- hearts + coin under the clock. One row, left to right: each heart is as wide as the row is tall
+	-- (RelativeYY with a full scale), which is what stops them coming out as thin slivers.
 	local hearts = Instance.new("Frame")
 	hearts.Name = "Hearts"
 	hearts.BackgroundTransparency = 1
 	hearts.Position = UDim2.new(0, 6, 0.065, 12)
-	hearts.Size = UDim2.new(0.3, 0, 0.06, 0)
+	hearts.Size = UDim2.new(0.34, 0, 0.055, 0)
 	hearts.Parent = overlay
 	local heartsMin = Instance.new("UISizeConstraint")
-	heartsMin.MinSize = Vector2.new(150, 22)
+	heartsMin.MinSize = Vector2.new(170, 20)
 	heartsMin.Parent = hearts
+	local heartRow = Instance.new("UIListLayout")
+	heartRow.FillDirection = Enum.FillDirection.Horizontal
+	heartRow.VerticalAlignment = Enum.VerticalAlignment.Center
+	heartRow.SortOrder = Enum.SortOrder.LayoutOrder
+	heartRow.Padding = UDim.new(0, 2)
+	heartRow.Parent = hearts
 	self.hearts = {}
 	for i = 1, 5 do
 		local h = Sprites.New("heart", hearts)
-		h.Size = UDim2.fromScale(0.16, 1)
-		h.Position = UDim2.fromScale((i - 1) * 0.165, 0)
+		h.Size = UDim2.fromScale(1, 1)
 		h.SizeConstraint = Enum.SizeConstraint.RelativeYY
+		h.LayoutOrder = i
 		self.hearts[i] = h
 	end
+	local gap = Instance.new("Frame")
+	gap.Name = "Gap"
+	gap.BackgroundTransparency = 1
+	gap.Size = UDim2.new(0, 10, 1, 0)
+	gap.LayoutOrder = 6
+	gap.Parent = hearts
 	local coinIcon = Sprites.New("item_coin", hearts)
 	coinIcon.Size = UDim2.fromScale(1, 1)
 	coinIcon.SizeConstraint = Enum.SizeConstraint.RelativeYY
-	coinIcon.Position = UDim2.fromScale(0.86, 0)
+	coinIcon.LayoutOrder = 7
 	self.coin = label(hearts, "Coin", "0")
-	self.coin.Size = UDim2.fromScale(0.5, 1)
-	self.coin.Position = UDim2.new(0.86, 0, 0, 0)
-	self.coin.Position = UDim2.fromScale(1.02, 0)
+	self.coin.Size = UDim2.new(0, 52, 1, 0)
+	self.coin.LayoutOrder = 8
 	self.coin.TextXAlignment = Enum.TextXAlignment.Left
 	self.coin.TextColor3 = GOLD
+
+	-- the goal line: one sentence under the hearts, set by the server (docs/qa/rung2-part4.md)
+	self.goal = label(overlay, "Goal", "")
+	self.goal.Size = UDim2.new(0.52, 0, 0.045, 0)
+	self.goal.Position = UDim2.new(0, 6, 0.125, 14)
+	self.goal.TextXAlignment = Enum.TextXAlignment.Left
+	self.goal.Visible = false
 
 	-- warning line (tomorrow's calamity) and rest point
 	self.warning = label(overlay, "Warning", "")
 	self.warning.Size = UDim2.new(0.5, 0, 0.045, 0)
-	self.warning.Position = UDim2.new(0, 6, 0.125, 14)
+	self.warning.Position = UDim2.new(0, 6, 0.18, 16)
 	self.warning.TextXAlignment = Enum.TextXAlignment.Left
 	self.warning.TextColor3 = GOLD
 	self.warning.Visible = false
@@ -165,16 +184,16 @@ function Hud.new(overlay: Frame, callbacks)
 	list.Padding = UDim.new(0, 2)
 	list.Parent = self.notices
 
-	-- inventory bar (bottom)
+	-- inventory bar (bottom left; the key legend has the bottom right)
 	local bar = Instance.new("Frame")
 	bar.Name = "Inventory"
 	bar.BackgroundTransparency = 1
-	bar.AnchorPoint = Vector2.new(0.5, 1)
-	bar.Position = UDim2.new(0.5, 0, 1, -4)
-	bar.Size = UDim2.fromScale(0.7, 0.075)
+	bar.AnchorPoint = Vector2.new(0, 1)
+	bar.Position = UDim2.new(0, 6, 1, -4)
+	bar.Size = UDim2.fromScale(0.52, 0.075)
 	bar.Parent = overlay
 	local barMin = Instance.new("UISizeConstraint")
-	barMin.MinSize = Vector2.new(260, 26)
+	barMin.MinSize = Vector2.new(250, 26)
 	barMin.Parent = bar
 	self.slots = {}
 	for i = 1, Items.SLOTS do
@@ -187,6 +206,12 @@ function Hud.new(overlay: Frame, callbacks)
 		s.SizeConstraint = Enum.SizeConstraint.RelativeYY
 		s.Position = UDim2.fromScale((i - 1) * 0.1, 0)
 		s.Parent = bar
+		-- the slot in hand is outlined: 1-9 picks one, and F then eats it or gives it away
+		local ring = Instance.new("UIStroke")
+		ring.Color = GOLD
+		ring.Thickness = 2
+		ring.Enabled = false
+		ring.Parent = s
 		local img = Sprites.New("item_food", s)
 		img.Size = UDim2.fromScale(1, 1)
 		img.Visible = false
@@ -194,8 +219,24 @@ function Hud.new(overlay: Frame, callbacks)
 		n.Size = UDim2.fromScale(0.6, 0.45)
 		n.Position = UDim2.fromScale(0.4, 0.55)
 		n.TextXAlignment = Enum.TextXAlignment.Right
-		self.slots[i] = { frame = s, img = img, n = n }
+		self.slots[i] = { frame = s, img = img, n = n, ring = ring }
 	end
+	self.selected = nil
+
+	-- key legend: always on, dimmed, out of the way in the bottom right, gone while a panel is up
+	self.legend = label(overlay, "Legend", "")
+	self.legend.AnchorPoint = Vector2.new(1, 1)
+	self.legend.Position = UDim2.new(1, -8, 1, -6)
+	self.legend.Size = UDim2.fromScale(0.4, 0.05)
+	self.legend.TextXAlignment = Enum.TextXAlignment.Right
+	self.legend.TextWrapped = true
+	self.legend.TextTransparency = 0.3
+	self.legend.TextStrokeTransparency = 0.6
+	self.legend.Visible = false
+	local legendSize = Instance.new("UITextSizeConstraint")
+	legendSize.MinTextSize = 9
+	legendSize.MaxTextSize = 15
+	legendSize.Parent = self.legend
 
 	-- prompt above the bar (a button so touch can tap it)
 	self.prompt = button(overlay, "Prompt", "", function() if self.cb.onInteract then self.cb.onInteract() end end)
@@ -254,7 +295,8 @@ function Hud.new(overlay: Frame, callbacks)
 	local t = panel(overlay, "Trade")
 	t.AnchorPoint = Vector2.new(0.5, 0.5)
 	t.Position = UDim2.fromScale(0.5, 0.5)
-	t.Size = UDim2.fromScale(0.8, 0.8)
+	t.Size = UDim2.fromScale(0.88, 0.86)
+	t.BackgroundTransparency = 0.05
 	t.ZIndex = 30
 	self.tradeFrame = t
 	self.tradeTitle = label(t, "Title")
@@ -264,15 +306,21 @@ function Hud.new(overlay: Frame, callbacks)
 	self.tradeLine.Size = UDim2.fromScale(1, 0.09)
 	self.tradeLine.Position = UDim2.fromScale(0, 0.1)
 	self.tradeLine.TextXAlignment = Enum.TextXAlignment.Left
-	-- Columns: icon | good | stock | buy | sell | you have. The header and every row use the same positions, and no
-	-- label wraps, so the columns line up at any width (they clip at MinTextSize on a narrow phone).
+	self.tradeLine.TextStrokeTransparency = 1
+	-- Columns: icon | good | stock | buy | sell | yours. The header and every row use the same positions, so the
+	-- columns line up at any width.
+	-- Do not set TextWrapped = false on any of these: Roblox turns TextScaled off with it, which is what pinned
+	-- the whole panel at 14px and made it unreadable in the first playtest.
 	local COL = { name = { 0.07, 0.24 }, stock = { 0.32, 0.12 }, buy = { 0.46, 0.17 }, sell = { 0.65, 0.17 }, have = { 0.84, 0.16 } }
 	local function cell(parent: Instance, key: string, text: string, align: Enum.TextXAlignment): TextLabel
 		local l = label(parent, key, text)
-		l.TextWrapped = false
 		l.Size = UDim2.fromScale(COL[key][2], 1)
 		l.Position = UDim2.fromScale(COL[key][1], 0)
 		l.TextXAlignment = align
+		l.TextStrokeTransparency = 1
+		-- the first playtest could not read this panel: bigger type, and white rather than grey
+		local size = l:FindFirstChildWhichIsA("UITextSizeConstraint")
+		if size then size.MinTextSize = 13 size.MaxTextSize = 30 end
 		return l
 	end
 	local head = Instance.new("Frame")
@@ -281,9 +329,8 @@ function Hud.new(overlay: Frame, callbacks)
 	head.Size = UDim2.fromScale(1, 0.07)
 	head.Position = UDim2.fromScale(0, 0.2)
 	head.Parent = t
-	for key, text in pairs({ name = "good", stock = "stock", buy = "buy", sell = "sell", have = "you have" }) do
-		local l = cell(head, key, text, if key == "name" then Enum.TextXAlignment.Left else Enum.TextXAlignment.Center)
-		l.TextColor3 = Color3.fromRGB(170, 170, 190)
+	for key, text in pairs({ name = "good", stock = "stock", buy = "buy", sell = "sell", have = "yours" }) do
+		cell(head, key, text, if key == "name" then Enum.TextXAlignment.Left else Enum.TextXAlignment.Center).TextColor3 = INK
 	end
 	self.tradeRows = {}
 	for i = 1, 5 do
@@ -305,6 +352,10 @@ function Hud.new(overlay: Frame, callbacks)
 		local sell = button(row, "Sell", "sell", function() if self.cb.onTrade and self.rowGood[i] then self.cb.onTrade("sell", self.rowGood[i]) end end)
 		sell.Size = UDim2.fromScale(COL.sell[2], 0.9)
 		sell.Position = UDim2.fromScale(COL.sell[1], 0.05)
+		for _, b in ipairs({ buy, sell }) do
+			local size = b:FindFirstChildWhichIsA("UITextSizeConstraint")
+			if size then size.MinTextSize = 12 size.MaxTextSize = 26 end
+		end
 		self.tradeRows[i] = { row = row, icon = icon, name = name, stock = stock, have = have, buy = buy, sell = sell }
 	end
 	self.rowGood = {}
@@ -316,6 +367,50 @@ function Hud.new(overlay: Frame, callbacks)
 	local close = button(t, "Close", "close (Esc)", function() self:closeAll() if self.cb.onClose then self.cb.onClose() end end)
 	close.Size = UDim2.fromScale(0.3, 0.09)
 	close.Position = UDim2.fromScale(0.68, 0.87)
+
+	-- bag panel (E): every slot with its count, and which one is in hand
+	local bag = panel(overlay, "Bag")
+	bag.AnchorPoint = Vector2.new(0.5, 0.5)
+	bag.Position = UDim2.fromScale(0.5, 0.5)
+	bag.Size = UDim2.fromScale(0.66, 0.82)
+	bag.BackgroundTransparency = 0.05
+	bag.ZIndex = 30
+	self.bagFrame = bag
+	self.bagTitle = label(bag, "Title", "Your bag")
+	self.bagTitle.Size = UDim2.fromScale(1, 0.09)
+	self.bagTitle.TextXAlignment = Enum.TextXAlignment.Left
+	self.bagTitle.TextColor3 = GOLD
+	self.bagRows = {}
+	for i = 1, Items.SLOTS do
+		local row = Instance.new("Frame")
+		row.Name = "Bag" .. i
+		row.BackgroundColor3 = GOLD
+		row.BackgroundTransparency = 1
+		row.BorderSizePixel = 0
+		row.Size = UDim2.fromScale(1, 0.072)
+		row.Position = UDim2.fromScale(0, 0.11 + (i - 1) * 0.077)
+		row.Parent = bag
+		local icon = Sprites.New("item_food", row)
+		icon.Size = UDim2.fromScale(1, 1)
+		icon.SizeConstraint = Enum.SizeConstraint.RelativeYY
+		icon.Position = UDim2.fromScale(0.06, 0)
+		local key = label(row, "Key", tostring(i % 10))
+		key.Size = UDim2.fromScale(0.05, 1)
+		key.TextColor3 = GOLD
+		local name = label(row, "Name", "")
+		name.Size = UDim2.fromScale(0.72, 1)
+		name.Position = UDim2.fromScale(0.14, 0)
+		name.TextXAlignment = Enum.TextXAlignment.Left
+		name.TextStrokeTransparency = 1
+		local size = name:FindFirstChildWhichIsA("UITextSizeConstraint")
+		if size then size.MinTextSize = 13 size.MaxTextSize = 28 end
+		self.bagRows[i] = { row = row, icon = icon, name = name, key = key }
+	end
+	self.bagFoot = label(bag, "Foot", "")
+	self.bagFoot.Size = UDim2.fromScale(1, 0.09)
+	self.bagFoot.Position = UDim2.fromScale(0, 0.9)
+	self.bagFoot.TextXAlignment = Enum.TextXAlignment.Left
+	self.bagFoot.TextColor3 = Color3.fromRGB(190, 190, 205)
 
 	-- standing panel
 	local st = panel(overlay, "Standing")
@@ -382,6 +477,7 @@ function Hud.setHearts(self, hp: number, maxHp: number)
 end
 
 function Hud.setInventory(self, inv)
+	self.inv = inv
 	self.coin.Text = tostring(inv.coin or 0)
 	for i, s in ipairs(self.slots) do
 		local slot = inv.slots[i]
@@ -396,6 +492,70 @@ function Hud.setInventory(self, inv)
 			s.n.Text = ""
 		end
 	end
+	if self.bagFrame.Visible then self:renderBag() end
+end
+
+--- The goal line under the hearts. nil takes it away for good.
+function Hud.setGoal(self, text: string?)
+	self.goal.Text = if text then "-> " .. text else ""
+	self.goal.Visible = text ~= nil and text ~= ""
+end
+
+--- Which hot bar slot is in hand (nil = empty-handed).
+function Hud.setSelected(self, i: number?)
+	self.selected = i
+	for n, s in ipairs(self.slots) do s.ring.Enabled = n == i end
+	if self.bagFrame.Visible then self:renderBag() end
+end
+
+-- ---------- key legend ----------
+function Hud.setLegend(self, text: string)
+	self.legend.Text = text
+	self.legend.Visible = text ~= "" and not self:anyOpen()
+end
+
+--- Called every frame: the legend is always on, except while a panel covers the play area.
+function Hud.refreshLegend(self)
+	local want = self.legend.Text ~= "" and not self:anyOpen()
+	if self.legend.Visible ~= want then self.legend.Visible = want end
+end
+
+-- ---------- bag ----------
+function Hud.renderBag(self)
+	local inv = self.inv or { slots = {}, coin = 0 }
+	for i, r in ipairs(self.bagRows) do
+		local slot = inv.slots[i]
+		local held = self.selected == i
+		r.row.BackgroundTransparency = if held then 0.75 else 1
+		r.key.TextTransparency = if slot then 0 else 0.6
+		if slot then
+			local def = Items.Defs[slot.item]
+			local sprite = if def then def.sprite else "bag"
+			if r.icon.Name ~= sprite then Sprites.Apply(r.icon, sprite) r.icon.Name = sprite end
+			r.icon.Visible = true
+			r.name.Text = ("%s x%d%s"):format(if def then def.label else slot.item, slot.n, if held then "   (in hand)" else "")
+			r.name.TextColor3 = if held then GOLD else INK
+		else
+			r.icon.Visible = false
+			r.name.Text = "-"
+			r.name.TextColor3 = Color3.fromRGB(120, 120, 140)
+		end
+	end
+	self.bagTitle.Text = ("Your bag        %d coin"):format(inv.coin or 0)
+	self.bagFoot.Text = "1-9 to take a slot in hand (again to put it away)  ·  F eats food, or gives a good to a villager  ·  E or X to close"
+end
+
+function Hud.toggleBag(self)
+	if self.bagFrame.Visible then self.bagFrame.Visible = false return end
+	self:closeDialogue()
+	self.tradeFrame.Visible = false
+	self.standingFrame.Visible = false
+	self:renderBag()
+	self.bagFrame.Visible = true
+end
+
+function Hud.bagOpen(self): boolean
+	return self.bagFrame.Visible
 end
 
 function Hud.setPrompt(self, text: string?)
@@ -438,6 +598,7 @@ end
 -- ---------- dialogue ----------
 function Hud.showDialogue(self, data)
 	self.tradeFrame.Visible = false
+	self.bagFrame.Visible = false
 	self.dialogue = data
 	self.page = 1
 	self.dialogueFrame.Visible = true
@@ -487,6 +648,7 @@ end
 -- ---------- trade ----------
 function Hud.showTrade(self, data)
 	self:closeDialogue()
+	self.bagFrame.Visible = false
 	self.tradeFrame.Visible = true
 	self.tradeTitle.Text = ("%s  (%s, you are %s here)"):format(data.village, data.tribeType .. "s", data.standing or "")
 	if data.line then self.tradeLine.Text = data.line end
@@ -529,6 +691,7 @@ end
 -- ---------- standing ----------
 function Hud.toggleStanding(self, rep, tribeNames)
 	if self.standingFrame.Visible then self.standingFrame.Visible = false return end
+	self.bagFrame.Visible = false
 	local lines = { "Your standing (Tab to close)", "" }
 	for _, t in ipairs({ "farmer", "hunter", "plunderer" }) do
 		local v = rep[t] or 0
@@ -544,10 +707,11 @@ function Hud.closeAll(self)
 	self:closeDialogue()
 	self.tradeFrame.Visible = false
 	self.standingFrame.Visible = false
+	self.bagFrame.Visible = false
 end
 
 function Hud.anyOpen(self): boolean
-	return self.dialogue ~= nil or self.tradeFrame.Visible or self.standingFrame.Visible
+	return self.dialogue ~= nil or self.tradeFrame.Visible or self.standingFrame.Visible or self.bagFrame.Visible
 end
 
 -- ---------- death ----------

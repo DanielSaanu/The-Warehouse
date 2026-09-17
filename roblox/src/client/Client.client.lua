@@ -71,7 +71,7 @@ task.spawn(function()
 		task.wait(1)
 		local waited = os.clock() - loadingStart
 		if waited > 5 and loading.Parent then
-			loading.Text = ("still loading after %ds\n\nIf this stays: is `rojo serve` running and connected?\nIs the Server script running (Output should show a [World] line)?"):format(math.floor(waited))
+			loading.Text = ("loading world... %ds\n\nStill loading. If this stays, the server is starting up."):format(math.floor(waited))
 		end
 	end
 end)
@@ -105,12 +105,20 @@ local inv = Items.new()
 local rep = { farmer = 0, hunter = 0, plunderer = 0 }
 local tribeNames = {}
 local hintShown = false
+local selected: number? = nil     -- hot bar slot in hand (1-9, 0 for the tenth)
+local metSurvivor = false
+local survivorIds: { [any]: boolean } = {} -- everyone with a marker over their head
 
 local KEYS: { [Enum.KeyCode]: string } = {
 	[Enum.KeyCode.W] = "up", [Enum.KeyCode.Up] = "up",
 	[Enum.KeyCode.S] = "down", [Enum.KeyCode.Down] = "down",
 	[Enum.KeyCode.A] = "left", [Enum.KeyCode.Left] = "left",
 	[Enum.KeyCode.D] = "right", [Enum.KeyCode.Right] = "right",
+}
+-- 1-9 take that hot bar slot in hand; 0 is the tenth.
+local SLOT_KEYS: { [Enum.KeyCode]: number } = {
+	[Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3, [Enum.KeyCode.Four] = 4, [Enum.KeyCode.Five] = 5,
+	[Enum.KeyCode.Six] = 6, [Enum.KeyCode.Seven] = 7, [Enum.KeyCode.Eight] = 8, [Enum.KeyCode.Nine] = 9, [Enum.KeyCode.Zero] = 10,
 }
 local held: { string } = {}         -- most recent key last
 local touchTarget: { x: number, y: number }? = nil
@@ -119,6 +127,16 @@ local activeTouch: any = nil
 
 local TRIBE_WORD = { farmer = "farmers", hunter = "hunters", plunderer = "plunderers" }
 local SIDE_ONLY = { deer = true, boar = true, wolf = true }
+-- Who takes a gift: mirrors GIFTABLE in server/Interact.lua.
+local GIFTABLE = { villager = true, guard = true, merchant = true, caravan_master = true, survivor = true, pregnant = true }
+local KEY_LEGEND = "WASD move  ·  click swing  ·  F act  ·  E bag  ·  Tab standing  ·  X close"
+local TOUCH_LEGEND = "tap to walk  ·  tap the prompt to act"
+
+--- The item in the selected hot bar slot, mirroring Interact.held on the server.
+local function heldItem(): string?
+	local slot = selected and inv.slots[selected]
+	return if slot then slot.item else nil
+end
 
 --- Sprite name for a body facing a way. Animals only have left/right art.
 local function spriteFor(base: string, facing: string, frame: number): string
@@ -147,20 +165,25 @@ local PROMPT_BY_KIND = { merchant = "Trade", deer = nil, boar = nil, wolf = nil 
 local function promptFor(): string?
 	local w, v = world, vp
 	if not w or not v or me.dead then return nil end
+	local item = heldItem()
+	local isGood = item ~= nil and table.find(Items.GOODS, item) ~= nil
 	local tx, ty = Combat.facingTile(me.x, me.y, me.facing)
 	for id, e in pairs(v.entities) do
 		if id ~= myId and e.x == tx and e.y == ty then
 			local r = ents[id]
 			if not r or r.kind == "player" then return nil end
 			if SIDE_ONLY[r.base] then return nil end
+			if isGood and GIFTABLE[r.kind] then return "F: Give " .. Items.def(item :: string).label end
 			return "F: " .. (PROMPT_BY_KIND[r.kind] or "Talk")
 		end
 	end
 	local obj = WorldGen.object(w, tx, ty)
+	if obj == O.sign.id then return "F: Read" end
 	if obj == O.bed.id or obj == O.camp_lit.id or obj == O.camp_out.id then return "F: Rest" end
 	if obj == O.stall.id then return "F: Trade" end
 	if obj == O.bag.id then return "F: Pick up" end
 	if WorldGen.object(w, me.x, me.y) == O.bag.id then return "F: Pick up" end
+	if item == "food" then return "F: Eat" end
 	if obj == 0 and WorldGen.walkable(w, tx, ty) and not WorldGen.villageAt(w, tx, ty, 1) and Items.count(inv, "camper_set") > 0 then
 		return "F: Camp"
 	end
@@ -273,6 +296,7 @@ end
 
 local function interact()
 	if me.dead or not hud then return end
+	if hud:bagOpen() then return end
 	if hud:dialogueOpen() then
 		if hud:advanceDialogue() then Action:FireServer("close") end
 		return
@@ -287,6 +311,14 @@ local function closePanels()
 		hud:closeAll()
 		Action:FireServer("close")
 	end
+end
+
+--- Take a hot bar slot in hand, or put it away if it was already in hand. The server decides what F then does
+--- with it (eat food, give a good away), so it has to hear about every change.
+local function selectSlot(i: number)
+	selected = if selected == i then nil else i
+	if hud then hud:setSelected(selected) end
+	Action:FireServer("select", i)
 end
 
 -- ---------- network ----------
@@ -325,11 +357,13 @@ WorldInit.OnClientEvent:Connect(function(encoded, meState, others, clock, sheetI
 		if calamity.active and calamity.flood then applyFlood(calamity.flood) end
 		if calamity.warning then hud:setWarning(calamity.warning) end
 	end
-	-- The opening beat: you wake in your own burnt village.
+	-- The opening beat: you wake in your own burnt village, and somebody is waiting to talk to you.
 	local start = w.villages[1]
+	local touch = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 	currentVillage = WorldGen.villageAt(w, me.x, me.y, 1)
-	hud:banner(start.name, ("%s - the morning after"):format(TRIBE_WORD[start.tribeType] or start.tribeType))
-	hud:setHint(if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then "tap to walk  ·  tap the prompt to act" else "WASD to walk  ·  click to swing  ·  F to talk, trade, rest")
+	hud:banner(start.name, "Someone is calling you")
+	hud:setLegend(if touch then TOUCH_LEGEND else KEY_LEGEND)
+	hud:setHint("Read the signs.")
 end)
 
 EntityState.OnClientEvent:Connect(function(kind, id, ...)
@@ -342,6 +376,11 @@ EntityState.OnClientEvent:Connect(function(kind, id, ...)
 			v:addEntity(id, spriteFor(base, facing, 0), x, y, name)
 			ents[id] = { facing = facing, frame = 0, lastMove = 0, base = base, kind = ekind or base }
 			if hpFrac and hpFrac < 1 then v:setHp(id, hpFrac) end
+			-- the one person with something to tell you gets an arrow over their head until you have heard it
+			if (ekind or base) == "survivor" then
+				survivorIds[id] = true
+				if not metSurvivor then v:setBadge(id, "marker_arrow") end
+			end
 		end
 	elseif kind == "move" then
 		if id == myId then return end
@@ -361,10 +400,11 @@ EntityState.OnClientEvent:Connect(function(kind, id, ...)
 	elseif kind == "leave" then
 		v:removeEntity(id)
 		ents[id] = nil
+		survivorIds[id] = nil
 	elseif kind == "die" then
 		if id == myId then return end
 		v:flash(id, Color3.fromRGB(255, 60, 60), 0.2)
-		task.delay(0.2, function() v:removeEntity(id) ents[id] = nil end)
+		task.delay(0.2, function() v:removeEntity(id) ents[id] = nil survivorIds[id] = nil end)
 	elseif kind == "hit" then
 		local hpFrac = ...
 		v:flash(id)
@@ -415,6 +455,15 @@ Notice.OnClientEvent:Connect(function(kind, data)
 		rep = data.rep
 		hud:setHearts(data.hp, data.maxHp)
 		hud:setInventory(inv)
+		hud:setGoal(data.goal)
+		if data.selected ~= selected then
+			selected = data.selected
+			hud:setSelected(selected)
+		end
+		if data.metSurvivor and not metSurvivor then
+			metSurvivor = true
+			for id in pairs(survivorIds) do vp:setBadge(id, nil) end
+		end
 	elseif kind == "text" then
 		hud:notice(data.text, data.color)
 	elseif kind == "dialogue" then
@@ -479,11 +528,21 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		-- Roblox marks keys it has bindings for (Space = jump) as processed even though we have no character;
 		-- only a focused text box (chat) should swallow our keys.
 		if UserInputService:GetFocusedTextBox() then return end
-		if key == Enum.KeyCode.F or key == Enum.KeyCode.E or key == Enum.KeyCode.Return then interact() return end
+		if key == Enum.KeyCode.F or key == Enum.KeyCode.Return then interact() return end
+		if key == Enum.KeyCode.E then
+			if hud then
+				-- opening the bag over a conversation ends the conversation on the server too
+				if hud:anyOpen() and not hud:bagOpen() then Action:FireServer("close") end
+				hud:toggleBag()
+			end
+			return
+		end
 		if key == Enum.KeyCode.Tab then if hud then hud:toggleStanding(rep, tribeNames) end return end
 		if key == Enum.KeyCode.Space then attack() return end
+		local slot = SLOT_KEYS[key]
+		if slot then selectSlot(slot) return end
 		local dir = KEYS[key]
-		if dir and not (hud and (hud:dialogueOpen() or hud:tradeOpen())) then
+		if dir and not (hud and hud:anyOpen()) then
 			for i = #held, 1, -1 do if held[i] == dir then table.remove(held, i) end end
 			table.insert(held, dir)
 			touchTarget, touchPath = nil, nil
@@ -522,7 +581,7 @@ RunService.RenderStepped:Connect(function()
 	if not v or not hud then return end
 	local now = os.clock()
 
-	local blocked = me.dead or hud:dialogueOpen() or hud:tradeOpen()
+	local blocked = me.dead or hud:anyOpen()
 	local dir = if blocked then nil else (held[#held] or touchDirection())
 	if dir then tryStep(dir, now) end
 	if now > me.nextStepAt + 0.08 and me.frame ~= 0 then
@@ -558,9 +617,10 @@ RunService.RenderStepped:Connect(function()
 	-- prompt and hint
 	local p = if blocked then nil else promptFor()
 	if p ~= lastPrompt then lastPrompt = p hud:setPrompt(p) end
+	hud:refreshLegend()
 	if not hintShown and me.stepped then
 		hintShown = true
-		task.delay(6, function() if hud then hud:setHint(nil) end end)
+		task.delay(12, function() if hud then hud:setHint(nil) end end)
 	end
 
 	-- Enter a village at its footprint + 1; leave only once 5 tiles clear, so walking along the edge does not flicker.

@@ -22,6 +22,7 @@ export type World = {
 	ground: { number }, object: { number },
 	villages: { Village }, spawn: Pos,
 	floodBackup: { [number]: number }?,
+	signs: { [number]: string }?,   -- tile index -> what the sign says (server side; the object id travels in `object`)
 }
 
 local G = TileTypes.GroundByName
@@ -324,6 +325,139 @@ local function flood(world: World, sx: number, sy: number): { [number]: boolean 
 	return seen
 end
 
+-- ---------- signs ----------
+-- Wooden signs are how a stranger learns where the roads go without a human telling them (docs/qa/rung2-part4.md).
+-- They are placed by rule, not by hand: one at every gate or road exit of a village, one at every river crossing.
+local TRIBE_LINE = { farmer = "Farmers.", hunter = "Hunters.", plunderer = "Raiders. Keep clear." } :: { [string]: string }
+
+--- The direction (dx, dy) points in, in words. An offset smaller than `dead` does not count. Without a `dead`
+--- the cut is relative: the lesser axis has to be worth at least two fifths of the greater one to be named, so
+--- a village 44 tiles east and 12 north is "east" rather than "north-east".
+function WorldGen.compass(dx: number, dy: number, dead: number?): string
+	local m = dead or math.max(3, 0.4 * math.max(math.abs(dx), math.abs(dy)))
+	local ns = if dy < -m then "north" elseif dy > m then "south" else ""
+	local ew = if dx > m then "east" elseif dx < -m then "west" else ""
+	if ns ~= "" and ew ~= "" then return ns .. "-" .. ew end
+	if ns == "" and ew == "" then return "close by" end
+	return ns .. ew
+end
+local compass = WorldGen.compass
+
+--- Can a sign stand here? Open ground, nothing on it, off the road (a solid sign must never plug a road or a
+--- gate), and in the open rather than in a one-tile gap between rocks.
+local function signSpot(world: World, x: number, y: number): boolean
+	if not WorldGen.inBounds(world, x, y) then return false end
+	local g = WorldGen.ground(world, x, y)
+	if WorldGen.object(world, x, y) ~= 0 then return false end
+	if g ~= G.grass.id and g ~= G.grass_2.id and g ~= G.tall_grass.id and g ~= G.farm.id then return false end
+	local open = 0
+	for dy = -1, 1 do
+		for dx = -1, 1 do
+			if not (dx == 0 and dy == 0) and WorldGen.walkable(world, x + dx, y + dy) then open += 1 end
+		end
+	end
+	return open >= 5
+end
+
+--- Put a sign on the best free tile near (x, y). Returns true if one went up.
+local function putSign(world: World, x: number, y: number, text: string): boolean
+	for r = 1, 2 do
+		for dy = -r, r do
+			for dx = -r, r do
+				if math.max(math.abs(dx), math.abs(dy)) == r and signSpot(world, x + dx, y + dy) then
+					local i = idx(world.width, x + dx, y + dy)
+					world.object[i] = O.sign.id
+					local signs = world.signs
+					if signs then signs[i] = text end
+					return true
+				end
+			end
+		end
+	end
+	return false
+end
+
+--- Where roads leave a village: its gates, or (for an open village) the path tiles on the ring just outside its
+--- footprint. Exits closer than 3 tiles to one already found are the same road and are skipped.
+local function villageExits(world: World, v: Village): { Pos }
+	local out: { Pos } = {}
+	local function add(x: number, y: number)
+		for _, p in ipairs(out) do
+			if math.abs(p.x - x) + math.abs(p.y - y) < 3 then return end
+		end
+		table.insert(out, { x = x, y = y })
+	end
+	if #v.gates > 0 then
+		for _, g in ipairs(v.gates) do add(g.exit.x, g.exit.y) end
+		return out
+	end
+	for x = v.x0 - 1, v.x1 + 1 do
+		if WorldGen.ground(world, x, v.y0 - 1) == G.path.id then add(x, v.y0 - 1) end
+		if WorldGen.ground(world, x, v.y1 + 1) == G.path.id then add(x, v.y1 + 1) end
+	end
+	for y = v.y0 - 1, v.y1 + 1 do
+		if WorldGen.ground(world, v.x0 - 1, y) == G.path.id then add(v.x0 - 1, y) end
+		if WorldGen.ground(world, v.x1 + 1, y) == G.path.id then add(v.x1 + 1, y) end
+	end
+	return out
+end
+
+--- The village this road exit points at: the one whose direction from the village centre best matches the
+--- direction the road leaves in.
+local function signpostTarget(world: World, v: Village, exit: Pos): Village?
+	local ex, ey = exit.x - v.cx, exit.y - v.cy
+	local elen = math.max(1, math.sqrt(ex * ex + ey * ey))
+	local best, bestScore = nil, -math.huge
+	for _, o in ipairs(world.villages) do
+		if o ~= v then
+			local ox, oy = o.cx - v.cx, o.cy - v.cy
+			local score = (ox * ex + oy * ey) / (elen * math.max(1, math.sqrt(ox * ox + oy * oy)))
+			if score > bestScore then best, bestScore = o, score end
+		end
+	end
+	return best
+end
+
+local function placeSigns(world: World)
+	world.signs = {}
+	for _, v in ipairs(world.villages) do
+		for _, exit in ipairs(villageExits(world, v)) do
+			local o = signpostTarget(world, v, exit)
+			if o then
+				putSign(world, exit.x, exit.y, ("%s, %s. %s"):format(o.name, compass(o.cx - v.cx, o.cy - v.cy), TRIBE_LINE[o.tribeType] or ""))
+			end
+		end
+	end
+	-- One sign per crossing: ford tiles that touch each other are the same ford.
+	local seen: { [number]: boolean } = {}
+	for y = 2, world.height - 1 do
+		for x = 2, world.width - 1 do
+			local i = idx(world.width, x, y)
+			if world.ground[i] == G.ford.id and not seen[i] then
+				local queue, head = { { x = x, y = y } }, 1
+				seen[i] = true
+				while head <= #queue do
+					local c = queue[head]
+					head += 1
+					for dy = -1, 1 do
+						for dx = -1, 1 do
+							local nx, ny = c.x + dx, c.y + dy
+							if WorldGen.inBounds(world, nx, ny) then
+								local ni = idx(world.width, nx, ny)
+								if world.ground[ni] == G.ford.id and not seen[ni] then
+									seen[ni] = true
+									table.insert(queue, { x = nx, y = ny })
+								end
+							end
+						end
+					end
+				end
+				putSign(world, x, y, "Ford. Wolves at night. Stay on the road.")
+			end
+		end
+	end
+end
+
 -- ---------- generation ----------
 function WorldGen.generate(seed: number, width: number?, height: number?): World
 	local w, h = width or WorldGen.DEFAULT_WIDTH, height or WorldGen.DEFAULT_HEIGHT
@@ -344,18 +478,26 @@ function WorldGen.generate(seed: number, width: number?, height: number?): World
 	end
 
 	-- River: top to bottom, two tiles wide, wandering. riverX[y] is its left column on row y.
+	-- Every tile it carves is remembered: at the end of generation the ones still water become `river`, which is
+	-- wadeable. Lakes (cut by the moisture pass below) are never in this set and stay impassable.
 	local riverX: { number } = {}
+	local riverTiles: { number } = {}
 	do
 		local rrng = rng:fork(7)
 		local x = rrng:int(math.floor(w * 0.4), math.floor(w * 0.6))
 		local drift = 0
+		local function carve(cx: number, cy: number)
+			if not WorldGen.inBounds(world, cx, cy) then return end
+			setG(world, cx, cy, G.water.id)
+			table.insert(riverTiles, idx(w, cx, cy))
+		end
 		for y = 1, h do
 			if rrng:chance(0.35) then drift = rrng:int(-1, 1) end
 			x = math.max(4, math.min(w - 4, x + drift))
 			riverX[y] = x
-			setG(world, x, y, G.water.id)
-			setG(world, x + 1, y, G.water.id)
-			if rrng:chance(0.2) then setG(world, x - 1, y, G.water.id) end
+			carve(x, y)
+			carve(x + 1, y)
+			if rrng:chance(0.2) then carve(x - 1, y) end
 		end
 	end
 	-- Lakes and rocks, forest, tall grass.
@@ -517,6 +659,13 @@ function WorldGen.generate(seed: number, width: number?, height: number?): World
 		end
 	end
 
+	-- The river becomes wadeable. Last, so village placement, fords, roads and caves all saw the same map they
+	-- always did: only the tiles the river itself carved, and only where nothing has since been built over them.
+	for _, i in ipairs(riverTiles) do
+		if world.ground[i] == G.water.id then world.ground[i] = G.river.id end
+	end
+
+	placeSigns(world)
 	return world
 end
 
@@ -545,12 +694,14 @@ function WorldGen.reachable(world: World, sx: number, sy: number, tx: number, ty
 end
 
 local function walkCost(world: World, x: number, y: number): number
-	return if WorldGen.walkable(world, x, y) then 1 else math.huge
+	if not WorldGen.walkable(world, x, y) then return math.huge end
+	return if WorldGen.ground(world, x, y) == G.river.id then 3 else 1
 end
 local function roadCost(world: World, x: number, y: number): number
 	if not WorldGen.walkable(world, x, y) then return math.huge end
 	local g = WorldGen.ground(world, x, y)
 	if g == G.path.id or g == G.ford.id then return 0.5 end
+	if g == G.river.id then return 4 end -- a caravan does not wade when there is a ford
 	if g == G.tall_grass.id then return 1.5 end
 	return 1.2
 end
@@ -596,11 +747,15 @@ function WorldGen.regionBounds(world: World, r: number): (number, number, number
 	return cx * R + 1, cy * R + 1, math.min(world.width, (cx + 1) * R), math.min(world.height, (cy + 1) * R)
 end
 
---- Tiles a flood covers: dry ground within 2 tiles of river or lake water, outside village footprints. Fords go under
---- too, so the river cannot be crossed until the water drops. Returns tile indices.
+--- Tiles a flood covers: dry ground within 2 tiles of river or lake water, outside village footprints. Fords and
+--- the river itself go under too, so the river cannot be crossed at all until the water drops. Returns tile indices.
 function WorldGen.floodTiles(world: World): { number }
 	local w, h = world.width, world.height
 	local out: { number } = {}
+	local function wet(x: number, y: number): boolean
+		local g = WorldGen.ground(world, x, y)
+		return g == G.water.id or g == G.river.id
+	end
 	for y = 2, h - 1 do
 		for x = 2, w - 1 do
 			local g = WorldGen.ground(world, x, y)
@@ -608,7 +763,7 @@ function WorldGen.floodTiles(world: World): { number }
 				local near = false
 				for dy = -2, 2 do
 					for dx = -2, 2 do
-						if WorldGen.ground(world, x + dx, y + dy) == G.water.id then near = true break end
+						if wet(x + dx, y + dy) then near = true break end
 					end
 					if near then break end
 				end
@@ -700,9 +855,9 @@ function WorldGen.decode(e: Encoded): World
 end
 
 -- ---------- debug ----------
-local ASCII_G = { [G.grass.id] = " ", [G.grass_2.id] = " ", [G.tall_grass.id] = ",", [G.path.id] = ".", [G.water.id] = "~", [G.ford.id] = "=", [G.farm.id] = "#", [G.flood.id] = "%" }
+local ASCII_G = { [G.grass.id] = " ", [G.grass_2.id] = " ", [G.tall_grass.id] = ",", [G.path.id] = ".", [G.water.id] = "~", [G.river.id] = "-", [G.ford.id] = "=", [G.farm.id] = "#", [G.flood.id] = "%" }
 local ASCII_O = { [O.tree.id] = "T", [O.rock.id] = "^", [O.cave.id] = "O", [O.hut.id] = "H", [O.hut_burnt.id] = "B", [O.wall.id] = "W", [O.gate.id] = "G", [O.stall.id] = "S", [O.bed.id] = "b",
-	[O.hut_hunter.id] = "h", [O.hut_plunderer.id] = "n", [O.totem.id] = "L", [O.skull_post.id] = "X", [O.camp_lit.id] = "c", [O.camp_out.id] = "c", [O.bag.id] = "g" }
+	[O.hut_hunter.id] = "h", [O.hut_plunderer.id] = "n", [O.totem.id] = "L", [O.skull_post.id] = "X", [O.camp_lit.id] = "c", [O.camp_out.id] = "c", [O.bag.id] = "g", [O.sign.id] = "!" }
 
 function WorldGen.ascii(world: World): string
 	local lines = {}

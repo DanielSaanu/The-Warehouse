@@ -26,6 +26,40 @@ local fx, fy = findGround("ford")
 local gx, gy = findGround("grass")
 assert(Movement.stepTime(world, px, py) < Movement.stepTime(world, gx, gy), "road should be faster than grass")
 assert(Movement.stepTime(world, fx, fy) > Movement.stepTime(world, gx, gy), "ford should be slower than grass")
+local rx, ry = findGround("river")
+assert(Movement.stepTime(world, rx, ry) > Movement.stepTime(world, fx, fy), "wading should be slower than a ford")
+assert(Movement.canStep(world, rx, ry, rx, ry + 1) or Movement.canStep(world, rx, ry, rx + 1, ry) or Movement.canStep(world, rx, ry, rx - 1, ry), "the river can be walked out of")
+
+-- An honest walker can wade, slow as it is: the pace budget must never price a tile out of reach.
+do
+	local step = Movement.stepTime(world, rx, ry)
+	assert(step > Config.MOVE_BURST, "this test is only interesting while a wade costs more than the burst window")
+	local b = Movement.newBudget(0)
+	local rejected = 0
+	local seedW = 777
+	local function jitter() seedW = (seedW * 1103515245 + 12345) % 2147483648; return (seedW / 2147483648) * 0.12 - 0.06 end
+	for n = 1, 50 do
+		if not Movement.spend(b, n * step + jitter(), step) then rejected += 1 end
+	end
+	assert(rejected == 0, ("a wading player was rejected %d times out of 50"):format(rejected))
+	-- Walking off grass into the river and out again, paced exactly as the client paces it: the gap before each
+	-- move is the step time of the tile being left, which is what the server charges.
+	local grass = Movement.stepTime(world, gx, gy)
+	local walk = { grass, grass, grass, step, step, grass, grass }
+	local mixed = Movement.newBudget(0)
+	local t, bad = 0, 0
+	for i = 1, #walk - 1 do
+		t += walk[i]
+		if not Movement.spend(mixed, t, walk[i]) then bad += 1 end
+	end
+	assert(bad == 0, ("walking into and out of the river was rejected %d times"):format(bad))
+
+	-- and it is still a pace check: fifty wades in an instant is not on
+	local hack = Movement.newBudget(0)
+	local ok = 0
+	for _ = 1, 50 do if Movement.spend(hack, 0.01, step) then ok += 1 end end
+	assert(ok <= 1, ("speed hack waded %d tiles with no time passing"):format(ok))
+end
 
 -- Budget: an honest client stepping exactly on time is never rejected, even with network jitter.
 do

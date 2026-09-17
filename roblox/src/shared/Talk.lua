@@ -16,8 +16,10 @@ export type Context = {
 	wildlife: string,       -- Ecology.describe for this region
 	banditHint: string,     -- where the bandit band was last seen
 	hunterVillage: string,  -- the village the survivor points you to
+	hunterDir: string,      -- and which way it lies from here ("east", "north-east", ...)
 	farmerVillage: string,
 	plundererVillage: string,
+	plundererDir: string,   -- the way the raiders came, i.e. the way not to walk on day one
 	prices: string,         -- "food 2, hides 5, ..."
 	scarce: string,         -- the good this village is short of
 	makes: string,          -- the good this village makes
@@ -93,11 +95,30 @@ function Talk.survivor(ctx: Context): { string }
 	return {
 		("%s. You're alive. Listen, because I'll only say it once."):format(ctx.playerName or "You"),
 		"WASD or the arrows to walk. Left click swings your knife at whatever is in front of you.",
-		"F does the rest: talk to people, trade at a stall, sleep in a bed. One thing at a time, whatever is nearest.",
-		("The bandits came from the north, from %s. We can't fight them. Not like this."):format(ctx.plundererVillage),
-		("Go east down the road to %s. The hunters owe us. Tell them %s sent you."):format(ctx.hunterVillage, ctx.survivorName or "I"),
+		"F does the rest: talk to people, read a sign, trade at a stall, sleep in a bed. Whatever is nearest.",
+		("The bandits came from the %s, from %s. Do not go %s. Not yet, not with that knife."):format(ctx.plundererDir, ctx.plundererVillage, ctx.plundererDir),
+		("Go %s down the road to %s instead. The hunters owe us. Tell them %s sent you."):format(ctx.hunterDir, ctx.hunterVillage, ctx.survivorName or "I"),
+		"Read the signs on the road. They were put up by people who knew where they were going.",
 		"And be back inside walls or by a fire before the end of the week. Something always comes.",
 	}
+end
+
+--- The one line under the clock: a tutorial, not a quest log (docs/qa/rung2-part4.md). It walks one way and stops,
+--- and the first calamity clears it for good. nil means nothing is being asked of the player.
+Talk.GOAL_STAGES = { "survivor", "road", "guard", "sell", "shelter" }
+
+function Talk.goal(stage: number, ctx: Context): string?
+	if stage == 1 then return "Talk to the person calling you" end
+	if stage == 2 then return ("Go %s down the road to %s"):format(ctx.hunterDir, ctx.hunterVillage) end
+	if stage == 3 then return ("Talk to the guard at %s"):format(ctx.hunterVillage) end
+	if stage == 4 then return "Sell a hide at a stall" end
+	if stage == 5 then return "Be inside walls or by a fire before day 7" end
+	return nil
+end
+
+--- What a sign says, as a one-page dialogue.
+function Talk.sign(text: string): { string }
+	return { text }
 end
 
 --- The village guard's answers: survival basics and what is dangerous nearby.

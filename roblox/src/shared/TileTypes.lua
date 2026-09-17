@@ -10,10 +10,12 @@ TileTypes.Ground = {
 	[2] = { id = 2, name = "grass_2", sprite = "grass_2", walk = true, speed = 1.0, hides = false },
 	[3] = { id = 3, name = "tall_grass", sprite = "tall_grass", walk = true, speed = 0.85, hides = true },
 	[4] = { id = 4, name = "path", sprite = "path", walk = true, speed = 1.15, hides = false },
-	[5] = { id = 5, name = "water", sprite = "water", walk = false, speed = 0, hides = false },
+	[5] = { id = 5, name = "water", sprite = "water_0", walk = false, speed = 0, hides = false },
 	[6] = { id = 6, name = "ford", sprite = "ford", walk = true, speed = 0.6, hides = false },
 	[7] = { id = 7, name = "farm", sprite = "farm", walk = true, speed = 0.9, hides = false },
 	[8] = { id = 8, name = "flood", sprite = "flood", walk = false, speed = 0, hides = false },
+	-- The river is waded, not swum: slow going, but the map does not funnel every crossing to a ford. Lakes stay `water`.
+	[9] = { id = 9, name = "river", sprite = "river_0", walk = true, speed = 0.35, hides = false },
 } :: { [number]: GroundDef }
 
 -- 0 = nothing. `interact` is the F prompt verb when the player faces the object.
@@ -34,6 +36,7 @@ TileTypes.Object = {
 	[14] = { id = 14, name = "camp_lit", sprite = "camp_lit_0", solid = true, interact = "Rest" },
 	[15] = { id = 15, name = "camp_out", sprite = "camp_out", solid = true, interact = "Rest" },
 	[16] = { id = 16, name = "bag", sprite = "bag", solid = false, interact = "Pick up" },
+	[17] = { id = 17, name = "sign", sprite = "sign", solid = true, interact = "Read" },
 } :: { [number]: ObjectDef }
 
 TileTypes.GroundByName = {} :: { [string]: GroundDef }

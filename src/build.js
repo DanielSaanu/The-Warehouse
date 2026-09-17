@@ -52,6 +52,9 @@ export async function buildRoblox({ upload = false, log = console.log } = {}) {
   let lock = {};
   try { lock = JSON.parse(await fs.readFile(LOCK, 'utf8')); } catch {}
   const assetIds = {};
+  // Sheets whose id is already the IMAGE id (uploaded and looked up, or set by hand with `roblox setid`).
+  // The generated Lua marks those Resolved, so the game server never does the runtime decal lookup for them.
+  const resolvedIds = {};
   for (let i = 0; i < sheets.length; i++) {
     const png = sheets[i].canvas.toBuffer('image/png');
     const file = path.join(outDir, `sheet_${i}.png`);
@@ -66,18 +69,20 @@ export async function buildRoblox({ upload = false, log = console.log } = {}) {
         if (resolved) { prev.assetId = imageId; delete prev.unresolved; log(`  resolved image id ${imageId} for decal ${prev.decalId}`); }
         else log(`  decal ${prev.decalId} (the server resolves the image id at runtime; see docs/ROBLOX_SETUP.md if tiles stay blank)`);
       }
-      assetIds[i] = prev.assetId; log(`  unchanged, asset ${prev.assetId}`); continue;
+      assetIds[i] = prev.assetId; resolvedIds[i] = !prev.unresolved; log(`  unchanged, asset ${prev.assetId}${prev.unresolved ? ' (decal; resolved at runtime)' : ' (image id, hard-coded)'}`); continue;
     }
     if (upload) {
       log(`  uploading to Roblox...`);
       const { assetId: decalId } = await uploadImage(png, { name: `warehouse sheet_${i}`, description: `Sprite sheet ${i} built ${new Date().toISOString()}` });
       const { imageId, resolved } = await resolveImageId(decalId);
       assetIds[i] = imageId;
+      resolvedIds[i] = resolved;
       lock[`sheet_${i}`] = { hash, decalId, assetId: imageId, uploadedAt: new Date().toISOString(), ...(resolved ? {} : { unresolved: true }) };
       if (resolved) log(`  uploaded decal ${decalId}, using image id ${imageId}`);
       else log(`  uploaded decal ${decalId}. Roblox will not reveal its image id from outside (auth required); the game server resolves it at runtime. If tiles stay blank in Studio, command bar: local d = game:GetObjects("rbxassetid://${decalId}")[1] print(d.Texture)  then: warehouse roblox setid ${i} <that number>`);
     } else if (prev?.assetId) {
       assetIds[i] = prev.assetId;
+      resolvedIds[i] = !prev.unresolved;
       log(`  CHANGED since last upload (still using old asset ${prev.assetId}); run with --upload`);
     } else {
       log(`  not uploaded yet (id 0). Run with --upload or paste an id into roblox/assets.lock.json`);
@@ -86,7 +91,7 @@ export async function buildRoblox({ upload = false, log = console.log } = {}) {
   await fs.writeFile(LOCK, JSON.stringify(lock, null, 2) + '\n');
   const luaPath = path.join(ROOT, manifest.luaOut || 'roblox/src/shared/Sprites.lua');
   await fs.mkdir(path.dirname(luaPath), { recursive: true });
-  await fs.writeFile(luaPath, toLua(sheets, { assetIds }));
+  await fs.writeFile(luaPath, toLua(sheets, { assetIds, resolvedIds }));
   await fs.writeFile(path.join(outDir, 'sheets.json'), JSON.stringify(toJson(sheets, assetIds), null, 2) + '\n');
   log(`wrote ${rel(luaPath)} (${items.length} sprites, ${sheets.length} sheet${sheets.length === 1 ? '' : 's'})`);
   return { sheets, assetIds, luaPath, items: items.length };
@@ -100,6 +105,9 @@ export async function setSheetId(index, assetId) {
   try { hash = sha1(await fs.readFile(file)); } catch { throw new Error(`${rel(file)} not found; run "warehouse roblox build" first`); }
   let lock = {};
   try { lock = JSON.parse(await fs.readFile(LOCK, 'utf8')); } catch {}
-  lock[`sheet_${index}`] = { hash, assetId: String(assetId), uploadedAt: new Date().toISOString(), manual: true };
+  // Keep the decal this image came out of when it is the same sheet, so the upload stays traceable.
+  const prev = lock[`sheet_${index}`];
+  const decalId = prev && prev.hash === hash ? prev.decalId : undefined;
+  lock[`sheet_${index}`] = { hash, ...(decalId ? { decalId } : {}), assetId: String(assetId), uploadedAt: new Date().toISOString(), manual: true };
   await fs.writeFile(LOCK, JSON.stringify(lock, null, 2) + '\n');
 }
