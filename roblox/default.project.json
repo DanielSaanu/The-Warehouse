@@ -5,7 +5,13 @@
     "ReplicatedStorage": {
       "$className": "ReplicatedStorage",
       "Shared": { "$path": "src/shared" },
-      "RainState": { "$className": "RemoteEvent" }
+      "Remotes": {
+        "$className": "Folder",
+        "WorldInit": { "$className": "RemoteEvent" },
+        "Move": { "$className": "RemoteEvent" },
+        "EntityState": { "$className": "RemoteEvent" },
+        "Clock": { "$className": "RemoteEvent" }
+      }
     },
     "ServerScriptService": {
       "$className": "ServerScriptService",

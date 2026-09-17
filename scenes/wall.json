@@ -1,0 +1,15 @@
+{
+  "name": "wall",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "layers": [
+    {
+      "id": "t",
+      "name": "wall",
+      "type": "image",
+      "src": "sprites/wall.txt"
+    }
+  ]
+}

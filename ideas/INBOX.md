@@ -13,9 +13,9 @@ the start of a session and works through it. Cross things out or delete them whe
 
 ## Open questions
 
-- Theme / setting? Post-apocalyptic wildlife like Rain World, deep sea, dead spaceship, insects at grass level, something else?
-- Player creature: the slug is a placeholder. What is the player?
-- Name of the game?
+Answered 2026-09-17 and written up in `docs/DESIGN.md` (real time, 96x96 map with three villages, left click
+attack, F interact, respawn at a friendly village, saved + caught-up world). Danzo's notes below stay as the flavour
+reference. Remaining questions are at the bottom of the design doc.
 
 BOSS(Danzo):
   - theme: i feel like should be simple for now so to make it easy well just have it set in a sort of grasslands featuring caves rivers forests uno the usual overworld stuff with different tribes like scavengers and the like aswell as general wild life like boars and deer and stuff were trying to create an ecosystem that works regardless of the player so tribes are hunter gatherers or theyre primitive farmers or theyre the kill and plunder type

@@ -2,16 +2,34 @@
 local Sprites = {}
 
 Sprites.Sheets = {
-	[1] = { Id = "rbxassetid://0", Width = 64, Height = 64 },
+	[1] = { Id = "rbxassetid://0", Width = 128, Height = 128 },
 }
 
 Sprites.Sprites = {
-	["floor_moss"] = { Sheet = 1, X = 1, Y = 1, W = 16, H = 16 },
-	["rain_tile"] = { Sheet = 1, X = 18, Y = 1, W = 16, H = 16 },
-	["scav_idle"] = { Sheet = 1, X = 35, Y = 1, W = 16, H = 16 },
-	["scav_red"] = { Sheet = 1, X = 1, Y = 18, W = 16, H = 16 },
-	["slug_idle"] = { Sheet = 1, X = 18, Y = 18, W = 16, H = 16 },
-	["wall_stone"] = { Sheet = 1, X = 35, Y = 18, W = 16, H = 16 },
+	["bed"] = { Sheet = 1, X = 1, Y = 1, W = 16, H = 16 },
+	["cave"] = { Sheet = 1, X = 18, Y = 1, W = 16, H = 16 },
+	["farm"] = { Sheet = 1, X = 35, Y = 1, W = 16, H = 16 },
+	["ford"] = { Sheet = 1, X = 52, Y = 1, W = 16, H = 16 },
+	["gate"] = { Sheet = 1, X = 69, Y = 1, W = 16, H = 16 },
+	["grass"] = { Sheet = 1, X = 86, Y = 1, W = 16, H = 16 },
+	["grass_2"] = { Sheet = 1, X = 103, Y = 1, W = 16, H = 16 },
+	["hut"] = { Sheet = 1, X = 1, Y = 18, W = 16, H = 16 },
+	["hut_burnt"] = { Sheet = 1, X = 18, Y = 18, W = 16, H = 16 },
+	["path"] = { Sheet = 1, X = 35, Y = 18, W = 16, H = 16 },
+	["player_down_0"] = { Sheet = 1, X = 52, Y = 18, W = 16, H = 16 },
+	["player_down_1"] = { Sheet = 1, X = 69, Y = 18, W = 16, H = 16 },
+	["player_left_0"] = { Sheet = 1, X = 86, Y = 18, W = 16, H = 16 },
+	["player_left_1"] = { Sheet = 1, X = 103, Y = 18, W = 16, H = 16 },
+	["player_right_0"] = { Sheet = 1, X = 1, Y = 35, W = 16, H = 16 },
+	["player_right_1"] = { Sheet = 1, X = 18, Y = 35, W = 16, H = 16 },
+	["player_up_0"] = { Sheet = 1, X = 35, Y = 35, W = 16, H = 16 },
+	["player_up_1"] = { Sheet = 1, X = 52, Y = 35, W = 16, H = 16 },
+	["rock"] = { Sheet = 1, X = 69, Y = 35, W = 16, H = 16 },
+	["stall"] = { Sheet = 1, X = 86, Y = 35, W = 16, H = 16 },
+	["tall_grass"] = { Sheet = 1, X = 103, Y = 35, W = 16, H = 16 },
+	["tree"] = { Sheet = 1, X = 1, Y = 52, W = 16, H = 16 },
+	["wall"] = { Sheet = 1, X = 18, Y = 52, W = 16, H = 16 },
+	["water"] = { Sheet = 1, X = 35, Y = 52, W = 16, H = 16 },
 }
 
 --- Point an ImageLabel/ImageButton at a named sprite. Keeps pixels crisp.

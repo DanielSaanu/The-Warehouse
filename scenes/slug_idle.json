@@ -1,7 +1,0 @@
-{
-  "name": "slug_idle", "width": 16, "height": 16, "background": "transparent", "pixelated": true,
-  "layers": [
-    { "id": "body", "name": "body", "type": "image", "src": "sprites/slug_idle.txt", "x": 0, "y": 0, "outline": { "color": "#1b1b2f", "size": 1 } }
-  ],
-  "notes": "Player creature. Small, soft, weak. The outline makes it pop on any floor."
-}

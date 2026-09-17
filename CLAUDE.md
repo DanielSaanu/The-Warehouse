@@ -39,3 +39,20 @@ the UI is hidden state: every action writes a file under `scenes/`, `sprites/`, 
   uploaded asset id travels with the repo. Only the human can upload (needs `.env`); after they run
   `roblox build --upload` they commit both files. When Claude changes sprites, `roblox build` keeps the old id and
   prints CHANGED; the human re-uploads.
+
+## Testing the Roblox side
+
+- **Luau without Studio**: download the `luau` release zip from https://github.com/luau-lang/luau/releases and put
+  `luau` + `luau-analyze` in `tools/luau/` (gitignored). Then `npm run lint:luau` (syntax/type check with the
+  Roblox-only noise filtered) and `npm run test:luau` (runs `test/luau/*.test.luau` against the shared modules).
+  Everything in `roblox/src/shared/` except `Sprites.lua` must stay pure Luau so this keeps working.
+  `npm run preview:world` paints the generated map into `exports/world_1.png` and `npm run preview:view` renders
+  what the player sees around the spawn. LOOK at them after touching WorldGen or sprites.
+- **The viewport, client and server Lua cannot run outside Studio.** A cloud session re-reads them adversarially
+  before pushing and asks the human to Play. A **local session on Danzo's PC has the Roblox Studio MCP server**
+  (`Roblox_Studio`, user scope) and can test for real: check `/mcp`, keep `rojo serve roblox/default.project.json`
+  running and connected in Studio, then use the MCP tools to run Luau inside Studio (smoke-test the shared
+  modules, build the GUI, start and stop Play) and read the Output window. Fix from real Output text, never guess.
+- **Generated files**: any sprite or scene change means `node bin/warehouse.js roblox build`, then the human runs
+  `--upload` and commits `roblox/src/shared/Sprites.lua` + `roblox/assets.lock.json`. On the PC, if those two are
+  locally modified, `git checkout -- roblox/src/shared/Sprites.lua roblox/assets.lock.json` before `git pull`.

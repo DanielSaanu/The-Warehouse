@@ -1,1 +1,0 @@
-{ "name": "wall_stone", "width": 16, "height": 16, "pixelated": true, "layers": [ { "id": "t", "type": "image", "src": "sprites/wall_stone.txt" } ] }

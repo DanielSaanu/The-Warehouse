@@ -1,0 +1,18 @@
+# name: grass_2
+# palette: . = transparent, G = #3f6b3a, g = #4e8a44, h = #66a552
+gggggggggggggggg
+gggggggggggggggg
+gggghgggggggGggg
+ggghGhgggggggggg
+gggggggggggggggg
+gggggggggggggggg
+ggggggggggghgggg
+gggggggggghGhggg
+gggggggggggggggg
+gGgggggggggggggg
+gGhggggggggggggg
+gggggggggggggggg
+gggggggggggggggg
+gggggghggggggggg
+ggggghGhgggggggg
+gggggggggggggggg

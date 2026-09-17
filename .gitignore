@@ -10,3 +10,4 @@ exports/**/*.json
 # Rojo binary dropped into the repo folder (see docs/ROBLOX_SETUP.md)
 rojo
 rojo.exe
+tools/luau/

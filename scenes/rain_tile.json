@@ -1,1 +1,0 @@
-{ "name": "rain_tile", "width": 16, "height": 16, "pixelated": true, "layers": [ { "id": "t", "type": "image", "src": "sprites/rain_tile.txt", "opacity": 0.8 } ] }

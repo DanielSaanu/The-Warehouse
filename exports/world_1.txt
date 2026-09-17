@@ -1,0 +1,96 @@
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^TTT  ,,,                        ^^^^^^                 ~~     ,,,     ^^,,,,,            ,,,  ^
+^TTT  ,, ,                       ^^^^^                ~~~       ,,,       ,,,,           ,,, , ^
+^ TTT,  ,                         ^                  ~~~                 ,  ,,            ,,,  ^
+^TTTT ,,TT  ,                                        ~~          ,       ,,, ,           ,,,   ^
+^ T  ,, TT T,                                        ~~                    ,,            ,, ,  ^
+^T T  T T T             , ,,                          ~~        ,,        ,,,             , ,, ^
+^TTTTT  T   ,         ,    T ,                       ,~~~      , ,        ,,,, ,,         ,,  ,^
+^  TTTT   T,,, ,  ,,,   TTTT T,,                    , ,T~~,,   , ,,        ,  ,  ,           ,T^
+^ TTTTTT T ,,T TTTT  TTTTT   TTT                    ,,TT~~    ,,,,,         ,  ,T           ,TT^
+^TTT TTTTT,  TTTT TT  T TTTTTT T ,                     T~~TT,,,,T ,          ,, T ,         ,TT^
+^TTTTT TT T,  T TTTTTTTTTTTTTTTTT,                     T~~T T,T T ,,          ,,T,         ,,TT^
+^TTTTT T  ,  TTTT TTTTT TTTTTTT  T, ,    ^    H    ^   T~~TT    TT,           ,,,,        ,, T ^
+^^T TT   T  T TTTTT  T T  TTTTTTTTTT,,    H   .  H     T~~TT   TTT              ,,,,, ,, ,,TTT ^
+^^^T TT  ,     T TT TTTTT TTTTTTT TTT,        .        ~~~ T   TT               ,,,, , , TT  TT^
+^^^ TT   , ,  T T T TTT T  TTTTTTTTT    .............  TT~~TT T TT              ,,,,,  TTTT TT ^
+^^^T T   , ,TT T TT    T   TTTTTTTTTT   .b    .    S   TT ~~ TT T  ,             , ,,, ,   T TT^
+^^^ T T   TTTTT T TT TT TTTTTTT TTT T   . H       H     T~~T    T                      ,,,T TTT^
+^T^ TTTTT  T T , T   T T TTTTT  T    , ..^         ^   T~~~T,, ,,                       ,,,T  T^
+^T^T TTT TTT  ,,, ,  TT TTTTTTT TT T   .                 ~~,,,,,                         ,     ^
+^^^T TTTTTTT  , ,, ,,   TTTTTT,,TTTT,  .               T~~~,,  ,,           ,            ,,, TT^
+^^^ TT  TTT    ,,,,,,  T  TTT    ,, , ..          ,      ~~,                             ,   TT^
+^^^TTTTTT TT   T TTTTTTTTT TTT,,,,    .              ,,T,~~,                            , T TTT^
+^T TTTT T  TTTT TT TTT TT TTT  ,,     .              ,,, ,~~                             T T TT^
+^T T TTTTTT TT TTTTTTT  TTT  T ,,     .               ,, ,,~~                          ,,  TT^T^
+^      TTTTT TTTT TT T TTT   TT,      .                ,,,  ~~                          ,T ^^^T^
+^TT T  TTTTTTTT TTTTTT TT   TT ,      .                ,     ~~                        ,,^^^^^^^
+^T TTT TTTT TTTTTTTT   T    T         .                ,,,    ~~                    ^^  ^^^^^^^^
+^T     T  T TTT TT T,  T T,,T T,      .                ,,,,    ~~                   ^^^^^^^^^^^^
+^ T  ,,, TT^^^^^^ ,^^^^ ,, ,   ,,     .                 , ,, , ,~~        ,,        ^^^^^^^^^^^^
+^ T  ,,,,T ^^^^^^^^^^^^^,,,,, T,,     .                 , ,,,, ,,~~      , , ,      ^^^^^^^^^^^^
+^T  ,,, ,,^^^^^^^^^^^^^^^,,,, T,      .               ,  ,,,,,,,  ~~      ,          ^^^^^^^^^^^
+^   ,,,  ,^^^^^^^^^^^^^^^^, ,,,       .               ,, ,,,,,,, ~~                    ^^^^^^^^^
+^   TT    ^^^^^^^^^^^^^^^^^,  ,       .                 ,,, T   ~~                      ^^^^^^^^
+^ T   T  ,^^^^^^^^^^^^^^^^^^, ,,      .            ,,    ,  T  ~~                       ^^^^^^^^
+^ TT  TT,  ^^^^^^^^^^^^^^^^^,,,       .           , ,     TTT ~~                         ^^^^^^^
+^T TT TT,, ^^^^^^^^^^^^^^^^^  ,       .           ,     ,,T TT~~                         ^^^^^^^
+^TTTTT , ,,^^^^^^^^^^^^^^^^,   ,      .             ,, , T TTT ~~                       ^^^^^^^^
+^TTTT , ,,,^^^O^^^^^^^^^^,,,,,,       .                TT    T~~                       ^^^^^^T ^
+^TTTT ,,  ,,^^     ^^^^,,, ,,, ,      .              , T TT T~~                       ^^^^^^^ ,^
+^TT TT,, ,,              ,,,   ,      .               T TT TT~~                       ^^^^^^^ ,^
+^TTT T,, ,                ,   ,,      .              ,T    TT~~                       ^^^^^^^, ^
+^TTTTT,                  , ,,,        .             ,,T TT T~~~       ,               ^^^^^^^,,^
+^TTTTT                   ,,,          .             ,,  ,,,,,~~       ,               ^^^^^^^, ^
+^TTTT T,                   ,          .            ,, ,  ,  ~~~       ,,               ^^^^^^  ^
+^TTTTT                   ,,           .             , , , ,~~~        ,,,               ^^^^^  ^
+^TTTTT ,               ,,,,,          .            ,,,,, , ~~        ,,, ,              ^^^^   ^
+^TT TT                 ,,,  , ,       .           , , TTTT~~ ,  ,    ,,,,,,             ^^^    ^
+^TTTTT T          ,,, ,,  , ,,  ,,    .           , T T TT~~TT T, ,,,,,, ,,            ^       ^
+^  TTTT  ,   ,,,,,   , , ,,  TTT , ,, .           ,  TTT ~~~TT    T  TT ,,,,,        ^^^       ^
+^TTTTTT        T  ,,~, , ,  T TT,  ,,,.            ,  TTTT~~ T   T    TTT,,,,        ^^^^^^    ^
+^TTT TT   ,  TTTT ~~~~~,  TTTTTT~   ,,.           ,   TTTT~~ T TT T TT  T  ,,           ^^^^   ^
+^ TT  T   T     ,~~~~~~~~~,TT T~~ , ,.., ,,,,  , TTT TTTT~~TTTTTT T  T T,               ^^^^^  ^
+^T   TTT T     ~~~~ ,,~~~~~ ,,~~, ,,,., T  TTT   TT TTTT~~TT  T  T T                    ^^^^^^ ^
+^  TT T  ,~~~~~~~~, , ~~~~~~~~~~  ,, .~,TT  TTT T TTT TT~~TTTTTTTTT                     ^^^^^^^^
+^TT ,,,,,~~~~~~~~~,T TT~~~~~~~~~,  ,,.~, TTTTTTTT TTTTT~~TTTTTT T  T    ,   H   ,       ^^^^^^^^
+^T  , ,,~~~~~~~~~~,T TTT~~~~~~~~,,,,..~ TTT TTTTTTTTTT~~TTTTT  TTTTT   H    .    H      ^^^^^^^^
+^     ,,~~~~~~~~~~~   T ,~~~~~~~~,  .,,TT T TT    TT~~~TTTTTT T TT T    ,   .  ,       ^^^^^^^^^
+^TT  , ,,, ,,,~~~~~,TT ,~~~~~~~~~, .. TTTTT      TTT~~TTTTTTTTTT T , ..............    ^^^^^^^^^
+^TTT,,T T,T TT,~~~~~~~~ ,,,  ~~~ ,,.TTT TT,,,   ,TTTT~~TT T TT T  ,, . S    .    b     ^^^^^^  ^
+^TT   T  TTTTTT,~~~~~~~ ,      T T,.,,   ,,      ,  ~~TTTTTTTT  T,, ..  H   .  H       ^^^     ^
+^TTTT T    TTTTTT ~~~~,,,,,,,,,    .,   ,,        ,~~  T TTTT TT ,  .   ,       ,    ^^^^      ^
+^ TTTTTT TTTTTTTT T~,,,,     ,,,,  .              ,,~~,,T TTT  ,,,,..                ^^^^      ^
+^TTT TT TTT   TT   ,,,,            .                ,~~,,T TT ,,   .                 ^^^^   ^^^^
+^TT T TT   ,,,,,,, ,,              .                 ~~ ,,,, ,,    .      ,,        ^^^O^   ^^^^
+^TT T TT , ,     ,                 .                 ~~, ,,,     ...       ,                ^^^^
+^TTT T  T ,,                       .                 ~~        ...                             ^
+^ TTTT   ,           WWWWWWGWWWWWW .                 ~~        .                               ^
+^TTTTT T                   .       .                 ~~     ....                               ^
+^TTTTTTT              B    .  H    .                 ~~   ...                                  ^
+^TTTT T                    .       .                ~~~   .                                    ^
+^TTT  T,,              S   .    b  ..................==....                   ^ ,              ^
+^TTTTTT ,         ,  ......@........^^^             ~~~                       ^                ^
+^TTT  ,       ,, ,,        .         ^^^             ~~                                        ^
+^TTTT ,,       ,  ,   H    .  B       ^^^         ,, ,~~      , ,,,                  ^^^      ^^
+^ T  ,,,      ,, ,,        .          ^^^^        , ,,~~~, ,,,  ,, ,,,,           ^^^^^^^    ^^^
+^ TT ,,,     ,,,,,,   ##   .  ##       ^^^        ,,,,~~~, , ,     T , ,        ,^^^^^^^^, ,  ^^
+^T  T   ,    ,,, ,    ##      ##        ^^^      ,T T ,~~~   ,  T     T        , ^^^^^^^^, ,   ^
+^TTT     ,  ,  , ,,                      ^^        TTT ,,~~ ,,,  T TT TTT,,  ,, ,^^^^^^^^   T,,^
+^   TT   , , , ,TT                      ^^^     ,  T TT   ~~  ,,   TTTT T ,, ,,,,,^^^^^^  T T  ^
+^,TT T   ,, , ,T    TT   ,,T  TTT ,  ^^^^^^      TTTTTTTT  ~~ TT TTT TT  T , ,^^,, ,  T^TT TTTT^
+^,T TT T  , , ,TT  TT T T    ^^^^^^^^^^^^^      , T  T    TT~~  T  TTTTTT TT ^^^^,T TTTTTT TT  ^
+^,    T  ,,, , , ,      T T T^^^^^^^^^^^^^^     , T TT TT    ~~ TTTTTTTTTTT^^^^^     TT  TTTT  ^
+^  , , ,    ,,,, ,,,  TTTTT TTT^^^^^^^^^^^^^^^^ ,,T TT  TT   ~~ TTTTTTTTTT^^^^^^TT T   TTTTTTTT^
+^,, , ,,,,,,, ,  ,,,,       TTT^^^^^^^^^^^^^^^^^  ^,TTTT  TTT~~T TT TTTTT^^^^^^^  TTTTTT  ,,TTT^
+^   ,  , ,,,,       , TTTTTTTTT^^^^^^^^^^^^^^^^^ ^^,, TT T  T~~TT  TTTTT^^^^^^^^TTT  TT  , ,  T^
+^,     ,   ,,,   ,,  , T    TTT^^^^^^^^^^^^O^^         T TTT~~ T TTTTTT^^^^^^^^ TTT  TTTT  ,TT ^
+^,        ,,,,,  ,, , T TTTT T ^^^^^^^ ,  ^            T  T ~~T TTTTTT^^^^^^^^^T TTT TTT T T T ^
+^        , ,,, ,,,,T   TT  TTT  ^^^^T,,, ,             TTT ,~~,,,^^^^^^^^^^^^^^^T   TTTTTTTT TT^
+^        ,T,, ,  , TTT TTTT TTT TTT  TT,,             TT T, ~~ ,^^^^^^^^^^^^^^^^^TTTTTTT  TTTTT^
+^       , ,,   , ,TT T  TT  TTTTTT  T  T  ,           TTT ,~~~^^^^^^^^^^^^^^^^^^^TTTTT TTTT TTT^
+^         ,,,      ,     TT TTTTTTTTTTTT ,,,         ,,T,,  ~~ ^^^^^^^^^^^^^^^^^^TTT TTTTT TT T^
+^                  ,,,TT  TTTTTTTTTTTTT T , , ,       ,     ~~  ^^^^^T^^^^^^^^^^^TTTTTTT  T T T^
+^                     ,TT TTTTTTTTTTT   T  T   ,            ~~   ^^^^ TTT^^^^^^  TTTTTTT TTTTT ^
+^                      ,TT TTTTTTTTTTT T,  TT T             ~~   ^^^^,,,^^^^^^^   TTTTTTT   TTT^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
