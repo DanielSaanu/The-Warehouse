@@ -97,6 +97,14 @@ re-Play the game and the art is live.
 Unchanged sheets are not re-uploaded (hash stored in `roblox/assets.lock.json`). Every changed sprite means a
 new upload and a new id; that is normal.
 
+After an upload, commit the two files that now carry the asset id so the repo (and Claude) know about it:
+
+```bash
+git add roblox/src/shared/Sprites.lua roblox/assets.lock.json
+git commit -m "Record uploaded sprite sheet asset id"
+git push
+```
+
 **Manual alternative** if you do not want an API key yet:
 
 1. `npx warehouse roblox build` (no upload). It writes `exports/roblox/sheet_0.png`.
@@ -115,6 +123,12 @@ Every sprite is a named entry: the scene file name in `scenes/` is the sprite na
 screen-filling tile grid on top of that. Pixels stay crisp because `Apply` sets `ResampleMode = Pixelated`.
 
 ## Troubleshooting
+
+- **Decal id vs image id (black play area, no errors, decal looks fine on Creator Hub).** An Open Cloud upload
+  creates a *Decal*; the picture inside it is a separate *Image* asset with a different id, and `ImageLabel.Image`
+  needs the image id. `roblox build --upload` looks it up automatically. If the terminal said it could not, get it
+  by hand: in Studio insert a ScreenGui > ImageLabel, paste the decal id into its **Image** property, and Studio
+  rewrites it to the image id. Then run `npx warehouse roblox setid 0 <image id>` and Play. Delete the test ScreenGui.
 
 - **Images show as blank for a minute after upload**: Roblox moderates images. Wait, then re-Play.
 - **`Roblox upload failed 401/403`**: wrong key, key expired, IP restriction, or the Assets API system is missing

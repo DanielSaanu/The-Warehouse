@@ -45,18 +45,39 @@ async function pollOperation(operationId, key, { tries = 20, delayMs = 1500 } = 
   throw new Error(`operation ${operationId} did not finish; check Creator Hub > Development Items > Decals`);
 }
 
+/** Pull the image id out of a Decal's XML (the decal wraps a Texture whose url points at the real image asset). */
+export function parseImageIdFromDecalXml(xml) {
+  const m = String(xml).match(/<Content name="Texture">\s*<url>[^<]*?[?&]id=(\d+)/i) || String(xml).match(/<url>[^<]*?[?&]id=(\d+)/i) || String(xml).match(/rbxassetid:\/\/(\d+)/i);
+  return m ? m[1] : null;
+}
+
 /**
- * Decal ids work directly in ImageLabel.Image (Roblox resolves them). If you ever need the underlying
- * image id (some APIs want it), this tries the public asset delivery XML. Falls back to the decal id.
+ * Open Cloud uploads create a Decal. The picture inside it is a separate Image asset with its own id, and
+ * ImageLabel.Image needs THAT id (Studio's property panel does this swap for you; scripts do not).
+ * Tries the public asset delivery endpoints. Returns { imageId, resolved }; falls back to the decal id.
  */
 export async function resolveImageId(decalId) {
-  try {
-    const res = await fetch(`https://assetdelivery.roblox.com/v1/asset/?id=${decalId}`);
-    if (!res.ok) return decalId;
-    const xml = await res.text();
-    const m = xml.match(/<url>[^<]*?id=(\d+)/i) || xml.match(/rbxassetid:\/\/(\d+)/);
-    return m ? m[1] : decalId;
-  } catch { return decalId; }
+  const headers = { 'user-agent': 'the-warehouse/0.1', accept: '*/*' };
+  const attempts = [
+    async () => { const res = await fetch(`https://assetdelivery.roblox.com/v1/asset/?id=${decalId}`, { headers, redirect: 'follow' }); return res.ok ? res.text() : null; },
+    async () => {
+      const res = await fetch(`https://assetdelivery.roblox.com/v2/assetId/${decalId}`, { headers });
+      if (!res.ok) return null;
+      const json = await res.json();
+      const loc = json.locations?.[0]?.location || json.location;
+      if (!loc) return null;
+      const body = await fetch(loc, { headers, redirect: 'follow' });
+      return body.ok ? body.text() : null;
+    },
+  ];
+  for (const attempt of attempts) {
+    try {
+      const xml = await attempt();
+      const id = xml && parseImageIdFromDecalXml(xml);
+      if (id) return { imageId: id, resolved: true };
+    } catch {}
+  }
+  return { imageId: String(decalId), resolved: false };
 }
 
 export async function uploadFile(file, opts) { return uploadImage(await fs.readFile(file), opts); }

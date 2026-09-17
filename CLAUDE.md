@@ -35,3 +35,7 @@ the UI is hidden state: every action writes a file under `scenes/`, `sprites/`, 
 - The UI polls the scene file on disk every 2.5 s. When you edit a scene JSON, the human sees it live.
 - Commit `sprites/`, `scenes/`, `ideas/`, `library/index.json` and small library images. Do not commit
   `cache/`, `.env`, or `exports/*.png`.
+- `roblox/assets.lock.json` (sheet hash -> Roblox asset id) and the generated `Sprites.lua` ARE committed, so the
+  uploaded asset id travels with the repo. Only the human can upload (needs `.env`); after they run
+  `roblox build --upload` they commit both files. When Claude changes sprites, `roblox build` keeps the old id and
+  prints CHANGED; the human re-uploads.

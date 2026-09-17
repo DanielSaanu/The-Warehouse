@@ -8,7 +8,7 @@ import { makeNodeEnv, savePng } from './node-env.js';
 import { renderScene } from './render.js';
 import { packSprites, toLua, toJson } from './sheet.js';
 import { sha1 } from './library.js';
-import { uploadImage } from './roblox.js';
+import { uploadImage, resolveImageId } from './roblox.js';
 import { listScenes, loadScene } from './store.js';
 
 const MANIFEST = path.join(DIRS.roblox, 'sheet.json');
@@ -59,13 +59,23 @@ export async function buildRoblox({ upload = false, log = console.log } = {}) {
     const hash = sha1(png);
     log(`sheet_${i}.png  ${sheets[i].width}x${sheets[i].height}  ${Object.keys(sheets[i].sprites).length} sprites  -> ${rel(file)}`);
     const prev = lock[`sheet_${i}`];
-    if (prev && prev.hash === hash && prev.assetId) { assetIds[i] = prev.assetId; log(`  unchanged, asset ${prev.assetId}`); continue; }
+    if (prev && prev.hash === hash && prev.assetId) {
+      if (prev.unresolved && prev.decalId) {
+        // Uploaded earlier but the image id could not be looked up then; try again.
+        const { imageId, resolved } = await resolveImageId(prev.decalId);
+        if (resolved) { prev.assetId = imageId; delete prev.unresolved; log(`  resolved image id ${imageId} for decal ${prev.decalId}`); }
+        else log(`  still using decal id ${prev.decalId}; if tiles are blank see "Decal id vs image id" in docs/ROBLOX_SETUP.md`);
+      }
+      assetIds[i] = prev.assetId; log(`  unchanged, asset ${prev.assetId}`); continue;
+    }
     if (upload) {
       log(`  uploading to Roblox...`);
-      const { assetId } = await uploadImage(png, { name: `warehouse sheet_${i}`, description: `Sprite sheet ${i} built ${new Date().toISOString()}` });
-      assetIds[i] = assetId;
-      lock[`sheet_${i}`] = { hash, assetId, uploadedAt: new Date().toISOString() };
-      log(`  asset id ${assetId}`);
+      const { assetId: decalId } = await uploadImage(png, { name: `warehouse sheet_${i}`, description: `Sprite sheet ${i} built ${new Date().toISOString()}` });
+      const { imageId, resolved } = await resolveImageId(decalId);
+      assetIds[i] = imageId;
+      lock[`sheet_${i}`] = { hash, decalId, assetId: imageId, uploadedAt: new Date().toISOString(), ...(resolved ? {} : { unresolved: true }) };
+      if (resolved) log(`  uploaded decal ${decalId}, using image id ${imageId}`);
+      else log(`  uploaded decal ${decalId}. Could not look up its image id automatically; using the decal id. If tiles are blank, see "Decal id vs image id" in docs/ROBLOX_SETUP.md`);
     } else if (prev?.assetId) {
       assetIds[i] = prev.assetId;
       log(`  CHANGED since last upload (still using old asset ${prev.assetId}); run with --upload`);
