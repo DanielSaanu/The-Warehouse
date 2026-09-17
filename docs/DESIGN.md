@@ -350,14 +350,13 @@ handoff: Studio > File > Publish to Roblox, then Creator Dashboard > Settings > 
 nobody can join. Code changes need a re-publish; running servers keep the old build until they shut down.
 
 Two chores to do before strangers see it:
-- Hard-code the resolved image id instead of leaning on `Sprites.ResolveOnServer`. The runtime decal lookup works
-  today but runs on every server start and breaks every tile if ownership ever moves (e.g. game to a group, assets
-  on the user). **Half done (rung 2 part 4):** `roblox build` now writes `Resolved = true` into `Sprites.lua` for
-  any sheet whose lock entry holds a real image id, and `Sprites.ResolveOnServer` skips those, so the lookup stops
-  happening as soon as the id is a good one. Only the human can finish it, because only they can upload:
-  after `npx warehouse roblox build --upload`, take the decal id it prints, run in the Studio command bar
+- ~~Hard-code the resolved image id instead of leaning on `Sprites.ResolveOnServer`~~ **done (rung 2 part 4)**:
+  `Sprites.lua` carries the image id with `Resolved = true`, and `ResolveOnServer` skips a sheet marked that way,
+  so no server start does the decal lookup any more. `roblox build` sets the flag for any sheet whose lock entry
+  holds a real image id. **Redo this after every upload**, because a new upload gives a new decal:
+  `npx warehouse roblox build --upload`, then in the Studio command bar
   `local d = game:GetObjects("rbxassetid://<decal id>")[1] print(d.Texture)`, then
-  `npx warehouse roblox setid 0 <that number>` and commit `Sprites.lua` + `assets.lock.json`.
+  `npx warehouse roblox setid 0 <that number>`, and commit `Sprites.lua` + `assets.lock.json`.
 - ~~Reword the loading message in `Client.client.lua`~~ **done (rung 2 part 4)**: past 5 s it now says
   "Still loading. If this stays, the server is starting up." and never mentions `rojo`.
 
