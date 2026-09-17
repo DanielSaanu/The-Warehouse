@@ -297,6 +297,26 @@ Rung 1 is done (grid, movement, one room, rain timer, upload pipeline).
 - Taking over places, absorbing ruins, tribe-level war and peace. Title screen, music, touch controls,
   animations, the extra 200 sprites.
 
+**Parked: going public (do before rung 3 ships, not before rung 2 plays)**
+
+Rojo is a dev-time cable only. Nothing in `roblox/src/` talks to a dev machine (no HttpService, no localhost),
+so once the place is published Roblox hosts it on their servers and Danzo's PC can be off. Publishing is the
+handoff: Studio > File > Publish to Roblox, then Creator Dashboard > Settings > Playability > **Public**, or
+nobody can join. Code changes need a re-publish; running servers keep the old build until they shut down.
+
+Two chores to do before strangers see it:
+- Hard-code the resolved image id (`npx warehouse roblox setid 0 <image id>`) instead of leaning on
+  `Sprites.ResolveOnServer`. The runtime decal lookup works today but runs on every server start and breaks
+  every tile if ownership ever moves (e.g. game to a group, assets on the user).
+- Reword the loading message in `Client.client.lua` — past 5 s it currently tells the player to check whether
+  `rojo serve` is running. A cold server (asset resolve + map transfer on a phone) can hit that honestly.
+
+Money: game passes and developer products via `MarketplaceService` (nothing wired yet), plus engagement-based
+payouts from Premium playtime. Robux to cash goes through DevEx (13+, ID check, Premium, a minimum balance;
+thresholds move, check the current page). Roblox keeps roughly a third of in-experience sales. **Do not charge
+before rung 3's save + catch-up lands** — until then the world regenerates per server and anything sold
+evaporates on shutdown. Publish free well before that: real players find what we cannot.
+
 ## 17. Asset plan for rung 2 (about 45 sprites)
 
 | Group | Sprites | Source |
