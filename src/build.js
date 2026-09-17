@@ -6,8 +6,7 @@ import path from 'node:path';
 import { DIRS, ROOT, rel } from './paths.js';
 import { makeNodeEnv, savePng } from './node-env.js';
 import { renderScene } from './render.js';
-import { packSprites, toLua, toJson, toSheetDataLua } from './sheet.js';
-import { writeRobloxFiles } from './rbxmx.js';
+import { packSprites, toLua, toJson } from './sheet.js';
 import { sha1 } from './library.js';
 import { uploadImage } from './roblox.js';
 import { listScenes, loadScene } from './store.js';
@@ -78,18 +77,8 @@ export async function buildRoblox({ upload = false, log = console.log } = {}) {
   const luaPath = path.join(ROOT, manifest.luaOut || 'roblox/src/shared/Sprites.lua');
   await fs.mkdir(path.dirname(luaPath), { recursive: true });
   await fs.writeFile(luaPath, toLua(sheets, { assetIds }));
-  const dataPath = path.join(path.dirname(luaPath), 'SheetData.lua');
-  if (manifest.embed !== false) {
-    await fs.writeFile(dataPath, toSheetDataLua(sheets));
-    const kb = Math.round((await fs.stat(dataPath)).size / 1024);
-    log(`wrote ${rel(dataPath)} (${kb} KB embedded pixels so Play works before any upload)`);
-    if (kb > 900) log('  warning: embedded data is large; upload the sheet and set "embed": false in roblox/sheet.json');
-  } else {
-    await fs.rm(dataPath, { force: true });
-  }
   await fs.writeFile(path.join(outDir, 'sheets.json'), JSON.stringify(toJson(sheets, assetIds), null, 2) + '\n');
   log(`wrote ${rel(luaPath)} (${items.length} sprites, ${sheets.length} sheet${sheets.length === 1 ? '' : 's'})`);
-  await writeRobloxFiles({ outDir, log });
   return { sheets, assetIds, luaPath, items: items.length };
 }
 

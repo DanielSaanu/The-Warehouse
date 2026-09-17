@@ -1,32 +1,5 @@
 # Roblox setup: from this repo to a running game
 
-## 0. Zero setup: press Play in about a minute
-
-You do not need Rojo, an API key, or an upload to try the game. Every build produces one model file that
-carries the code **and** the sprite pixels (rebuilt at runtime with Roblox's EditableImage API).
-
-1. Download `exports/roblox/TheWarehouse.rbxmx` from this repo (open the file on GitHub, click **Download raw file**).
-2. In Roblox Studio, open your place. In the **Explorer**, right-click **Workspace** and choose
-   **Insert from File...**, pick `TheWarehouse.rbxmx`. A folder called `TheWarehouse` appears under Workspace.
-   Leave it there (it must be somewhere server Scripts run, so Workspace or ServerScriptService, not ReplicatedStorage).
-3. Press **Play**. The `Installer` script inside the folder moves everything into ReplicatedStorage,
-   ServerScriptService and StarterPlayer, then deletes itself. You should see the walled room, the slug
-   (WASD / arrows / tap), two scavengers, and rain every 90 seconds.
-4. Stop. Your place is back to how it was, with the `TheWarehouse` folder still sitting there for the next Play.
-
-To update after the repo changes: delete the old `TheWarehouse` folder, insert the new file, Play.
-
-Alternative: `exports/roblox/TheWarehouse.rbxlx` is a whole place. **File > Open from File** and Play.
-
-Why this works without an upload: `roblox build` also writes `roblox/src/shared/SheetData.lua`, a palette and
-run-length encoded copy of the sprite sheet. `Sprites.lua` decodes it into an `EditableImage` when a sheet has no
-asset id. This is a development convenience: keep the embedded data small (pixel art compresses to a few KB), and
-for a published game do the upload in section 5 so `Sprites.lua` uses real asset ids (`"embed": false` in
-`roblox/sheet.json` turns the embedding off). EditableImage in *published* experiences additionally requires the
-creator account to be ID verified; in Studio it always works.
-
-The rest of this document is the full pipeline: live code sync with Rojo and real asset uploads.
-
 Two pipes connect this repo to Roblox Studio:
 
 | What            | How it travels                                         | Tool                    |
@@ -87,7 +60,7 @@ What the project puts where:
 | (project file)                        | `ReplicatedStorage.RainState` (RemoteEvent)         |
 
 Press **Play**. You should see a walled room, a slug you can move with WASD, and rain every 90 seconds.
-Tiles come from the embedded pixels until you upload a real sheet (below); either way they should never be blank.
+If the tiles are blank, the sprite sheet has not been uploaded yet: continue below.
 
 ## 4. Make an Open Cloud API key (about two minutes)
 
@@ -118,8 +91,8 @@ npx warehouse roblox build --upload
 
 This renders every scene in `scenes/` (except ones with `"export": false` or excluded in
 `roblox/sheet.json`), packs them into `exports/roblox/sheet_0.png`, uploads it as a Decal, waits for the
-asset id, and rewrites `roblox/src/shared/Sprites.lua` (plus `SheetData.lua` and the `.rbxmx`/`.rbxlx` files).
-Rojo pushes the new module into Studio. Stop and re-Play the game and the art is live.
+asset id, and rewrites `roblox/src/shared/Sprites.lua`. Rojo pushes the new module into Studio. Stop and
+re-Play the game and the art is live.
 
 Unchanged sheets are not re-uploaded (hash stored in `roblox/assets.lock.json`). Every changed sprite means a
 new upload and a new id; that is normal.

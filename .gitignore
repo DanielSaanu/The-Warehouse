@@ -5,8 +5,6 @@ library/**/*.zip
 exports/**/*.png
 exports/**/*.json
 !exports/.gitkeep
-# the built Roblox files are committed so they can be downloaded without running node
-!exports/roblox/**
 roblox/assets.lock.json
 *.log
 .DS_Store

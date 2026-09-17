@@ -18,8 +18,8 @@ gui.IgnoreGuiInset = true
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
-if Sprites.Sheets[1].Id == "rbxassetid://0" and not Sprites.HasEmbedded(1) then
-	warn("[Warehouse] Sprites.lua has no asset id and no embedded pixels. Run: warehouse roblox build (see docs/ROBLOX_SETUP.md)")
+if Sprites.Sheets[1].Id == "rbxassetid://0" then
+	warn("[Warehouse] Sprites.lua has no asset id yet. Run: warehouse roblox build --upload (see docs/ROBLOX_SETUP.md)")
 end
 
 local grid = Grid.new(gui, Config.COLS, Config.ROWS)

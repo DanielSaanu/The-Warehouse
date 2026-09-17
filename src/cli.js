@@ -25,8 +25,7 @@ const HELP = `The Warehouse: asset composer for pixel games (Roblox first).
   warehouse render <scene|file> [-o out.png] [--scale N] [--layer id]
   warehouse ascii <image|scene> [--max N]    print an image as pixel-text so Claude can read it
   warehouse totxt <image> -o sprites/x.txt   convert a small PNG into an editable pixel-text sprite
-  warehouse roblox build [--upload]          pack scenes -> sheet PNG, Sprites.lua + SheetData.lua (embedded pixels),
-                                             and exports/roblox/TheWarehouse.rbxmx (insert into Studio, press Play)
+  warehouse roblox build [--upload]          pack all scenes -> exports/roblox + roblox/src/shared/Sprites.lua
   warehouse roblox upload <png> [--name X]   upload one image, print the asset id
   warehouse roblox setid <sheet#> <assetId>  record a manually uploaded sheet id, rewrite Sprites.lua
   warehouse fonts                            list curated fonts

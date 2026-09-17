@@ -3,8 +3,7 @@ import assert from 'node:assert/strict';
 import { parsePixelText, pixelTextFromLayer, imageDataToPixelText, normalizeHex } from '../src/pixels.js';
 import { normalizeScene, validateScene, newScene, newLayer, moveLayer } from '../src/scene.js';
 import { renderScene } from '../src/render.js';
-import { packSprites, toLua, encodeSheetPixels, decodeSheetPixels, toSheetDataLua } from '../src/sheet.js';
-import { modelXml, placeXml } from '../src/rbxmx.js';
+import { packSprites, toLua } from '../src/sheet.js';
 import { makeNodeEnv } from '../src/node-env.js';
 
 const env = makeNodeEnv();
@@ -96,32 +95,3 @@ test('packSprites overflows into a second sheet', () => {
 });
 
 test('normalizeHex expands short hex', () => { assert.equal(normalizeHex('#abc'), '#aabbcc'); assert.equal(normalizeHex('FFF'), '#ffffff'); });
-
-test('embedded sheet pixels round-trip through the run-length encoding', async () => {
-  const s = newScene('rle', 70, 3); // width not a multiple of 64 so runs cross rows and split at 64
-  s.layers.push(newLayer('pixels', { rows: ['r'.repeat(70), '.'.repeat(35) + 'b'.repeat(35), 'rbrb' + 'g'.repeat(66)], palette: { r: '#ff0000', b: '#0000ff', g: '#00ff00' } }));
-  const r = await renderScene(s, env, { strict: true });
-  const enc = encodeSheetPixels(r.canvas);
-  assert.equal(enc.palette.length, 4); assert.equal(enc.runs.length % 3, 0);
-  const dec = decodeSheetPixels(enc);
-  const orig = r.canvas.getContext('2d').getImageData(0, 0, 70, 3).data;
-  assert.deepEqual([...dec], [...orig]);
-  const lua = toSheetDataLua([{ canvas: r.canvas }]);
-  assert.match(lua, /Width = 70, Height = 3/); assert.match(lua, /\{0,0,0,0\}/, 'transparent entry present'); assert.match(lua, /Runs = table.concat/);
-});
-
-test('model xml turns services into Folders, disables server Scripts, and keeps LocalScripts enabled', () => {
-  const tree = { name: 'P', className: 'DataModel', children: [
-    { name: 'ReplicatedStorage', className: 'ReplicatedStorage', children: [{ name: 'M', className: 'ModuleScript', source: 'return 1', children: [] }, { name: 'Ev', className: 'RemoteEvent', children: [] }] },
-    { name: 'ServerScriptService', className: 'ServerScriptService', children: [{ name: 'S', className: 'Script', source: 'print(1)', children: [] }] },
-    { name: 'StarterPlayer', className: 'StarterPlayer', children: [{ name: 'StarterPlayerScripts', className: 'StarterPlayerScripts', children: [{ name: 'C', className: 'LocalScript', source: 'x = "]]>"', children: [] }] }] },
-  ] };
-  const m = modelXml(tree, 'print("install")', 'T');
-  assert.doesNotMatch(m, /class="StarterPlayerScripts"/); assert.doesNotMatch(m, /class="ReplicatedStorage"/);
-  assert.match(m, /<Item class="Script" referent="[^"]+">\s*<Properties>\s*<string name="Name">S<\/string>\s*<ProtectedString[^>]*><!\[CDATA\[print\(1\)\]\]><\/ProtectedString>\s*<bool name="Disabled">true<\/bool>/);
-  assert.match(m, /<string name="Name">C<\/string>\s*<ProtectedString[^>]*><!\[CDATA\[x = "\]\]\]\]><!\[CDATA\[>"\]\]><\/ProtectedString>\s*<bool name="Disabled">false<\/bool>/, 'CDATA terminator inside source is escaped');
-  assert.match(m, /<string name="Name">Installer<\/string>/);
-  const p = placeXml(tree);
-  assert.match(p, /<Item class="StarterPlayerScripts"/); assert.match(p, /<Item class="ReplicatedStorage"/);
-  assert.match(p, /<string name="Name">S<\/string>\s*<ProtectedString[^>]*><!\[CDATA\[print\(1\)\]\]><\/ProtectedString>\s*<bool name="Disabled">false<\/bool>/);
-});
