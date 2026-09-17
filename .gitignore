@@ -5,6 +5,8 @@ library/**/*.zip
 exports/**/*.png
 exports/**/*.json
 !exports/.gitkeep
-roblox/assets.lock.json
 *.log
 .DS_Store
+# Rojo binary dropped into the repo folder (see docs/ROBLOX_SETUP.md)
+rojo
+rojo.exe
