@@ -12,7 +12,8 @@
     "test": "node --test test/*.test.js && node test/luau/run.js",
     "test:luau": "node test/luau/run.js",
     "preview:world": "node tools/preview-world.js",
-    "lint:luau": "node tools/luau-check.js"
+    "lint:luau": "node tools/luau-check.js",
+    "preview:view": "node tools/preview-view.js"
   },
   "engines": {
     "node": ">=20"
