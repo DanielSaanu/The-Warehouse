@@ -21,7 +21,8 @@ Source of truth for gameplay decisions. `ideas/INBOX.md` is the scratchpad; thin
 | Attack | Left mouse button (touch: on-screen button later). Hits the tile you face |
 | Interact | F key. A prompt appears when something interactable is adjacent (touch: tap the prompt) |
 | Death | Wake at the village you last **rested** in. Lose carried goods and some reputation |
-| Rest | F at a bed / campfire in a village sets your spawn point. Not allowed in villages hostile to you |
+| Rest | F at a bed in a village, or at your own camp, sets your spawn point. Hostile villages refuse |
+| Day one kit | The **camper set**: knife, bedroll, flint, waterskin, 2 food. Enough to survive, not to fight a squad |
 | Persistence | World state is saved to DataStore and **caught up** on load: the simulation runs the missed time |
 | Setting | Grasslands overworld: meadows, forest, rivers, caves, hills. Primitive tribes, real wildlife |
 | Player | Just a person. Starts in a village that was just plundered |
@@ -140,14 +141,20 @@ Three archetypes. Every tribe has a size tier that scales what it does. (Written
 
 - Move: WASD / arrows, real-time tile steps. Touch: swipe direction or a d-pad (later).
 - Attack: left mouse button. Strikes the adjacent tile in the facing direction. Weapons change damage and reach.
-- Interact: F. A prompt ("F: Trade", "F: Talk", "F: Pick up", "F: Rest") appears when adjacent to something
+- Interact: F. A prompt ("F: Trade", "F: Talk", "F: Pick up", "F: Rest", "F: Camp", "F: Pack up") appears when adjacent to something
   interactable. Only one prompt at a time, the nearest.
 - Stats: hp, attack, defence, speed. NPCs use the same stats, so the "hunters are strongest individually" rule
   is just numbers.
-- Rest: interact (F) with a bed or campfire inside a village to set your spawn point. Villages whose tribe is
-  **hostile** to you refuse ("They won't let you stay"). Neutral and better allow it. The plundered starting
-  village is your first rest point automatically.
-- Death: respawn at the village you last rested in. If that village has since turned hostile (you did something,
+- Day one kit, the **camper set**: knife (weak weapon, also skins animals), bedroll, flint, waterskin, 2 food.
+  It is what a person grabs when their village gets plundered.
+- Camp: with the bedroll, F on a free tile outside a village places a **camp** (bedroll + campfire). One camp at
+  a time; F again packs it. Resting at your camp sets your spawn point. The fire keeps wildlife off a small radius
+  at night while it burns (a few in-game hours), then it goes out. Camps are not safe: bandits and beast tides
+  can find them, and a plundered camp means a lost bedroll until you buy or steal another. Later: cook at the fire.
+- Rest in a village: F at a bed to set your spawn point. Villages whose tribe is **hostile** to you refuse
+  ("They won't let you stay"). Neutral and better allow it. Village rest is the safe option; the camp is the free one.
+  The plundered starting village is your first rest point automatically.
+- Death: respawn where you last rested, village bed or camp. If a camp was destroyed, or a village has since turned hostile (you did something,
   or gossip caught up), you wake at the nearest village that still allows you, and the game tells you why.
   Inventory dropped where you fell (can be recovered if nobody took it), reputation hit with the tribe you died fighting.
 - Hunger comes in rung 3 if it makes the food economy matter; not in v1.
@@ -195,7 +202,8 @@ Rung 1 is done (grid, movement, one room, rain timer, upload pipeline).
 | buildings | hut, hut damaged, wall, gate, farm plot, market stall | Kenney Tiny Town + draw |
 | people | villager, merchant, hunter, bandit (each 2 frames: idle, step); player 2 frames x 4 facings | draw (base body + recolor per tribe) |
 | animals | deer, boar, wolf (2 frames each) | draw |
-| items | food, hide, tool, ore, coin | game-icons recolored |
+| items | food, hide, tool, ore, coin, knife, bedroll, flint, waterskin | game-icons recolored + draw |
+| camp | bedroll placed, campfire lit (2 frames), campfire out | draw |
 | fx / hud | rain, flood water, night tint handled in Lua, heart, prompt bubble ("F") | draw |
 
 Style: 16x16, 1px dark outline, one shared palette (pick a LoSpec palette and snap everything to it).
@@ -212,5 +220,4 @@ roblox/src/client/     Camera (viewport over the map), Input (move/attack/intera
 ## 14. Open questions
 
 - Name. Working title Lowlands until something better shows up.
-- What does the player carry on day one? (Nothing, a knife, a bag of food?)
 - Touch controls layout for phones.
