@@ -57,4 +57,44 @@ end
 
 function Sprites.Has(spriteName: string): boolean return Sprites.Sprites[spriteName] ~= nil end
 
+--- SERVER ONLY. Open Cloud uploads give a Decal id; ImageLabels need the Image id inside it, and Roblox
+--- will not tell outsiders which is which. The server can load its own decal and read the texture off it.
+--- Call once at startup, then send Sheets ids to clients (see WorldInit) so everyone uses the resolved ids.
+function Sprites.ResolveOnServer(): { [number]: string }
+	local InsertService = game:GetService("InsertService")
+	local out = {}
+	for i, sheet in ipairs(Sprites.Sheets) do
+		local id = tonumber(string.match(sheet.Id, "%d+"))
+		if id and id > 0 and not sheet.Resolved then
+			local ok, model = pcall(function() return InsertService:LoadAsset(id) end)
+			if ok and model then
+				local decal = model:FindFirstChildWhichIsA("Decal", true)
+				local texture = if decal then decal.Texture else ""
+				local imageId = string.match(texture, "[?&]id=(%d+)") or string.match(texture, "rbxassetid://(%d+)")
+				if imageId then
+					sheet.Id = "rbxassetid://" .. imageId
+					sheet.Resolved = true
+					print(("[Sprites] sheet %d: decal %d -> image %s"):format(i, id, imageId))
+				else
+					-- No decal inside: the id is already an image id (setid was used). Keep it.
+					sheet.Resolved = true
+				end
+				model:Destroy()
+			else
+				warn(("[Sprites] could not load asset %d to resolve it (%s); using it as is"):format(id, tostring(model)))
+			end
+		end
+		out[i] = sheet.Id
+	end
+	return out
+end
+
+--- CLIENT: apply the ids the server resolved before building any UI.
+function Sprites.ApplySheetIds(ids: { [number]: string }?)
+	if not ids then return end
+	for i, id in pairs(ids) do
+		if Sprites.Sheets[i] and type(id) == "string" then Sprites.Sheets[i].Id = id end
+	end
+end
+
 return Sprites

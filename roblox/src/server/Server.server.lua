@@ -7,6 +7,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local TileTypes = require(Shared:WaitForChild("TileTypes"))
 local WorldGen = require(Shared:WaitForChild("WorldGen"))
+local Sprites = require(Shared:WaitForChild("Sprites"))
 local World = require(script.Parent:WaitForChild("World"))
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -25,6 +26,8 @@ end
 
 World.init()
 local world = World.get()
+-- Decal id -> image id, once, so nobody has to do the Studio trick by hand.
+local sheetIds = Sprites.ResolveOnServer()
 
 type PlayerState = { player: Player, x: number, y: number, facing: string, lastMove: number }
 local players: { [number]: PlayerState } = {}
@@ -61,7 +64,7 @@ Players.PlayerAdded:Connect(function(player: Player)
 		end
 	end
 	local d, frac = clockNow()
-	WorldInit:FireClient(player, World.encoded, { x = st.x, y = st.y, facing = st.facing }, others, { day = d, frac = frac })
+	WorldInit:FireClient(player, World.encoded, { x = st.x, y = st.y, facing = st.facing }, others, { day = d, frac = frac }, sheetIds)
 	EntityState:FireAllClients("spawn", player.UserId, "player", st.x, st.y, st.facing, player.Name)
 end)
 

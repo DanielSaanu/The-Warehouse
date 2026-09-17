@@ -155,8 +155,9 @@ local function updateVillageBanner()
 	end
 end
 
-WorldInit.OnClientEvent:Connect(function(encoded, meState, others, clock)
+WorldInit.OnClientEvent:Connect(function(encoded, meState, others, clock, sheetIds)
 	if vp then return end
+	Sprites.ApplySheetIds(sheetIds)
 	loading:Destroy()
 	world = WorldGen.decode(encoded)
 	local w = world :: WorldGen.World
