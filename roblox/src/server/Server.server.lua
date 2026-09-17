@@ -52,11 +52,11 @@ local function snap(st: PlayerState)
 	EntityState:FireClient(st.player, "snap", st.player.UserId, st.x, st.y, st.facing)
 end
 
-Players.PlayerAdded:Connect(function(player: Player)
-	noCharacter(player)
-	local spawn = WorldGen.nearestWalkable(world, world.spawn.x, world.spawn.y, 3) or world.spawn
-	local st: PlayerState = { player = player, x = spawn.x, y = spawn.y, facing = "down", lastMove = 0 }
-	players[player.UserId] = st
+-- The client asks for the world once its listeners exist (a RemoteEvent fired before the client is listening is
+-- lost, which is exactly what happens in Play Solo if the server sends on PlayerAdded). Idempotent: ask again, get it again.
+local function sendWorld(player: Player)
+	local st = players[player.UserId]
+	if not st then return end
 	local others = {}
 	for id, o in pairs(players) do
 		if id ~= player.UserId then
@@ -65,10 +65,24 @@ Players.PlayerAdded:Connect(function(player: Player)
 	end
 	local d, frac = clockNow()
 	WorldInit:FireClient(player, World.encoded, { x = st.x, y = st.y, facing = st.facing }, others, { day = d, frac = frac }, sheetIds)
-	EntityState:FireAllClients("spawn", player.UserId, "player", st.x, st.y, st.facing, player.Name)
-end)
+end
 
-for _, existing in ipairs(Players:GetPlayers()) do noCharacter(existing) end
+local function addPlayer(player: Player)
+	if players[player.UserId] then return end
+	noCharacter(player)
+	local spawn = WorldGen.nearestWalkable(world, world.spawn.x, world.spawn.y, 3) or world.spawn
+	local st: PlayerState = { player = player, x = spawn.x, y = spawn.y, facing = "down", lastMove = 0 }
+	players[player.UserId] = st
+	EntityState:FireAllClients("spawn", player.UserId, "player", st.x, st.y, st.facing, player.Name)
+end
+
+Players.PlayerAdded:Connect(addPlayer)
+for _, existing in ipairs(Players:GetPlayers()) do addPlayer(existing) end
+
+WorldInit.OnServerEvent:Connect(function(player: Player)
+	addPlayer(player)
+	sendWorld(player)
+end)
 
 Players.PlayerRemoving:Connect(function(player: Player)
 	players[player.UserId] = nil

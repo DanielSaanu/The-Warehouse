@@ -47,7 +47,7 @@ task.spawn(function()
 		task.wait(1)
 		local waited = os.clock() - loadingStart
 		if waited > 5 then
-			loading.Text = ("still loading after %ds\n\nIf this stays: is `rojo serve` running and connected?\nReplicatedStorage needs a Remotes folder (restart rojo serve after pulling)."):format(math.floor(waited))
+			loading.Text = ("still loading after %ds\n\nIf this stays: is `rojo serve` running and connected?\nIs the Server script running (Output should show a [World] line)?"):format(math.floor(waited))
 		end
 	end
 end)
@@ -198,6 +198,14 @@ EntityState.OnClientEvent:Connect(function(kind, id, ...)
 		me.x, me.y, me.facing = x, y, facing
 		v:moveEntity(myId, x, y, 0, os.clock())
 		v:setSprite(myId, spriteFor(facing, 0))
+	end
+end)
+
+-- Ask the server for the world now that our listener exists, and keep asking until it arrives.
+task.spawn(function()
+	while not vp do
+		WorldInit:FireServer()
+		task.wait(1.5)
 	end
 end)
 
