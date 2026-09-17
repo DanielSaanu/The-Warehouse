@@ -20,7 +20,8 @@ Source of truth for gameplay decisions. `ideas/INBOX.md` is the scratchpad; thin
 | Movement | Real time, tile steps (Zelda / Stardew feel), server authoritative |
 | Attack | Left mouse button (touch: on-screen button later). Hits the tile you face |
 | Interact | F key. A prompt appears when something interactable is adjacent (touch: tap the prompt) |
-| Death | Wake at the last village that tolerates you. Lose carried goods and some reputation |
+| Death | Wake at the village you last **rested** in. Lose carried goods and some reputation |
+| Rest | F at a bed / campfire in a village sets your spawn point. Not allowed in villages hostile to you |
 | Persistence | World state is saved to DataStore and **caught up** on load: the simulation runs the missed time |
 | Setting | Grasslands overworld: meadows, forest, rivers, caves, hills. Primitive tribes, real wildlife |
 | Player | Just a person. Starts in a village that was just plundered |
@@ -143,8 +144,12 @@ Three archetypes. Every tribe has a size tier that scales what it does. (Written
   interactable. Only one prompt at a time, the nearest.
 - Stats: hp, attack, defence, speed. NPCs use the same stats, so the "hunters are strongest individually" rule
   is just numbers.
-- Death: respawn at the last village that tolerates you (reputation above a threshold). Inventory dropped where
-  you fell (can be recovered if nobody took it), reputation hit with the tribe you died fighting.
+- Rest: interact (F) with a bed or campfire inside a village to set your spawn point. Villages whose tribe is
+  **hostile** to you refuse ("They won't let you stay"). Neutral and better allow it. The plundered starting
+  village is your first rest point automatically.
+- Death: respawn at the village you last rested in. If that village has since turned hostile (you did something,
+  or gossip caught up), you wake at the nearest village that still allows you, and the game tells you why.
+  Inventory dropped where you fell (can be recovered if nobody took it), reputation hit with the tribe you died fighting.
 - Hunger comes in rung 3 if it makes the food economy matter; not in v1.
 
 ## 10. Persistence and multiplayer
@@ -208,5 +213,4 @@ roblox/src/client/     Camera (viewport over the map), Input (move/attack/intera
 
 - Name. Working title Lowlands until something better shows up.
 - What does the player carry on day one? (Nothing, a knife, a bag of food?)
-- Should villages have a "rest" spot that saves your spawn point, or is it automatic by reputation?
 - Touch controls layout for phones.
