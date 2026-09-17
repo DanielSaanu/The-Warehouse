@@ -105,6 +105,9 @@ export async function setSheetId(index, assetId) {
   try { hash = sha1(await fs.readFile(file)); } catch { throw new Error(`${rel(file)} not found; run "warehouse roblox build" first`); }
   let lock = {};
   try { lock = JSON.parse(await fs.readFile(LOCK, 'utf8')); } catch {}
-  lock[`sheet_${index}`] = { hash, assetId: String(assetId), uploadedAt: new Date().toISOString(), manual: true };
+  // Keep the decal this image came out of when it is the same sheet, so the upload stays traceable.
+  const prev = lock[`sheet_${index}`];
+  const decalId = prev && prev.hash === hash ? prev.decalId : undefined;
+  lock[`sheet_${index}`] = { hash, ...(decalId ? { decalId } : {}), assetId: String(assetId), uploadedAt: new Date().toISOString(), manual: true };
   await fs.writeFile(LOCK, JSON.stringify(lock, null, 2) + '\n');
 }
