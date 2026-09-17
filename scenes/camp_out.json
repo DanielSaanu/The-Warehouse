@@ -1,0 +1,15 @@
+{
+  "name": "camp_out",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "layers": [
+    {
+      "id": "t",
+      "name": "camp_out",
+      "type": "image",
+      "src": "sprites/camp_out.txt"
+    }
+  ]
+}

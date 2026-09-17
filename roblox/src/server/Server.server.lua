@@ -1,20 +1,24 @@
---!strict
--- Server: owns the world, validates every move, runs the clock. Clients only draw what the server tells them.
+--!nonstrict
+-- Server: owns the world, validates every move and action, runs the clock. Clients only draw what they are told.
+-- The simulation itself lives in Sim.lua; the F key in Interact.lua. This file is the remotes.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage = game:GetService("ServerStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local Config = require(Shared:WaitForChild("Config"))
-local WorldGen = require(Shared:WaitForChild("WorldGen"))
 local Movement = require(Shared:WaitForChild("Movement"))
 local Sprites = require(Shared:WaitForChild("Sprites"))
 local World = require(script.Parent:WaitForChild("World"))
+local Sim = require(script.Parent:WaitForChild("Sim"))
+local Interact = require(script.Parent:WaitForChild("Interact"))
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local WorldInit = Remotes:WaitForChild("WorldInit") :: RemoteEvent
 local Move = Remotes:WaitForChild("Move") :: RemoteEvent
 local EntityState = Remotes:WaitForChild("EntityState") :: RemoteEvent
 local Clock = Remotes:WaitForChild("Clock") :: RemoteEvent
+local Action = Remotes:WaitForChild("Action") :: RemoteEvent
+local Notice = Remotes:WaitForChild("Notice") :: RemoteEvent
 
 -- This is a 2D game: no avatars in the 3D world. In Studio's Play Solo the first character can load before this
 -- script runs, so also remove any character that slips through.
@@ -29,25 +33,11 @@ local world = World.get()
 -- Decal id -> image id, once, so nobody has to do the Studio trick by hand.
 local sheetIds = Sprites.ResolveOnServer()
 
--- epoch: bumped on every correction. Moves carry the epoch the client last heard; older ones were sent against a
--- position the server has since corrected, so they are dropped (see shared/Movement.lua).
-type PlayerState = { player: Player, x: number, y: number, facing: string, epoch: number, budget: Movement.Budget, lastWorldInit: number }
-local players: { [number]: PlayerState } = {}
+Sim.remotes.EntityState = EntityState
+Sim.remotes.Notice = Notice
+Sim.init()
 
--- ---------- clock ----------
-local day = 1
-local dayStart = os.clock()
-local function clockNow(): (number, number)
-	local elapsed = os.clock() - dayStart
-	while elapsed >= Config.DAY_SECONDS do
-		elapsed -= Config.DAY_SECONDS
-		dayStart += Config.DAY_SECONDS
-		day += 1
-	end
-	return day, elapsed / Config.DAY_SECONDS
-end
-
--- ---------- players ----------
+local players = Sim.state.players
 local FACINGS = { down = true, up = true, left = true, right = true }
 
 --- Tell everyone except `except` about an entity change.
@@ -58,13 +48,16 @@ local function broadcast(except: Player?, ...: any)
 end
 
 -- Exposed as Player attributes so tools and QA can compare the server's tile with the client's prediction.
-local function publish(st: PlayerState)
+local function publish(st)
 	st.player:SetAttribute("TileX", st.x)
 	st.player:SetAttribute("TileY", st.y)
 	st.player:SetAttribute("MoveEpoch", st.epoch)
+	st.player:SetAttribute("Hp", st.hp)
 end
 
-local function snap(st: PlayerState)
+-- epoch: bumped on every correction. Moves carry the epoch the client last heard; older ones were sent against a
+-- position the server has since corrected, so they are dropped (see shared/Movement.lua).
+local function snap(st)
 	st.epoch += 1
 	publish(st)
 	EntityState:FireClient(st.player, "snap", st.player.UserId, st.x, st.y, st.facing, st.epoch)
@@ -72,28 +65,31 @@ end
 
 -- The client asks for the world once its listeners exist (a RemoteEvent fired before the client is listening is
 -- lost, which is exactly what happens in Play Solo if the server sends on PlayerAdded). Idempotent: ask again, get it again.
-local function sendWorld(st: PlayerState)
+local function sendWorld(st)
 	local player = st.player
 	local others = {}
 	for id, o in pairs(players) do
-		if id ~= player.UserId then
+		if id ~= player.UserId and not o.dead then
 			table.insert(others, { id = id, x = o.x, y = o.y, facing = o.facing, name = o.player.DisplayName })
 		end
 	end
-	local d, frac = clockNow()
-	WorldInit:FireClient(player, World.encoded, { x = st.x, y = st.y, facing = st.facing, epoch = st.epoch }, others, { day = d, frac = frac }, sheetIds)
+	local d, frac = Sim.clock()
+	local c = Sim.state.calamity
+	WorldInit:FireClient(player, World.encoded, { x = st.x, y = st.y, facing = st.facing, epoch = st.epoch }, others, { day = d, frac = frac }, sheetIds,
+		{ kind = c.kind, active = c.active, flood = c.flood, warning = Sim.calamityWarning() })
+	-- interest management re-sends the entities it can see
+	st.known = {}
+	Sim.hud(st)
 end
 
-local function addPlayer(player: Player): PlayerState?
+local function addPlayer(player: Player)
 	if player.Parent ~= Players then return nil end -- a late request from someone already leaving
 	local existing = players[player.UserId]
 	if existing then return existing end
 	noCharacter(player)
-	local spawn = WorldGen.nearestWalkable(world, world.spawn.x, world.spawn.y, 3) or world.spawn
-	local st: PlayerState = { player = player, x = spawn.x, y = spawn.y, facing = "down", epoch = 0, budget = Movement.newBudget(os.clock()), lastWorldInit = -math.huge }
-	players[player.UserId] = st
+	local st = Sim.addPlayer(player, world.spawn.x, world.spawn.y, snap)
 	publish(st)
-	broadcast(player, "spawn", player.UserId, "player", st.x, st.y, st.facing, player.DisplayName)
+	broadcast(player, "spawn", player.UserId, "player", st.x, st.y, st.facing, player.DisplayName, 1, "player")
 	return st
 end
 
@@ -112,13 +108,13 @@ end)
 
 Players.PlayerRemoving:Connect(function(player: Player)
 	if not players[player.UserId] then return end
-	players[player.UserId] = nil
+	Sim.removePlayer(player)
 	broadcast(player, "leave", player.UserId)
 end)
 
 Move.OnServerEvent:Connect(function(player: Player, epoch: any, tx: any, ty: any, facing: any)
 	local st = players[player.UserId]
-	if not st then return end
+	if not st or st.dead then return end
 	if type(epoch) ~= "number" or type(tx) ~= "number" or type(ty) ~= "number" or type(facing) ~= "string" or not FACINGS[facing] then return end
 	if epoch ~= st.epoch then return end -- sent before the client heard our last correction
 	if tx == st.x and ty == st.y then
@@ -129,18 +125,60 @@ Move.OnServerEvent:Connect(function(player: Player, epoch: any, tx: any, ty: any
 		end
 		return
 	end
-	if not Movement.canStep(world, st.x, st.y, tx, ty) then snap(st) return end
+	if not Movement.canStep(world, st.x, st.y, tx, ty, Sim.occupied) then snap(st) return end
 	if not Movement.spend(st.budget, os.clock(), Movement.stepTime(world, tx, ty)) then snap(st) return end
+	local fx, fy = st.x, st.y
 	st.x, st.y, st.facing = tx, ty, facing
+	Sim.playerMoved(st, fx, fy)
 	publish(st)
 	broadcast(player, "move", player.UserId, tx, ty, facing)
+end)
+
+Action.OnServerEvent:Connect(function(player: Player, kind: any, a: any, b: any, c: any)
+	local st = players[player.UserId]
+	if not st then return end
+	if kind == "attack" then
+		if type(a) == "string" and FACINGS[a] then Sim.attack(st, a) end
+	elseif kind == "interact" then
+		if type(a) == "string" and FACINGS[a] then st.facing = a end
+		Interact.interact(st)
+	elseif kind == "topic" then
+		if type(a) == "string" then Interact.topic(st, a) end
+	elseif kind == "trade" then
+		if type(a) == "string" then Interact.trade(st, a, if type(b) == "string" then b else nil, if type(c) == "number" then c else 1) end
+	elseif kind == "close" then
+		Interact.close(st)
+	end
 end)
 
 -- ---------- clock broadcast ----------
 task.spawn(function()
 	while true do
 		task.wait(1)
-		local d, frac = clockNow()
+		local d, frac = Sim.clock()
 		Clock:FireAllClients(d, frac)
+		for _, st in pairs(players) do publish(st) end
 	end
+end)
+
+Sim.start()
+
+-- Test hooks (see docs/qa/rung2-part2.md). From a script: ServerStorage.Debug:Invoke("teleport", 40, 50).
+-- From the Studio command bar or a tool sandbox that cannot invoke bindables: set the `Debug` attribute on
+-- Workspace to a command line ("calamity flood", "teleport 40 50", "give food 3") and read `DebugResult`.
+local HttpService = game:GetService("HttpService")
+local debug = Instance.new("BindableFunction")
+debug.Name = "Debug"
+debug.OnInvoke = function(cmd, ...) return Sim.debug(cmd, ...) end
+debug.Parent = ServerStorage
+workspace:GetAttributeChangedSignal("Debug"):Connect(function()
+	local line = workspace:GetAttribute("Debug")
+	if type(line) ~= "string" or line == "" then return end
+	local args = {}
+	for word in line:gmatch("%S+") do table.insert(args, tonumber(word) or word) end
+	local cmd = table.remove(args, 1)
+	local ok, result = pcall(Sim.debug, cmd, table.unpack(args))
+	local text = if type(result) == "table" then HttpService:JSONEncode(result) else tostring(result)
+	workspace:SetAttribute("DebugResult", (if ok then "" else "ERROR ") .. text)
+	workspace:SetAttribute("Debug", "")
 end)

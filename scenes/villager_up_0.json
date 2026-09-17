@@ -1,0 +1,30 @@
+{
+  "name": "villager_up_0",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "notes": "villager: the player body recoloured (edit sprites/player_*.txt to change everyone)",
+  "layers": [
+    {
+      "id": "t",
+      "name": "villager_up_0",
+      "type": "image",
+      "src": "sprites/player_up_0.txt",
+      "recolor": [
+        {
+          "from": "#b8383c",
+          "to": "#a37a49"
+        },
+        {
+          "from": "#7e2a2d",
+          "to": "#7a4f2f"
+        },
+        {
+          "from": "#3b2a1f",
+          "to": "#6b4e33"
+        }
+      ]
+    }
+  ]
+}

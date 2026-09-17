@@ -1,0 +1,15 @@
+{
+  "name": "item_ore",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "layers": [
+    {
+      "id": "t",
+      "name": "item_ore",
+      "type": "image",
+      "src": "sprites/item_ore.txt"
+    }
+  ]
+}

@@ -48,3 +48,41 @@ BOSS(Danzo):
 
 instead of it just being a rain cycle every 60 seconds we could first off make it farther apart like once every in game week there is a flood or a beast tide or a blizzard or a drought 
 
+
+## Playtest 2026-09-17: Danzo's little brother, first ever session (rung 2 part 2 + part 3)
+
+Verdict: "kind of boring, I don't know what to do. Go in, punch some guy, get killed, lose my stuff, don't want to
+play any more." Found the survivor only when told the key. Liked the tutorial lines once he read them, liked the
+idea of the weekly calamity. The bar to clear next: a new player must know what to do in the first minute without
+being told by a human.
+
+Quick fixes (HUD, hours):
+- [ ] Hearts top-left are very thin (bug: RelativeYY with a 0.16 width scale squashes them). Draw them square.
+- [ ] Trade window text is too small and too grey to read. Bigger, white.
+- [ ] Show the keybinds on screen: F next to the prompt is there, but nothing says "F" until you are adjacent, and
+      nothing ever says Tab, Space, X. A small always-on key legend, or the hint line staying up longer.
+
+Onboarding (the real problem, a day):
+- [ ] Make the survivor unmissable: a marker or arrow over the only person with a prompt, and a first line on
+      screen like "Someone is calling you" before the hint. He walked past them.
+- [ ] Signs. Wooden sign objects you can F-read, placed by the road and the gate: "Kenstow, east", "Wolves at
+      night", "The stall buys hides". A line at the top on first spawn: "Read the signs."
+- [ ] A visible first job, not a quest log: the survivor's last line should become a persistent one-line goal under
+      the clock ("Go east to Kenstow and find the hunters") until you enter Kenstow, then the next one.
+- [ ] Dying early is the wall: the band ambushes a new player on the north road while they have a knife and no
+      idea. Either move the ambush spot further from the start village for the first day, or have the survivor
+      warn "do not go north yet" and mark the safe road east.
+
+Controls and inventory (a day):
+- [ ] Inventory key (E) opening a proper panel, and number keys / Q and E for the hot bar selection.
+- [ ] Eat food to heal (F on a food slot, or a key). Right now food does nothing and there is no heal outside a bed.
+- [ ] Gifts: F on a villager with a good selected should offer it (DESIGN.md §7 already lists gifts as a rep event).
+- [ ] Swimming: rivers walkable but slow (a "wade" speed, maybe 0.4), so the map does not funnel to three fords.
+      Keep deep lake water impassable.
+
+Art:
+- [ ] The food icon reads as a sponge. Make it a turkey leg or a loaf with a crust.
+- [ ] Rivers look like a blue carpet: animate the water tile (two or three frames, like the campfire) and add
+      shore edge tiles.
+- [ ] He offered to draw sprites. Sprite files are plain text in `sprites/` (one character per pixel); the UI at
+      `npm start` edits them live. Any of his get used.

@@ -4,24 +4,44 @@
     "$className": "DataModel",
     "ReplicatedStorage": {
       "$className": "ReplicatedStorage",
-      "Shared": { "$path": "src/shared" },
+      "Shared": {
+        "$path": "src/shared"
+      },
       "Remotes": {
         "$className": "Folder",
-        "WorldInit": { "$className": "RemoteEvent" },
-        "Move": { "$className": "RemoteEvent" },
-        "EntityState": { "$className": "RemoteEvent" },
-        "Clock": { "$className": "RemoteEvent" }
+        "WorldInit": {
+          "$className": "RemoteEvent"
+        },
+        "Move": {
+          "$className": "RemoteEvent"
+        },
+        "EntityState": {
+          "$className": "RemoteEvent"
+        },
+        "Clock": {
+          "$className": "RemoteEvent"
+        },
+        "Action": {
+          "$className": "RemoteEvent"
+        },
+        "Notice": {
+          "$className": "RemoteEvent"
+        }
       }
     },
     "ServerScriptService": {
       "$className": "ServerScriptService",
-      "Server": { "$path": "src/server" }
+      "Server": {
+        "$path": "src/server"
+      }
     },
     "StarterPlayer": {
       "$className": "StarterPlayer",
       "StarterPlayerScripts": {
         "$className": "StarterPlayerScripts",
-        "Client": { "$path": "src/client" }
+        "Client": {
+          "$path": "src/client"
+        }
       }
     }
   }

@@ -1,0 +1,15 @@
+{
+  "name": "camp_lit_0",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "layers": [
+    {
+      "id": "t",
+      "name": "camp_lit_0",
+      "type": "image",
+      "src": "sprites/camp_lit_0.txt"
+    }
+  ]
+}

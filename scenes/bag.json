@@ -1,0 +1,15 @@
+{
+  "name": "bag",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "layers": [
+    {
+      "id": "t",
+      "name": "bag",
+      "type": "image",
+      "src": "sprites/bag.txt"
+    }
+  ]
+}

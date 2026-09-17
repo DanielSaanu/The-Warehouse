@@ -1,0 +1,15 @@
+{
+  "name": "skull_post",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "layers": [
+    {
+      "id": "t",
+      "name": "skull_post",
+      "type": "image",
+      "src": "sprites/skull_post.txt"
+    }
+  ]
+}

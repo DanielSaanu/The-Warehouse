@@ -9,7 +9,9 @@ import { ROOT } from '../src/paths.js';
 
 const CHAR = { ' ': ['grass'], ',': ['tall_grass'], '.': ['path'], '~': ['water'], '=': ['ford'], '#': ['farm'],
   'T': ['grass', 'tree'], '^': ['grass', 'rock'], 'O': ['grass', 'cave'], 'H': ['grass', 'hut'], 'B': ['grass', 'hut_burnt'],
-  'W': ['grass', 'wall'], 'G': ['path', 'gate'], 'S': ['grass', 'stall'], 'b': ['grass', 'bed'], '@': ['path', 'player_down_0'] };
+  'W': ['grass', 'wall'], 'G': ['path', 'gate'], 'S': ['grass', 'stall'], 'b': ['grass', 'bed'],
+  'h': ['grass', 'hut_hunter'], 'n': ['grass', 'hut_plunderer'], 'L': ['grass', 'totem'], 'X': ['grass', 'skull_post'],
+  'c': ['grass', 'camp_lit_0'], 'g': ['grass', 'bag'], '%': ['flood'], '@': ['path', 'player_down_0'] };
 
 const file = process.argv[2] || 'exports/world_1.txt';
 const scale = Number(process.argv[3]) || 1;
