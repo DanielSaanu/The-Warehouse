@@ -47,7 +47,7 @@ Sim.state = {
 	players = {},     -- [userId] = player state
 	camps = {},       -- [userId] = { x, y, litUntil, out }
 	bags = {},        -- [id] = { x, y, owner, slots, droppedAt }
-	calamity = { kind = nil, active = false, warned = false, day = 0, flood = nil },
+	calamity = { kind = nil, active = false, warnedDay = 0, day = 0, flood = nil },
 	lastDailyTick = 1,
 }
 local S = Sim.state
@@ -1060,7 +1060,7 @@ local function endCalamity()
 	for _, ps in pairs(S.players) do
 		notice(ps, "calamity", { kind = c.kind, phase = "end", text = Calamity.over(c.kind) })
 	end
-	c.active, c.flood, c.warned = false, nil, false
+	c.active, c.flood = false, nil
 end
 Sim.startCalamity = startCalamity
 
@@ -1074,8 +1074,8 @@ local function tickCalamity()
 	local day, frac = Sim.clock()
 	local c = S.calamity
 	if c.active and day > c.day then endCalamity() end
-	if Calamity.isWarningDay(day) and not c.warned then
-		c.warned = true
+	if Calamity.isWarningDay(day) and c.warnedDay ~= day then
+		c.warnedDay = day
 		local kind = Calamity.pick(world.seed, Calamity.weekOf(day + 1))
 		for _, ps in pairs(S.players) do notice(ps, "calamity", { kind = kind, phase = "warning", text = Calamity.warning(kind) }) end
 	end

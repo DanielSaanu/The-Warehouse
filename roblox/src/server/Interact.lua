@@ -65,8 +65,8 @@ function Interact.context(ps, tribeIdx: number): Talk.Context
 	}
 end
 
-local function dialogue(ps, name: string, lines: { string }, choices: { string }?, role: string?)
-	ps.dialogue = { with = name, role = role }
+local function dialogue(ps, name: string, lines: { string }, choices: { string }?, role: string?, tribe: number?)
+	ps.dialogue = { with = name, role = role, tribe = tribe }
 	Sim.notice(ps, "dialogue", { name = name, lines = lines, choices = choices, labels = Talk.TOPIC_LABELS, role = role })
 end
 
@@ -104,7 +104,7 @@ local function talkTo(ps, e)
 		dialogue(ps, e.name, Talk.survivor(ctx), nil, "survivor")
 	elseif e.role == "guard" then
 		if not Reputation.willTalk(rep) then dialogue(ps, e.label, { Talk.refusal(ctx) }) return end
-		dialogue(ps, e.name .. ", guard of " .. ctx.village, { "Ask." }, Talk.TOPICS, "guard")
+		dialogue(ps, e.name .. ", guard of " .. ctx.village, { "Ask." }, Talk.TOPICS, "guard", tribeIdx)
 	elseif e.role == "merchant" then
 		if not Reputation.willTrade(rep) then dialogue(ps, e.label, { Talk.refusal(ctx) }) return end
 		openTrade(ps, tribeIdx, Talk.merchant(ctx))
@@ -193,6 +193,8 @@ function Interact.interact(ps)
 		Sim.hud(ps)
 	elseif WorldGen.walkable(world, tx, ty) then
 		Sim.text(ps, "Not inside a village. Camp out in the open.")
+	else
+		Sim.text(ps, "Nothing here.")
 	end
 end
 
@@ -200,10 +202,10 @@ end
 function Interact.topic(ps, topic: string)
 	if not ps.dialogue or ps.dialogue.role ~= "guard" then return end
 	if not table.find(Talk.TOPICS, topic) then return end
-	-- the guard of the village the player stands in (or the nearest)
-	local ti = tribeAt(ps.x, ps.y) or 1
+	-- the guard you are talking to, whatever tile you stand on
+	local ti = ps.dialogue.tribe or tribeAt(ps.x, ps.y) or 1
 	local ctx = Interact.context(ps, ti)
-	dialogue(ps, ps.dialogue.with, { Talk.guard(ctx, topic) }, Talk.TOPICS, "guard")
+	dialogue(ps, ps.dialogue.with, { Talk.guard(ctx, topic) }, Talk.TOPICS, "guard", ti)
 end
 
 --- Trade operations: buy/sell one good, or buy a camper set.

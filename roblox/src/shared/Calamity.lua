@@ -51,7 +51,7 @@ end
 
 --- The line when it hits.
 function Calamity.notice(kind: string): string
-	if kind == "flood" then return "The river has burst its banks. Low ground is under water until nightfall." end
+	if kind == "flood" then return "The river has burst its banks. Low ground is under water until tomorrow." end
 	if kind == "beast_tide" then return "Wolves pour in from the north. Stay near walls or a fire." end
 	return "A calamity."
 end

@@ -264,11 +264,27 @@ function Hud.new(overlay: Frame, callbacks)
 	self.tradeLine.Size = UDim2.fromScale(1, 0.09)
 	self.tradeLine.Position = UDim2.fromScale(0, 0.1)
 	self.tradeLine.TextXAlignment = Enum.TextXAlignment.Left
-	local head = label(t, "Head", "good              stock   buy     sell    you have")
+	-- Columns: icon | good | stock | buy | sell | you have. The header and every row use the same positions, and no
+	-- label wraps, so the columns line up at any width (they clip at MinTextSize on a narrow phone).
+	local COL = { name = { 0.07, 0.24 }, stock = { 0.32, 0.12 }, buy = { 0.46, 0.17 }, sell = { 0.65, 0.17 }, have = { 0.84, 0.16 } }
+	local function cell(parent: Instance, key: string, text: string, align: Enum.TextXAlignment): TextLabel
+		local l = label(parent, key, text)
+		l.TextWrapped = false
+		l.Size = UDim2.fromScale(COL[key][2], 1)
+		l.Position = UDim2.fromScale(COL[key][1], 0)
+		l.TextXAlignment = align
+		return l
+	end
+	local head = Instance.new("Frame")
+	head.Name = "Head"
+	head.BackgroundTransparency = 1
 	head.Size = UDim2.fromScale(1, 0.07)
 	head.Position = UDim2.fromScale(0, 0.2)
-	head.TextXAlignment = Enum.TextXAlignment.Left
-	head.TextColor3 = Color3.fromRGB(170, 170, 190)
+	head.Parent = t
+	for key, text in pairs({ name = "good", stock = "stock", buy = "buy", sell = "sell", have = "you have" }) do
+		local l = cell(head, key, text, if key == "name" then Enum.TextXAlignment.Left else Enum.TextXAlignment.Center)
+		l.TextColor3 = Color3.fromRGB(170, 170, 190)
+	end
 	self.tradeRows = {}
 	for i = 1, 5 do
 		local row = Instance.new("Frame")
@@ -280,17 +296,16 @@ function Hud.new(overlay: Frame, callbacks)
 		local icon = Sprites.New("item_food", row)
 		icon.Size = UDim2.fromScale(1, 1)
 		icon.SizeConstraint = Enum.SizeConstraint.RelativeYY
-		local name = label(row, "Name")
-		name.Size = UDim2.fromScale(0.5, 1)
-		name.Position = UDim2.fromScale(0.06, 0)
-		name.TextXAlignment = Enum.TextXAlignment.Left
+		local name = cell(row, "name", "", Enum.TextXAlignment.Left)
+		local stock = cell(row, "stock", "", Enum.TextXAlignment.Center)
+		local have = cell(row, "have", "", Enum.TextXAlignment.Center)
 		local buy = button(row, "Buy", "buy", function() if self.cb.onTrade and self.rowGood[i] then self.cb.onTrade(if self.rowGood[i] == "camper_set" then "camper" else "buy", self.rowGood[i]) end end)
-		buy.Size = UDim2.fromScale(0.17, 0.9)
-		buy.Position = UDim2.fromScale(0.6, 0.05)
+		buy.Size = UDim2.fromScale(COL.buy[2], 0.9)
+		buy.Position = UDim2.fromScale(COL.buy[1], 0.05)
 		local sell = button(row, "Sell", "sell", function() if self.cb.onTrade and self.rowGood[i] then self.cb.onTrade("sell", self.rowGood[i]) end end)
-		sell.Size = UDim2.fromScale(0.17, 0.9)
-		sell.Position = UDim2.fromScale(0.79, 0.05)
-		self.tradeRows[i] = { row = row, icon = icon, name = name, buy = buy, sell = sell }
+		sell.Size = UDim2.fromScale(COL.sell[2], 0.9)
+		sell.Position = UDim2.fromScale(COL.sell[1], 0.05)
+		self.tradeRows[i] = { row = row, icon = icon, name = name, stock = stock, have = have, buy = buy, sell = sell }
 	end
 	self.rowGood = {}
 	self.tradeCoin = label(t, "Coin")
@@ -437,12 +452,13 @@ function Hud.renderDialogue(self)
 	local last = self.page >= #d.lines
 	local hasChoices = d.choices ~= nil and #d.choices > 0
 	self.dialogueMore.Text = if last then (if hasChoices then "Esc: leave" else "F / click: close") else ("F / click: more  (%d/%d)"):format(self.page, #d.lines)
+	local showChoices = hasChoices and last
 	for i, b in ipairs(self.choices) do
-		local c = hasChoices and last and d.choices[i]
+		local c = if showChoices then d.choices[i] else nil
 		b.Visible = c ~= nil
 		if c then b.Text = (d.labels and d.labels[c]) or c end
 	end
-	if hasChoices and last then self.dialogueText.Size = UDim2.fromScale(0.62, 0.62) else self.dialogueText.Size = UDim2.fromScale(1, 0.62) end
+	self.dialogueText.Size = if showChoices then UDim2.fromScale(0.62, 0.62) else UDim2.fromScale(1, 0.62)
 end
 
 --- Advance the dialogue. Returns true when it closed.
@@ -482,7 +498,9 @@ function Hud.showTrade(self, data)
 		self.rowGood[i] = q.good
 		local sprite = Items.def(q.good).sprite
 		if r.icon.Name ~= sprite then Sprites.Apply(r.icon, sprite) r.icon.Name = sprite end
-		r.name.Text = ("%-10s %5d   %3d     %3d      %d"):format(q.label, q.stock, q.buy, q.sell, have[q.good] or 0)
+		r.name.Text = q.label
+		r.stock.Text = tostring(q.stock)
+		r.have.Text = tostring(have[q.good] or 0)
 		r.buy.Text = "buy " .. q.buy
 		r.sell.Text = "sell " .. q.sell
 		r.sell.Visible = true
@@ -492,7 +510,9 @@ function Hud.showTrade(self, data)
 		r.row.Visible = true
 		self.rowGood[5] = "camper_set"
 		if r.icon.Name ~= "item_camper" then Sprites.Apply(r.icon, "item_camper") r.icon.Name = "item_camper" end
-		r.name.Text = ("camper set                 %3d              %d"):format(data.camper, data.camperOwned or 0)
+		r.name.Text = "camper set"
+		r.stock.Text = ""
+		r.have.Text = tostring(data.camperOwned or 0)
 		r.buy.Text = "buy " .. data.camper
 		r.sell.Visible = false
 	else
