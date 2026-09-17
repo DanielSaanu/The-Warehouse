@@ -49,7 +49,7 @@ function main() {
     const out = path.join(tmp, t.replace(/\.test\.luau$/, '.bundle.luau'));
     fs.writeFileSync(out, bundle(fs.readFileSync(path.join(dir, t), 'utf8')));
     const r = spawnSync(luau, [out], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-    const stdout = r.stdout || '';
+    const stdout = (r.stdout || '').replace(/\r\n/g, '\n'); // luau on Windows prints CRLF
     // MAPFILE <name> ... ENDMAP blocks get written to exports/<name>.txt for tools/preview-world.js
     for (const m of stdout.matchAll(/^MAPFILE (\S+)\n([\s\S]*?)\nENDMAP$/gm)) {
       const file = path.join(ROOT, 'exports', m[1] + '.txt');

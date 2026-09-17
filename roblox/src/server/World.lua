@@ -21,7 +21,8 @@ function World.init()
 	World.encoded = WorldGen.encode(world)
 	local names = {}
 	for _, v in ipairs(world.villages) do table.insert(names, ("%s (%s)"):format(v.name, v.tribeType)) end
-	print(("[World] seed %d, %dx%d, villages: %s (%.0f ms)"):format(seed, world.width, world.height, table.concat(names, ", "), (os.clock() - t0) * 1000))
+	local ms = math.floor((os.clock() - t0) * 1000)
+	print(("[World] seed %d, %dx%d, villages: "):format(seed, world.width, world.height) .. table.concat(names, ", ") .. " (" .. ms .. " ms)")
 end
 
 function World.get(): WorldGen.World

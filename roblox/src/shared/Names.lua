@@ -26,12 +26,28 @@ function Names.person(rng: Rng.Rng, surname: string?): (string, string)
 	return Names.first(rng), surname or Names.last(rng)
 end
 
---- Village name. Plunderer places sound rougher.
-function Names.place(rng: Rng.Rng, tribeType: string?): string
-	if tribeType == "plunderer" then
-		return rng:pick(LAST_A) .. rng:pick(CAMP_B)
+local function tooSimilar(a: string, b: string): boolean
+	local la, lb = a:lower():gsub("[^%a]", ""), b:lower():gsub("[^%a]", "")
+	return la:sub(1, 3) == lb:sub(1, 3) or la:sub(-4) == lb:sub(-4)
+end
+
+--- Village name. Plunderer places sound rougher. Names in `avoid` are not repeated or echoed (no Pencaster next
+--- to Bramcaster, no Thorn Crag next to Thornthorpe).
+function Names.place(rng: Rng.Rng, tribeType: string?, avoid: { string }?): string
+	local name = ""
+	for _ = 1, 12 do
+		if tribeType == "plunderer" then
+			name = rng:pick(LAST_A) .. rng:pick(CAMP_B)
+		else
+			name = rng:pick(PLACE_A) .. rng:pick(PLACE_B)
+		end
+		local ok = true
+		for _, other in ipairs(avoid or {}) do
+			if tooSimilar(name, other) then ok = false break end
+		end
+		if ok then break end
 	end
-	return rng:pick(PLACE_A) .. rng:pick(PLACE_B)
+	return name
 end
 
 --- Tribe name from its home village ("the Ashford tribe", "the Wolf Crag band").

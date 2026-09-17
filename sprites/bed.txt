@@ -1,18 +1,18 @@
 # name: bed
-# palette: . = transparent, k = #1b1b2f, b = #6f8fc2, j = #4f6c9c, i = #ecebf0, a = #d9d0b8
+# palette: . = transparent, k = #1b1b2f, o = #7a4f2f, p = #a37a49, i = #ecebf0, a = #d9d0b8, u = #b8383c, r = #7e2a2d, y = #cfa955
 ................
-................
-...kkkkkkkkkk...
-..kaaaaaaaaaak..
-..kaiiiiiiiaak..
-..kaiiiiiiiaak..
-..kaaaaaaaaaak..
-..kbbbbbbbbbbk..
-..kbbbbbbbbbbk..
-..kbbjbbbbjbbk..
-..kbbbbbbbbbbk..
-..kbbbbbbbbbbk..
-..kbbbbbbbbbbk..
-...kkkkkkkkkk...
-................
-................
+.kkkkkkkkkkkkkk.
+.kppppppppppppk.
+.kooooooooooook.
+.koaiiiiiiiiaok.
+.koaiiiiiiiiaok.
+.koaaaaaaaaaaok.
+.koiiiiiiiiiiok.
+.kouuuuuuuuuuok.
+.kouuuuuuuuurok.
+.koyyyyyyyyyyok.
+.kouuuuuuuuurok.
+.kouuuuuuuuurok.
+.korrrrrrrrrrok.
+.kkkkkkkkkkkkkk.
+..k..........k..
