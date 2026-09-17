@@ -13,12 +13,6 @@ local WorldGen = require(Shared:WaitForChild("WorldGen"))
 local Sprites = require(Shared:WaitForChild("Sprites"))
 local Viewport = require(script.Parent:WaitForChild("Viewport"))
 
-local Remotes = ReplicatedStorage:WaitForChild("Remotes")
-local WorldInit = Remotes:WaitForChild("WorldInit") :: RemoteEvent
-local Move = Remotes:WaitForChild("Move") :: RemoteEvent
-local EntityState = Remotes:WaitForChild("EntityState") :: RemoteEvent
-local Clock = Remotes:WaitForChild("Clock") :: RemoteEvent
-
 local player = Players.LocalPlayer
 local myId = player.UserId
 
@@ -28,11 +22,41 @@ pcall(function()
 	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
 end)
 
+-- The GUI exists before anything can yield, so a problem is never a silent blank screen.
 local gui = Instance.new("ScreenGui")
 gui.Name = "Game"
 gui.IgnoreGuiInset = true
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
+
+local loading = Instance.new("TextLabel")
+loading.Name = "Loading"
+loading.BackgroundColor3 = Color3.fromRGB(8, 8, 12)
+loading.BorderSizePixel = 0
+loading.Size = UDim2.fromScale(1, 1)
+loading.TextColor3 = Color3.fromRGB(236, 235, 240)
+loading.Font = Enum.Font.Code
+loading.TextScaled = true
+loading.TextWrapped = true
+loading.ZIndex = 100
+loading.Text = "loading world..."
+loading.Parent = gui
+local loadingStart = os.clock()
+task.spawn(function()
+	while loading.Parent do
+		task.wait(1)
+		local waited = os.clock() - loadingStart
+		if waited > 5 then
+			loading.Text = ("still loading after %ds\n\nIf this stays: is `rojo serve` running and connected?\nReplicatedStorage needs a Remotes folder (restart rojo serve after pulling)."):format(math.floor(waited))
+		end
+	end
+end)
+
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local WorldInit = Remotes:WaitForChild("WorldInit") :: RemoteEvent
+local Move = Remotes:WaitForChild("Move") :: RemoteEvent
+local EntityState = Remotes:WaitForChild("EntityState") :: RemoteEvent
+local Clock = Remotes:WaitForChild("Clock") :: RemoteEvent
 
 if Sprites.Sheets[1].Id == "rbxassetid://0" then
 	warn("[Warehouse] Sprites.lua has no asset id. Run: npx warehouse roblox build --upload (see docs/ROBLOX_SETUP.md)")
@@ -133,6 +157,7 @@ end
 
 WorldInit.OnClientEvent:Connect(function(encoded, meState, others, clock)
 	if vp then return end
+	loading:Destroy()
 	world = WorldGen.decode(encoded)
 	local w = world :: WorldGen.World
 	local v = Viewport.new(gui, Config.COLS, Config.ROWS, w)

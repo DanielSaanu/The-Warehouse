@@ -15,8 +15,13 @@ local Move = Remotes:WaitForChild("Move") :: RemoteEvent
 local EntityState = Remotes:WaitForChild("EntityState") :: RemoteEvent
 local Clock = Remotes:WaitForChild("Clock") :: RemoteEvent
 
--- This is a 2D game: no avatars in the 3D world.
+-- This is a 2D game: no avatars in the 3D world. In Studio's Play Solo the first character can load before this
+-- script runs, so also remove any character that slips through.
 Players.CharacterAutoLoads = false
+local function noCharacter(player: Player)
+	if player.Character then player.Character:Destroy() end
+	player.CharacterAdded:Connect(function(character) task.defer(function() character:Destroy() end) end)
+end
 
 World.init()
 local world = World.get()
@@ -45,6 +50,7 @@ local function snap(st: PlayerState)
 end
 
 Players.PlayerAdded:Connect(function(player: Player)
+	noCharacter(player)
 	local spawn = WorldGen.nearestWalkable(world, world.spawn.x, world.spawn.y, 3) or world.spawn
 	local st: PlayerState = { player = player, x = spawn.x, y = spawn.y, facing = "down", lastMove = 0 }
 	players[player.UserId] = st
@@ -58,6 +64,8 @@ Players.PlayerAdded:Connect(function(player: Player)
 	WorldInit:FireClient(player, World.encoded, { x = st.x, y = st.y, facing = st.facing }, others, { day = d, frac = frac })
 	EntityState:FireAllClients("spawn", player.UserId, "player", st.x, st.y, st.facing, player.Name)
 end)
+
+for _, existing in ipairs(Players:GetPlayers()) do noCharacter(existing) end
 
 Players.PlayerRemoving:Connect(function(player: Player)
 	players[player.UserId] = nil
