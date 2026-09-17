@@ -1,3 +1,0 @@
-{ "name": "scav_idle", "width": 16, "height": 16, "background": "transparent", "pixelated": true,
-  "layers": [ { "id": "body", "name": "body", "type": "image", "src": "sprites/scav_idle.txt", "x": 0, "y": 0 } ],
-  "notes": "Scavenger faction, base unit. Recolor via tint for other tribes." }

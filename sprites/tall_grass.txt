@@ -1,0 +1,18 @@
+# name: tall_grass
+# palette: . = transparent, g = #4e8a44, T = #2f5a30, t = #3f7a3c
+gggggggggggggggg
+ggTgggggTgggggTg
+ggTgggTgTggTggTg
+gtTtggTgTtgTggTt
+gtTtgtTtTtgTtgTt
+gtTtgtTtTtgTtgTt
+ggTggtTtTtgTtgTt
+ggTggtTtTtgTtgTt
+gtTtgtTtTtgTtgTt
+gtTtgtTtTtgTtgTt
+gtTtgtTtTtgTtgTt
+gtTtgtTtTtgTtgTt
+ggTggtTtTtgTtgTt
+ggTgggTgTgggggTg
+gggggggggggggggg
+gggggggggggggggg

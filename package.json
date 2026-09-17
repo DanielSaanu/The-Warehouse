@@ -3,13 +3,20 @@
   "version": "0.1.0",
   "description": "Asset warehouse: search free game assets, compose pixel art scenes, pack sprite sheets, ship to Roblox.",
   "type": "module",
-  "bin": { "warehouse": "./bin/warehouse.js" },
+  "bin": {
+    "warehouse": "./bin/warehouse.js"
+  },
   "scripts": {
     "start": "node bin/warehouse.js serve",
     "serve": "node bin/warehouse.js serve",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js && node test/luau/run.js",
+    "test:luau": "node test/luau/run.js",
+    "preview:world": "node tools/preview-world.js",
+    "lint:luau": "node tools/luau-check.js"
   },
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.60",
     "fflate": "^0.8.2"

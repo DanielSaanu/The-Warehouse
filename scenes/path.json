@@ -1,0 +1,15 @@
+{
+  "name": "path",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "layers": [
+    {
+      "id": "t",
+      "name": "path",
+      "type": "image",
+      "src": "sprites/path.txt"
+    }
+  ]
+}

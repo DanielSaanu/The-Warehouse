@@ -1,0 +1,15 @@
+{
+  "name": "water",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "layers": [
+    {
+      "id": "t",
+      "name": "water",
+      "type": "image",
+      "src": "sprites/water.txt"
+    }
+  ]
+}

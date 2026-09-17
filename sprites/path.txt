@@ -1,0 +1,18 @@
+# name: path
+# palette: . = transparent, D = #6b4e33, d = #8f6b47, e = #b08a5e
+dddddddddddddddd
+ddeddddddDdddddd
+dddddddddddddddd
+ddddddeddddddddd
+dDdddddddddedddd
+dddddddddddddddd
+dddddddDdddddddd
+ddeddddddddddddd
+ddddddddddeddddd
+dddDdddddddddddd
+dddddddddddddDdd
+ddddddeddddddddd
+dDdddddddddddddd
+dddddddddddedddd
+ddddddDddddddddd
+dddddddddddddddd

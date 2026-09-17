@@ -42,8 +42,9 @@ Roblox side (Rojo, API key, upload): see **[docs/ROBLOX_SETUP.md](docs/ROBLOX_SE
 - **Sprite sheets + Lua** (`src/sheet.js`): packs every scene into 1024-max sheets and generates
   `Sprites.lua` with `ImageRectOffset/Size` for each sprite, plus `Sprites.New` / `Sprites.Apply` helpers.
 - **Roblox upload** (`src/roblox.js`): Open Cloud Assets API, with a lock file so unchanged sheets are never re-uploaded.
-- **Rojo project** (`roblox/`): `Grid.lua` (a screen-filling tile grid that keeps pixels crisp), a first
-  playable client (walled room, WASD/tap movement, rain overlay) and a server world clock.
+- **Rojo project** (`roblox/`): a seeded 96x96 world generator (river, lake, forest, caves, three villages,
+  roads by A*), a scrolling pixel viewport, server-validated movement with client prediction, day/night clock.
+  The design lives in `docs/DESIGN.md`.
 
 ## CLI cheat sheet
 
@@ -57,6 +58,8 @@ npx warehouse render slug_idle --scale 8    # -> exports/slug_idle@8x.png
 npx warehouse ascii slug_idle               # print the sprite as pixel-text
 npx warehouse totxt library/x.png -o sprites/x.txt   # turn a small PNG into an editable pixel-text sprite
 npx warehouse roblox build [--upload]       # sheet + Sprites.lua (+ upload with .env configured)
+npm test                                    # renderer/packer tests + Luau tests (needs tools/luau/, see CLAUDE.md)
+npm run preview:world                       # paint the generated world into exports/world_1.png
 ```
 
 ## Layout

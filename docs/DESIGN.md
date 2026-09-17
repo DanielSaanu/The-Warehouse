@@ -314,10 +314,10 @@ Style: 16x16, 1px dark outline, one shared palette (pick a LoSpec palette and sn
 ## 18. Code layout (Rojo)
 
 ```
-roblox/src/shared/     Config, Sprites (generated), Grid, TileTypes, Names, Net (remote names)
+roblox/src/shared/     Config, Sprites (generated), TileTypes, Rng, Names, WorldGen (pure Luau, testable outside Studio)
 roblox/src/server/     World (state + generation), Sim (ticks), Tribes, Groups, Wildlife, Migration, Calamity,
                        Combat, Trade, Reputation, Knowledge (talk banks), Persist (rung 3), PlayerService
-roblox/src/client/     Camera (viewport over the map), Input (move/attack/interact), Hud, Prompt, Dialogue, Entities
+roblox/src/client/     Viewport (scrolling window over the map, entity sprites), Client (input, prediction, HUD), later Prompt, Dialogue
 ```
 
 ## 19. Open questions

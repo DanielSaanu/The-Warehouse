@@ -1,0 +1,18 @@
+# name: ford
+# palette: . = transparent, w = #3b74ad, q = #93a0b8
+wwwwwwwwwwwwwwww
+wwwqqwwwwqqwwwww
+wwqqqqwwqqqqwwww
+wwwqqwwwwqqwwwww
+wwwwwwwwwwwwwwww
+wwwwwqqwwwwwqqww
+wwwwqqqqwwwqqqqw
+wwwwwqqwwwwwqqww
+wwwwwwwwwwwwwwww
+wwqqwwwwqqwwwwww
+wqqqqwwqqqqwwwww
+wwqqwwwwqqwwwwww
+wwwwwwwwwwwwwwww
+wwwwwqqwwwwqqwww
+wwwwqqqqwwqqqqww
+wwwwwqqwwwwqqwww
