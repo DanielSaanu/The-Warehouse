@@ -22,7 +22,7 @@ Source of truth for gameplay decisions. `ideas/INBOX.md` is the scratchpad; thin
 | Interact | F key. A prompt appears when something interactable is adjacent (touch: tap the prompt) |
 | Death | Wake at the village you last **rested** in. Lose carried goods and some reputation |
 | Rest | F at a bed in a village, or at your own camp, sets your spawn point. Hostile villages refuse |
-| Day one kit | The **camper set**: knife, bedroll, flint, waterskin, 2 food. Enough to survive, not to fight a squad |
+| Day one kit | Knife, waterskin, 2 food, and one **camper set** (bedroll + flint). The camper set is **single use** |
 | Persistence | World state is saved to DataStore and **caught up** on load: the simulation runs the missed time |
 | Setting | Grasslands overworld: meadows, forest, rivers, caves, hills. Primitive tribes, real wildlife |
 | Player | Just a person. Starts in a village that was just plundered |
@@ -141,16 +141,18 @@ Three archetypes. Every tribe has a size tier that scales what it does. (Written
 
 - Move: WASD / arrows, real-time tile steps. Touch: swipe direction or a d-pad (later).
 - Attack: left mouse button. Strikes the adjacent tile in the facing direction. Weapons change damage and reach.
-- Interact: F. A prompt ("F: Trade", "F: Talk", "F: Pick up", "F: Rest", "F: Camp", "F: Pack up") appears when adjacent to something
+- Interact: F. A prompt ("F: Trade", "F: Talk", "F: Pick up", "F: Rest", "F: Camp") appears when adjacent to something
   interactable. Only one prompt at a time, the nearest.
 - Stats: hp, attack, defence, speed. NPCs use the same stats, so the "hunters are strongest individually" rule
   is just numbers.
-- Day one kit, the **camper set**: knife (weak weapon, also skins animals), bedroll, flint, waterskin, 2 food.
-  It is what a person grabs when their village gets plundered.
-- Camp: with the bedroll, F on a free tile outside a village places a **camp** (bedroll + campfire). One camp at
-  a time; F again packs it. Resting at your camp sets your spawn point. The fire keeps wildlife off a small radius
-  at night while it burns (a few in-game hours), then it goes out. Camps are not safe: bandits and beast tides
-  can find them, and a plundered camp means a lost bedroll until you buy or steal another. Later: cook at the fire.
+- Day one kit: knife (weak weapon, also skins animals), waterskin, 2 food, and one **camper set** (bedroll +
+  flint). It is what a person grabs when their village gets plundered.
+- Camp: F on a free tile outside a village **uses up** a camper set and places a camp (bedroll + campfire).
+  Single use: it cannot be packed back up. Resting at it sets your spawn point. The fire keeps wildlife off a small
+  radius at night while it burns (a few in-game hours), then it goes out; the bedroll stays as your spawn point
+  until bandits, a beast tide or a flood destroy it. Placing a new camp abandons the old one. More camper sets are
+  bought from farmer and hunter merchants, or taken from bandits who took them from someone else. This is the
+  first thing that gives you a reason to earn coin. Later: cook at the fire.
 - Rest in a village: F at a bed to set your spawn point. Villages whose tribe is **hostile** to you refuse
   ("They won't let you stay"). Neutral and better allow it. Village rest is the safe option; the camp is the free one.
   The plundered starting village is your first rest point automatically.
@@ -202,7 +204,7 @@ Rung 1 is done (grid, movement, one room, rain timer, upload pipeline).
 | buildings | hut, hut damaged, wall, gate, farm plot, market stall | Kenney Tiny Town + draw |
 | people | villager, merchant, hunter, bandit (each 2 frames: idle, step); player 2 frames x 4 facings | draw (base body + recolor per tribe) |
 | animals | deer, boar, wolf (2 frames each) | draw |
-| items | food, hide, tool, ore, coin, knife, bedroll, flint, waterskin | game-icons recolored + draw |
+| items | food, hide, tool, ore, coin, knife, camper set (bundle icon), waterskin | game-icons recolored + draw |
 | camp | bedroll placed, campfire lit (2 frames), campfire out | draw |
 | fx / hud | rain, flood water, night tint handled in Lua, heart, prompt bubble ("F") | draw |
 
