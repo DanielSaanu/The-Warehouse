@@ -103,7 +103,8 @@ do
 	local before = Ecology.totals(rg).wolf
 	Ecology.beastTide(rg)
 	assert(Ecology.totals(rg).wolf > before, "beast tide adds wolves")
-	assert(rg.list[1].tide and not rg.list[36].tide, "tide is a northern thing")
+	assert(rg.list[1].tide and rg.list[36].tide, "the tide is felt everywhere")
+	assert(rg.list[36].wolf >= 2, "even the far corner has wolves during a tide")
 	Ecology.endTide(rg)
 	assert(not rg.list[1].tide, "tide ends")
 	assert(#Ecology.describe(rg.list[1]) > 10, "wildlife line")

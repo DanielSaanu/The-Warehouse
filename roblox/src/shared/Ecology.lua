@@ -127,13 +127,18 @@ function Ecology.dailyTick(rg: Regions, rng: Rng.Rng)
 	end
 end
 
---- Beast tide: the north swarms and the wolves roam by day for the rest of the day.
+--- Beast tide: wolves pour in from the north and roam by day everywhere for the rest of the day. The north is
+--- hit hardest; every region gets at least a few, so a player anywhere on the map meets the tide.
 function Ecology.beastTide(rg: Regions)
 	for _, r in ipairs(rg.list) do
 		if r.row <= 2 then
 			r.wolf = math.min(Ecology.CAP.wolf * 2, r.wolf * 2 + 3)
-			r.tide = true
+		elseif r.village then
+			r.wolf = math.max(r.wolf, 2)
+		else
+			r.wolf = math.max(r.wolf + 1, 3)
 		end
+		r.tide = true
 	end
 end
 

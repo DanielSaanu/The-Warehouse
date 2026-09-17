@@ -208,7 +208,8 @@ Reputation, gossip and the ecosystem are invisible numbers unless the game shows
 - Day = 10 real minutes: 7 day, 3 night. Night: lower visibility, wolves out, campfire radius matters.
 - Week = 70 minutes. Once per in-game week, one calamity, chosen with weights by season (later):
   - **Flood**: rivers spill, low tiles become water for the day, caravans stop, food stocks damaged.
-  - **Beast tide**: a region's predators surge and roam, villages take losses unless walled or defended.
+  - **Beast tide**: wolves pour in from the north and roam by day everywhere (the north worst, every region some),
+    villages take losses unless walled or defended.
   - **Blizzard**: movement halved, no farming, animals shelter, cold damage outside a village.
   - **Drought**: grass health drops, herbivores starve, food prices spike, tribute demands rise.
 - Warning signs the day before (sky tint, NPC dialogue line), so shelter is a choice you make.
