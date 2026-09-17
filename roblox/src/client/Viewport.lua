@@ -1,34 +1,37 @@
 --!strict
--- Viewport: a COLS x ROWS window onto the tile world that scrolls smoothly. A pool of (COLS+2)x(ROWS+2)
--- ImageLabels per layer is recycled as the camera moves; entities are ImageLabels positioned in tile space.
+-- Viewport: a COLS x ROWS window onto the tile world that scrolls smoothly.
+--
+-- Tiles are a ring buffer: a pool of (COLS+2M) x (ROWS+2M) ImageLabels per layer, each parked at its tile's fixed
+-- position inside a World frame that scrolls continuously. When the camera crosses a tile, only the images whose
+-- tiles left the window are moved to the far side and repainted; they are M tiles off screen when it happens, so no
+-- repaint is ever visible and the World frame never jumps. Entities are ImageLabels positioned in the same frame.
 -- Continuous coordinates: tile (x, y) occupies [x-1, x) x [y-1, y). The camera is a continuous centre point.
 --
 -- Pixel-crisp: tiles are drawn at a whole number of screen pixels (a whole multiple of 16 when that costs little
--- screen space), and the world and entities move in whole art pixels, so scrolling does not shimmer.
+-- screen space). Scrolling moves in whole art pixels when the scale is a whole number, otherwise in whole screen
+-- pixels: either way every frame's step is the same size, so scrolling never judders.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Sprites = require(Shared:WaitForChild("Sprites"))
 local TileTypes = require(Shared:WaitForChild("TileTypes"))
 local WorldGen = require(Shared:WaitForChild("WorldGen"))
 
-local ART = 16 -- art pixels per tile
+local ART = 16   -- art pixels per tile
+local MARGIN = 2 -- tiles of pool beyond each edge of the window
 
 local Viewport = {}
 Viewport.__index = Viewport
 
 export type Entity = { img: ImageLabel, sprite: string, x: number, y: number, px: number, py: number, fromX: number, fromY: number, moveStart: number, moveTime: number, label: TextLabel? }
+type Slot = { tx: number, ty: number, ground: ImageLabel, object: ImageLabel }
 
 export type Viewport = typeof(setmetatable({} :: {
 	cols: number, rows: number, world: WorldGen.World, tilePx: number,
 	container: Frame, root: Frame, worldFrame: Frame, layers: { [string]: Frame }, night: Frame, overlay: Frame,
-	groundPool: { ImageLabel }, objectPool: { ImageLabel },
-	cx: number, cy: number, ox: number, oy: number, painted: boolean,
+	slots: { Slot }, poolW: number, poolH: number,
+	cx: number, cy: number,
 	entities: { [any]: Entity },
 }, Viewport))
-
-local function quantize(v: number): number
-	return math.floor(v * ART + 0.5) / ART
-end
 
 function Viewport.new(parent: Instance, cols: number, rows: number, world: WorldGen.World): Viewport
 	local container = Instance.new("Frame")
@@ -42,13 +45,12 @@ function Viewport.new(parent: Instance, cols: number, rows: number, world: World
 	root.BackgroundColor3 = Color3.fromRGB(16, 16, 24)
 	root.BorderSizePixel = 0
 	root.ClipsDescendants = true
-	root.AnchorPoint = Vector2.new(0.5, 0.5)
-	root.Position = UDim2.fromScale(0.5, 0.5)
 	root.Parent = container
 
 	local worldFrame = Instance.new("Frame")
 	worldFrame.Name = "World"
 	worldFrame.BackgroundTransparency = 1
+	worldFrame.Size = UDim2.fromOffset(0, 0)
 	worldFrame.Parent = root
 
 	local layers: { [string]: Frame } = {}
@@ -56,25 +58,20 @@ function Viewport.new(parent: Instance, cols: number, rows: number, world: World
 		local f = Instance.new("Frame")
 		f.Name = name
 		f.BackgroundTransparency = 1
-		f.Size = UDim2.fromScale(1, 1)
+		f.Size = UDim2.fromOffset(0, 0)
 		f.ZIndex = i
 		f.Parent = worldFrame
 		layers[name] = f
 	end
 
-	local cellSize = UDim2.fromScale(1 / (cols + 2), 1 / (rows + 2))
-	local groundPool, objectPool = {}, {}
-	for r = 1, rows + 2 do
-		for c = 1, cols + 2 do
-			local pos = UDim2.fromScale((c - 1) / (cols + 2), (r - 1) / (rows + 2))
-			local g = Sprites.New("grass", layers.Ground)
-			g.Size, g.Position = cellSize, pos
-			table.insert(groundPool, g)
-			local o = Sprites.New("tree", layers.Objects)
-			o.Size, o.Position = cellSize, pos
-			o.Visible = false
-			table.insert(objectPool, o)
-		end
+	local poolW, poolH = cols + 2 * MARGIN, rows + 2 * MARGIN
+	local slots: { Slot } = {}
+	for _ = 1, poolW * poolH do
+		local g = Sprites.New("grass", layers.Ground)
+		local o = Sprites.New("tree", layers.Objects)
+		o.Visible = false
+		-- tx = 0 marks "not assigned yet": every slot repaints on the first refresh.
+		table.insert(slots, { tx = 0, ty = 0, ground = g, object = o })
 	end
 
 	-- Night tint sits above the world; the overlay (HUD) sits above the tint. ZIndex is sibling-relative: the
@@ -98,8 +95,8 @@ function Viewport.new(parent: Instance, cols: number, rows: number, world: World
 	local self = setmetatable({
 		cols = cols, rows = rows, world = world, tilePx = ART,
 		container = container, root = root, worldFrame = worldFrame, layers = layers, night = night, overlay = overlay,
-		groundPool = groundPool, objectPool = objectPool,
-		cx = cols / 2, cy = rows / 2, ox = 0, oy = 0, painted = false,
+		slots = slots, poolW = poolW, poolH = poolH,
+		cx = cols / 2, cy = rows / 2,
 		entities = {},
 	}, Viewport)
 
@@ -111,9 +108,15 @@ function Viewport.new(parent: Instance, cols: number, rows: number, world: World
 		local whole = math.floor(best / ART) * ART
 		local t = if whole >= ART and whole >= best * 0.85 then whole else math.max(1, math.floor(best))
 		self.tilePx = t
+		-- Centred on a whole pixel (an anchor of 0.5 lands on a half pixel when the screen width is odd).
+		root.Position = UDim2.fromOffset(math.floor((size.X - t * cols) / 2), math.floor((size.Y - t * rows) / 2))
 		root.Size = UDim2.fromOffset(t * cols, t * rows)
-		worldFrame.Size = UDim2.fromOffset(t * (cols + 2), t * (rows + 2))
-		for _, e in pairs(self.entities) do e.img.Size = UDim2.fromOffset(t, t) end
+		local cell = UDim2.fromOffset(t, t)
+		for _, s in ipairs(slots) do
+			s.ground.Size, s.object.Size = cell, cell
+			s.tx = 0 -- positions depend on t: lay every slot out again
+		end
+		for _, e in pairs(self.entities) do e.img.Size = cell end
 	end
 	container:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
 	fit()
@@ -122,36 +125,29 @@ end
 
 function Viewport.setCamera(self: Viewport, cx: number, cy: number)
 	local w, h = self.world.width, self.world.height
-	self.cx = quantize(math.clamp(cx, self.cols / 2, math.max(self.cols / 2, w - self.cols / 2)))
-	self.cy = quantize(math.clamp(cy, self.rows / 2, math.max(self.rows / 2, h - self.rows / 2)))
+	self.cx = math.clamp(cx, self.cols / 2, math.max(self.cols / 2, w - self.cols / 2))
+	self.cy = math.clamp(cy, self.rows / 2, math.max(self.rows / 2, h - self.rows / 2))
 end
 
 function Viewport.setNight(self: Viewport, alpha: number)
 	self.night.BackgroundTransparency = 1 - math.clamp(alpha, 0, 1)
 end
 
-local function repaint(self: Viewport)
-	local cols, rows, world = self.cols, self.rows, self.world
-	local ox, oy = self.ox, self.oy
-	local i = 0
-	for r = 1, rows + 2 do
-		for c = 1, cols + 2 do
-			i += 1
-			local tx, ty = ox + c, oy + r
-			local g = WorldGen.ground(world, tx, ty)
-			local gdef = TileTypes.Ground[g]
-			local gimg = self.groundPool[i]
-			if gimg.Name ~= gdef.sprite then Sprites.Apply(gimg, gdef.sprite) gimg.Name = gdef.sprite end
-			local o = WorldGen.object(world, tx, ty)
-			local oimg = self.objectPool[i]
-			if o == 0 then
-				oimg.Visible = false
-			else
-				local odef = TileTypes.Object[o]
-				if oimg.Name ~= odef.sprite then Sprites.Apply(oimg, odef.sprite) oimg.Name = odef.sprite end
-				oimg.Visible = true
-			end
-		end
+--- Park a slot at world tile (tx, ty) and paint it.
+local function assign(self: Viewport, s: Slot, tx: number, ty: number)
+	local t = self.tilePx
+	s.tx, s.ty = tx, ty
+	local pos = UDim2.fromOffset((tx - 1) * t, (ty - 1) * t)
+	s.ground.Position, s.object.Position = pos, pos
+	local gdef = TileTypes.Ground[WorldGen.ground(self.world, tx, ty)]
+	if s.ground.Name ~= gdef.sprite then Sprites.Apply(s.ground, gdef.sprite) s.ground.Name = gdef.sprite end
+	local o = WorldGen.object(self.world, tx, ty)
+	if o == 0 then
+		s.object.Visible = false
+	else
+		local odef = TileTypes.Object[o]
+		if s.object.Name ~= odef.sprite then Sprites.Apply(s.object, odef.sprite) s.object.Name = odef.sprite end
+		s.object.Visible = true
 	end
 end
 
@@ -170,20 +166,31 @@ end
 --- Lay out tiles and entities for the current camera. Call every frame after step() and setCamera().
 function Viewport.refresh(self: Viewport)
 	local cols, rows, t = self.cols, self.rows, self.tilePx
-	local a = t / ART -- screen pixels per art pixel
-	local vx, vy = self.cx - cols / 2, self.cy - rows / 2
-	local ox, oy = math.floor(vx) - 1, math.floor(vy) - 1
-	if not self.painted or ox ~= self.ox or oy ~= self.oy then
-		self.ox, self.oy, self.painted = ox, oy, true
-		repaint(self)
+	local poolW, poolH = self.poolW, self.poolH
+	-- Positions snap to a grid of `unit` screen pixels: one art pixel when the scale is whole, else one screen pixel.
+	local unit = if t % ART == 0 then t / ART else 1
+	local function snap(tiles: number): number
+		return math.round(tiles * t / unit) * unit
 	end
-	-- Camera and entities are quantized to whole art pixels, and every position is rounded to a whole screen pixel
-	-- from its on-screen coordinate, so the followed player never wobbles against the world when a is fractional.
-	local wx, wy = math.round((ox - vx) * ART * a), math.round((oy - vy) * ART * a)
+	local vx, vy = self.cx - cols / 2, self.cy - rows / 2
+
+	-- Ring buffer: world tile (tx, ty) always lives in slot (tx mod poolW, ty mod poolH). Any slot whose tile has left
+	-- the window is re-parked at the one tile in the window that maps to it.
+	local x0, y0 = math.floor(vx) - MARGIN + 1, math.floor(vy) - MARGIN + 1
+	for ty = y0, y0 + poolH - 1 do
+		local row = (ty % poolH) * poolW
+		for tx = x0, x0 + poolW - 1 do
+			local s = self.slots[row + (tx % poolW) + 1]
+			if s.tx ~= tx or s.ty ~= ty then assign(self, s, tx, ty) end
+		end
+	end
+
+	-- The frame scrolls continuously; everything inside is at fixed world-pixel positions, and every entity is snapped
+	-- from its on-screen coordinate, so the followed player never wobbles against the world.
+	local wx, wy = snap(-vx), snap(-vy)
 	self.worldFrame.Position = UDim2.fromOffset(wx, wy)
 	for _, e in pairs(self.entities) do
-		local qx, qy = quantize(e.px), quantize(e.py)
-		e.img.Position = UDim2.fromOffset(math.round((qx - vx) * ART * a) - wx, math.round((qy - vy) * ART * a) - wy)
+		e.img.Position = UDim2.fromOffset(snap(e.px - vx) - wx, snap(e.py - vy) - wy)
 		e.img.ZIndex = 1 + math.floor(e.py + 0.5)
 	end
 end

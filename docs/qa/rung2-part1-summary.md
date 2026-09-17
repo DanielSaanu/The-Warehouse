@@ -81,13 +81,20 @@ Art and tooling
 - Distance-based replication filtering: matters once NPCs exist; moves already go only to other players.
 - Mobile default thumbstick without a character: not testable in Play Solo.
 
+## Fixed after the loop (Danzo's own play test: "a hitch per tile")
+
+- Scrolling snaps to whole screen pixels when the tile size is not a multiple of 16 (whole art pixels when it
+  is), so every frame's step is the same size. Measured at 60 fps: 5, 5, 5, 5 px per frame.
+- The play area sits on a whole pixel (floored offset instead of a 0.5 anchor).
+- The tile layer is a ring buffer: images keep fixed world positions inside a frame that scrolls continuously;
+  when the camera crosses a tile only the edge images (2 tiles off screen) are re-parked and repainted. Before,
+  every tile crossing repainted all 252 images and re-anchored the frame by a tile in the same frame, which showed
+  as a hitch once per tile. Danzo confirmed it is smooth.
+
 ## Open items from round 2 (not acted on; the loop was ended)
 
 FIX
 - No controls hint on first spawn ("WASD / arrows to move" or "tap to walk", cleared on the first step).
-- Uneven per-frame scroll steps (2/3/5/6 px) when the tile size is not a multiple of 16: quantize to screen
-  pixels at those sizes.
-- PlayArea sits on a half pixel (x=285.5) on odd-width screens: floored offset with AnchorPoint 0.
 - Small play area on landscape phones (29 px tiles, 45% black bars): let COLS grow with the aspect ratio.
 - Tap-to-move gets stuck behind walls and trees: short BFS to the tapped tile, plus a target marker.
 - Hunter and plunderer villages look the same: per-tribe hut variant and a landmark tile.
