@@ -1,0 +1,1 @@
+{ "name": "floor_moss", "width": 16, "height": 16, "pixelated": true, "layers": [ { "id": "t", "type": "image", "src": "sprites/floor_moss.txt" } ] }

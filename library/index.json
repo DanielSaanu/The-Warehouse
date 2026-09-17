@@ -1,0 +1,13 @@
+{
+  "assets": {
+    "library/gameicons/lorc/broadsword.svg": {
+      "path": "library/gameicons/lorc/broadsword.svg",
+      "source": "gameicons",
+      "pack": "lorc",
+      "license": "CC-BY-3.0",
+      "author": "lorc",
+      "url": "https://game-icons.net/",
+      "addedAt": "2026-09-17T10:32:11.401Z"
+    }
+  }
+}
