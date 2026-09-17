@@ -25,7 +25,7 @@ end)
 -- The GUI exists before anything can yield, so a problem is never a silent blank screen.
 local gui = Instance.new("ScreenGui")
 gui.Name = "Game"
-gui.IgnoreGuiInset = true
+gui.IgnoreGuiInset = false -- keep our HUD below Roblox's own top-left buttons
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
@@ -86,7 +86,7 @@ local function makeLabel(name: string, size: UDim2, pos: UDim2, anchor: Vector2)
 	t.Parent = hud
 	return t
 end
-local clockLabel = makeLabel("Clock", UDim2.fromScale(0.22, 0.045), UDim2.fromScale(0.01, 0.01), Vector2.new(0, 0))
+local clockLabel = makeLabel("Clock", UDim2.fromScale(0.22, 0.045), UDim2.new(0, 8, 0, 8), Vector2.new(0, 0))
 clockLabel.Text = "Day 1"
 local banner = makeLabel("Banner", UDim2.fromScale(0.5, 0.07), UDim2.fromScale(0.5, 0.06), Vector2.new(0.5, 0))
 banner.Visible = false
