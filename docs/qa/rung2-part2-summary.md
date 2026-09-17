@@ -56,3 +56,18 @@ None: every FIX was acted on and every CONSIDER was either taken or deferred abo
 Two chores touch this PR's files and should happen before rung 3 ships: hard-code the resolved image id
 (`npx warehouse roblox setid 0 130039133248340`, the image the server resolved from decal 92588138876546) and
 reword the loading message in `Client.client.lua` so it does not mention `rojo serve` to strangers.
+
+## After the loop: part 3 (Danzo's direction, 2026-09-17, commit after `513dcad`)
+
+Built and verified live in Studio, not reviewed by the loop (Danzo's own playtest stands in for a round):
+- Fights end in flight: break points per kind (bandit 40%, boar and wolf 30%, guard 25%, hunter 20%), runners go
+  home and heal an hp an hour. Verified: a guard broke at 3 hp on the third blow, fled, calmed once the player left.
+- Conduct-based reputation: -1 a blow on an innocent, nothing for hitting someone who attacked you first (and
+  retaliation never counts as their aggression), kills -25/-20/-40, half in self-defence, full on a runner, mercy
+  +3 when a beaten person gets away, escape +2 when the band loses you, dying costs nothing. Verified: three blows
+  on the guard 20 -> 17, mercy 17 -> 20.
+- Families: person records with parents, children, spouse, sex; couples; weekly conception; pregnant (own sprite,
+  one week) -> baby (own sprite, two weeks, stays by the hut) -> adult; role succession on death; villagers talk
+  about births. Verified: `birth 1 now` produced two babies drawn with the baby sprite and their first names.
+- Sheet re-uploaded: decal 124826353673742 (107 sprites), resolved in Studio to image 136111245592183.
+- New debug commands: `strike <id> [dmg]`, `people [tribe]`, `family <id>`, `birth <tribe> [now]`.

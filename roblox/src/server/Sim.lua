@@ -20,6 +20,7 @@ local Trade = require(Shared:WaitForChild("Trade"))
 local Ecology = require(Shared:WaitForChild("Ecology"))
 local Calamity = require(Shared:WaitForChild("Calamity"))
 local DayCycle = require(Shared:WaitForChild("DayCycle"))
+local Families = require(Shared:WaitForChild("Families"))
 local World = require(script.Parent:WaitForChild("World"))
 
 local Sim = {}
@@ -40,7 +41,8 @@ local nextId = 0
 -- ---------- state ----------
 Sim.state = {
 	day = 1, dayStart = 0,
-	tribes = {},      -- [i] = { village, tribeType, stock, population, walled, surnames }
+	tribes = {},      -- [i] = { village, tribeType, stock, population, walled, surnames, news }
+	people = nil,     -- Families.Registry: everyone who was ever born in this world
 	regions = nil,    -- Ecology.Regions (+ live counts)
 	groups = {},      -- [id] = group record
 	entities = {},    -- [id] = entity
@@ -191,6 +193,9 @@ local function setPath(e, path)
 	e.path, e.pathI = path, 1
 end
 
+-- Fights end in flight (DESIGN.md §11): the fraction of health at which a fighter breaks and runs for home.
+local BREAK = { bandit = 0.4, boar = 0.3, wolf = 0.3, guard = 0.25, caravan_guard = 0.25, hunter = 0.2 }
+
 local function pathTo(e, tx: number, ty: number, maxNodes: number?, roads: boolean?): boolean
 	if e.x == tx and e.y == ty then e.path = nil return true end
 	local now = os.clock()
@@ -203,7 +208,7 @@ end
 
 --- Take the next step of the entity's path if it is due. Blocked steps wait (and re-path after a moment).
 local function followPath(e, now: number)
-	if not e.path or now < e.nextStepAt then return end
+	if not e.path or now < e.nextStepAt or e.speed <= 0 then return end
 	local step = e.path[e.pathI]
 	if not step then e.path = nil return end
 	if not Movement.canStep(world, e.x, e.y, step.x, step.y, Sim.occupied) then
@@ -247,16 +252,33 @@ function Sim.tribeOf(e): string?
 end
 
 -- ---------- tribes and villagers ----------
+--- A named person of a village: a record in the family registry plus a live entity.
 local function spawnPerson(kind: string, x: number, y: number, tribeIdx: number, opts)
 	local t = S.tribes[tribeIdx]
 	local pos = nearestFree(x, y, 3)
 	if not pos then return nil end
-	local first, last = Names.person(rng, opts.surname or rng:pick(t.surnames))
-	local o = { tribe = tribeIdx, radius = opts.radius, role = opts.role, sprite = opts.sprite,
-		name = first .. " " .. last, label = opts.label or (first .. " " .. last), facing = opts.facing }
+	local person = opts.person or Families.newAdult(S.people, rng, tribeIdx, t.village.name, opts.role or kind, S.day, opts.surname or rng:pick(t.surnames), opts.sex)
+	local o = { tribe = tribeIdx, radius = opts.radius, role = opts.role or person.role, sprite = opts.sprite,
+		name = Families.fullName(person), label = opts.label or Families.fullName(person), facing = opts.facing }
 	local e = newEntity(kind, pos.x, pos.y, o)
-	e.first, e.last = first, last
+	e.first, e.last, e.person = person.first, person.last, person.id
+	person.entity = e.id
 	return e
+end
+
+--- Replace a person's entity with another kind at the same tile (pregnant, baby, grown up, a new role).
+local function morph(e, kind: string, opts)
+	local x, y, tribe, person = e.x, e.y, e.tribe, e.person
+	local o = opts or {}
+	local home, facing = e.home, e.facing
+	removeEntity(e)
+	local p = S.people.people[person]
+	local ne = newEntity(kind, x, y, { tribe = tribe, radius = o.radius or e.radius, role = o.role or kind, sprite = o.sprite,
+		name = p and Families.fullName(p) or e.name, label = o.label or (p and Families.fullName(p)) or e.label, facing = facing })
+	ne.first, ne.last, ne.person = e.first, e.last, person
+	ne.home = home
+	if p then p.entity = ne.id end
+	return ne
 end
 
 local VILLAGE_SPRITE = { farmer = "villager", hunter = "hunter", plunderer = "bandit" }
@@ -267,7 +289,7 @@ local function initTribes()
 			village = v, tribeType = v.tribeType, stock = Trade.newStock(v.tribeType),
 			population = 30 + rng:int(0, 20), walled = #v.gates > 0,
 			surnames = { Names.last(rng), Names.last(rng), Names.last(rng) },
-			guard = nil, merchant = nil, survivor = nil,
+			guard = nil, merchant = nil, survivor = nil, news = nil,
 		}
 		S.tribes[i] = t
 		local sprite = VILLAGE_SPRITE[v.tribeType]
@@ -281,11 +303,13 @@ local function initTribes()
 		if guard then t.guard = guard.id end
 		local m = spawnPerson("merchant", v.stall.x, v.stall.y + 1, i, { radius = 1, role = "merchant", label = "merchant" })
 		if m then t.merchant = m.id end
-		for _ = 1, 3 do
+		for n = 1, 4 do
 			local x = rng:int(v.x0 + 1, v.x1 - 1)
 			local y = rng:int(v.y0 + 1, v.y1 - 1)
-			spawnPerson("villager", x, y, i, { radius = 3, role = "villager", sprite = sprite })
+			spawnPerson("villager", x, y, i, { radius = 3, role = "villager", sprite = sprite, sex = if n % 2 == 0 then "f" else "m" })
 		end
+		t.news = nil
+		Families.formCouples(S.people, i, S.day)
 		if i == 1 then
 			-- the survivor: a named relative, a step west of where you wake, facing the road
 			local sv = spawnPerson("survivor", v.spawn.x - 1, v.spawn.y, i, { radius = 0, role = "survivor", surname = t.surnames[1], facing = "right" })
@@ -503,14 +527,31 @@ local function applyRep(ps, deltas)
 	return changed
 end
 
-local function killEntity(e, killer)
+local function killEntity(e, killer, ctx)
 	if killer then
 		lootTo(killer, Combat.loot(e.kind, rng))
-		applyRep(killer, Reputation.deltas("kill", e.kind, Sim.tribeOf(e)))
+		applyRep(killer, Reputation.deltas("kill", e.kind, Sim.tribeOf(e), ctx))
 		if e.tribe and not e.species then
 			S.tribes[e.tribe].population = math.max(0, S.tribes[e.tribe].population - 1)
 		end
 		Sim.hud(killer)
+	end
+	-- the family tree keeps the dead, and a role passes to a relative
+	if e.person then
+		local p = S.people.people[e.person]
+		Families.die(S.people, e.person, S.day, "killed", if killer then killer.player.Name else "the wild")
+		local t = e.tribe and S.tribes[e.tribe]
+		if p and t and (e.role == "guard" or e.role == "merchant") then
+			local heir = Families.successor(S.people, p)
+			local he = heir and heir.entity and S.entities[heir.entity]
+			if heir and he then
+				heir.role = e.role
+				local ne = morph(he, e.role, { role = e.role, label = e.role, radius = 1 })
+				ne.home = { x = e.home.x, y = e.home.y }
+				if e.role == "guard" then t.guard = ne.id else t.merchant = ne.id end
+				t.news = ("%s %s has taken up the %s's post."):format(heir.first, heir.last, tostring(e.role))
+			end
+		end
 	end
 	if e.region and e.species then
 		local r = S.regions.list[e.region]
@@ -533,34 +574,62 @@ local function killEntity(e, killer)
 	removeEntity(e, "die")
 end
 
---- Damage to an entity from (ax, ay). Flash, knockback, death.
+--- The story of a fight as reputation sees it: did this creature attack the player first, is it running.
+--- A creature the player struck first is never the aggressor toward that player, however hard it fights back.
+local function fightContext(e, ps)
+	local uid = ps and ps.player.UserId
+	local aggressor = uid ~= nil and e.attacked ~= nil and e.attacked[uid] == true and not (e.provokedBy and e.provokedBy[uid])
+	return { aggressor = aggressor, fleeing = e.state == "flee" and e.broken or false }
+end
+
+--- Mark that a creature went for a player on its own (not in return for a blow).
+local function markAggression(e, uid)
+	if e.provokedBy and e.provokedBy[uid] then return end
+	e.attacked = e.attacked or {}
+	e.attacked[uid] = true
+end
+Sim.markAggression = markAggression
+
+--- Damage to an entity from (ax, ay). Flash, knockback, death. Fighters break and run at their break point.
 local function hitEntity(e, dmg: number, ax: number, ay: number, attacker)
 	local now = os.clock()
 	if now < e.invulnUntil then return end
+	local ctx = fightContext(e, attacker)
+	if attacker and not (e.attacked and e.attacked[attacker.player.UserId]) then
+		e.provokedBy = e.provokedBy or {}
+		e.provokedBy[attacker.player.UserId] = true
+	end
 	e.hp -= dmg
 	e.invulnUntil = now + Config.HIT_INVULN
 	e.path = nil
 	broadcastEntity(e, "hit", e.id, math.max(0, e.hp) / e.maxHp)
 	if e.hp <= 0 then
-		killEntity(e, attacker)
+		killEntity(e, attacker, ctx)
 		return
 	end
 	local kx, ky = Combat.knockbackTile(ax, ay, e.x, e.y)
 	if freeTile(kx, ky) then placeEntity(e, kx, ky) end
 	-- react
 	local k = Stats.get(e.kind)
-	if k.flees then
-		e.state, e.fleeUntil = "flee", now + 4
+	local breakAt = BREAK[e.kind]
+	if k.flees or e.broken or (breakAt and e.hp / e.maxHp <= breakAt) then
+		e.state, e.fleeUntil = "flee", now + 30
 		e.threat = { x = ax, y = ay }
+		e.windupAt, e.target = nil, nil
+		if breakAt or e.broken then e.broken = true end
+		if attacker then e.beatenBy = attacker.player.UserId end
 	elseif attacker then
 		e.state, e.target, e.aggroUntil = "chase", attacker.player.UserId, now + 12
 	end
 	if attacker and e.tribe and not e.species then
-		applyRep(attacker, Reputation.deltas("hit", e.kind, Sim.tribeOf(e)))
+		applyRep(attacker, Reputation.deltas("hit", e.kind, Sim.tribeOf(e), ctx))
 		-- the village guard takes notice
 		local t = S.tribes[e.tribe]
 		local guard = t.guard and S.entities[t.guard]
-		if guard and cheb(guard.x, guard.y, e.x, e.y) <= 8 then guard.state, guard.target, guard.aggroUntil = "chase", attacker.player.UserId, now + 15 end
+		if guard and guard ~= e and not guard.broken and cheb(guard.x, guard.y, e.x, e.y) <= 8 then
+			guard.state, guard.target, guard.aggroUntil = "chase", attacker.player.UserId, now + 15
+			markAggression(guard, attacker.player.UserId) -- the guard comes at you for what you did: that is still their move
+		end
 	end
 	if e.group then
 		local g = S.groups[e.group]
@@ -703,6 +772,31 @@ local function wanderStep(e, now: number)
 	if freeTile(tx, ty) then pathTo(e, tx, ty, 120) end
 end
 
+--- Where a broken fighter runs to: its group's leader, its village, or (animals) away from the threat.
+local function homeTile(e): WorldGen.Pos?
+	if e.group then
+		local g = S.groups[e.group]
+		local leader = g and g.leader and S.entities[g.leader]
+		if leader and leader ~= e then return { x = leader.x, y = leader.y } end
+		if g then return Sim.groupPos(g) end
+	end
+	if e.tribe and not e.species then return S.tribes[e.tribe].village.spawn end
+	return nil
+end
+
+--- A beaten fighter that got away: the player who beat it earns mercy, once.
+local function grantMercy(e)
+	local uid = e.beatenBy
+	if not uid or e.mercyGiven then return end
+	local ps = S.players[uid]
+	e.mercyGiven = true
+	if ps and e.tribe and not e.species then
+		applyRep(ps, Reputation.deltas("mercy", e.kind, Sim.tribeOf(e)))
+		Sim.text(ps, ("%s got away. Word of that will travel."):format(e.label or e.kind), "rep")
+		Sim.hud(ps)
+	end
+end
+
 local function fleeStep(e)
 	local t = e.threat
 	if not t then return end
@@ -727,7 +821,17 @@ end
 --- Chase state: close on the target player and swing when adjacent, with a telegraph first.
 local function chaseStep(e, now: number)
 	local ps = S.players[e.target]
+	if ps then markAggression(e, e.target) end
 	if not ps or ps.dead or now > e.aggroUntil or cheb(e.x, e.y, ps.x, ps.y) > 14 then
+		-- the band lost you: they respect what they could not catch
+		if ps and not ps.dead and e.kind == "bandit" then
+			e.escapeGiven = e.escapeGiven or {}
+			if not e.escapeGiven[e.target] then
+				e.escapeGiven[e.target] = true
+				applyRep(ps, Reputation.deltas("escape", e.kind, Sim.tribeOf(e)))
+				Sim.hud(ps)
+			end
+		end
 		e.state, e.target, e.windupAt = "idle", nil, nil
 		return
 	end
@@ -780,7 +884,11 @@ local function pickTarget(e, now: number)
 	if e.species == "boar" then range = 0 end -- boar only charge when hit
 	if range == 0 and not k.hostile then return end
 	local ps = nearestPlayer(e.x, e.y, range, wants)
-	if ps then e.state, e.target, e.aggroUntil = "chase", ps.player.UserId, now + 10 end
+	if ps then
+		e.state, e.target, e.aggroUntil = "chase", ps.player.UserId, now + 10
+		markAggression(e, ps.player.UserId)
+		if e.escapeGiven then e.escapeGiven[ps.player.UserId] = nil end
+	end
 end
 
 --- Hunters and guards deal with wildlife and bandits near them.
@@ -832,8 +940,9 @@ end
 
 --- Group members: the leader walks the route; the others follow the leader's trail.
 local function groupStep(e, g, now: number)
-	if g.target and now < g.aggroUntil and S.players[g.target] and not S.players[g.target].dead then
+	if g.target and now < g.aggroUntil and S.players[g.target] and not S.players[g.target].dead and not e.broken then
 		e.state, e.target, e.aggroUntil = "chase", g.target, g.aggroUntil
+		markAggression(e, g.target)
 		return
 	end
 	if e.id == g.leader then
@@ -872,9 +981,40 @@ local function groupStep(e, g, now: number)
 	end
 end
 
+--- Broken: run home (or away), then rest and heal; no fighting until healed.
+local function brokenStep(e, now: number)
+	local t = e.threat
+	local beater = e.beatenBy and S.players[e.beatenBy]
+	local threatNear = (beater and not beater.dead and cheb(e.x, e.y, beater.x, beater.y) <= 2) or (t and cheb(e.x, e.y, t.x, t.y) <= 1)
+	if threatNear then fleeStep(e) return end
+	local home = homeTile(e)
+	local safe = (beater == nil or beater.dead or cheb(e.x, e.y, beater.x, beater.y) >= 10) or (home and cheb(e.x, e.y, home.x, home.y) <= 2)
+	if safe then
+		grantMercy(e)
+		e.state = "idle"
+		e.path = nil
+		return
+	end
+	if not e.path or now - e.lastPathAt > 2 then
+		if home and not pathTo(e, home.x, home.y, 300, true) then fleeStep(e) end
+		if not home then fleeStep(e) end
+	end
+end
+
 local function think(e, now: number)
 	if e.state == "flee" then
+		if e.broken then brokenStep(e, now) return end
 		if now > e.fleeUntil then e.state = "idle" else fleeStep(e) return end
+	end
+	if e.broken then
+		-- healing at home, one hp an hour; a healed fighter forgets the fight
+		if now >= (e.nextHeal or 0) then
+			e.nextHeal = now + HOUR
+			e.hp = math.min(e.maxHp, e.hp + 1)
+			if e.hp >= e.maxHp * 0.7 then e.broken, e.beatenBy, e.mercyGiven = false, nil, nil end
+		end
+		if not e.path and rng:chance(0.3) then wanderStep(e, now) end
+		return
 	end
 	if e.state == "chase" then chaseStep(e, now) return end
 	if e.state == "hunt" then huntStep(e, now) return end
@@ -891,6 +1031,7 @@ local function think(e, now: number)
 		local g = S.groups[e.group]
 		if g then groupStep(e, g, now) return end
 	end
+	if e.kind == "baby" then return end
 	if e.role == "survivor" then
 		-- faces whoever is standing next to them
 		local ps = nearestPlayer(e.x, e.y, 1)
@@ -1087,8 +1228,46 @@ local function tickCalamity()
 end
 
 -- ---------- daily ----------
+--- Births, growing up, couples. Runs on the daily tick and on the Debug "birth" command.
+local function tickFamilies()
+	for i, t in ipairs(S.tribes) do
+		Families.formCouples(S.people, i, S.day)
+		if S.day % Config.WEEK_DAYS == 1 then
+			for _, mother in ipairs(Families.weeklyConceive(S.people, rng, i, S.day)) do
+				local me = mother.entity and S.entities[mother.entity]
+				if me then morph(me, "pregnant", { role = "pregnant", radius = 2 }) end
+			end
+		end
+	end
+	local r = Families.daily(S.people, rng, S.day)
+	for _, baby in ipairs(r.born) do
+		local mother = S.people.people[baby.mother]
+		local me = mother and mother.entity and S.entities[mother.entity]
+		if me then
+			local t = S.tribes[baby.tribe]
+			local sprite = VILLAGE_SPRITE[t.tribeType]
+			local mx, my = me.x, me.y
+			local ne = morph(me, "villager", { role = "villager", radius = 3, sprite = sprite })
+			ne.home = { x = mx, y = my }
+			local pos = nearestFree(mx, my, 3)
+			if pos then
+				local be = newEntity("baby", pos.x, pos.y, { tribe = baby.tribe, radius = 0, role = "baby", name = Families.fullName(baby), label = baby.first })
+				be.first, be.last, be.person = baby.first, baby.last, baby.id
+				baby.entity = be.id
+			end
+			t.news = Families.describeBirth(baby, mother)
+			t.population += 1
+		end
+	end
+	for _, grown in ipairs(r.grown) do
+		local be = grown.entity and S.entities[grown.entity]
+		if be then morph(be, "villager", { role = "villager", radius = 3, sprite = VILLAGE_SPRITE[S.tribes[grown.tribe].tribeType] }) end
+	end
+end
+
 local function dailyTick()
 	Ecology.dailyTick(S.regions, rng)
+	tickFamilies()
 	for _, t in ipairs(S.tribes) do
 		Trade.dailyRestock(t.stock, t.tribeType)
 		t.population = math.min(60, t.population + 1)
@@ -1144,6 +1323,7 @@ function Sim.init()
 	world = World.get()
 	rng = Rng.new(world.seed * 31 + 7)
 	S.dayStart = os.clock()
+	S.people = Families.new()
 	S.regions = Ecology.init(world, rng:fork(1))
 	for _, r in ipairs(S.regions.list) do r.live = { deer = 0, boar = 0, wolf = 0 } end
 	initTribes()
@@ -1296,6 +1476,48 @@ function Sim.debug(cmd: string, ...): any
 	elseif cmd == "verbose" then
 		Sim.verbose = (args[1] or 1) ~= 0
 		return "verbose " .. tostring(Sim.verbose)
+	elseif cmd == "strike" and ps then
+		-- the player's blow lands on an entity through the real path (contexts, break points, mercy)
+		local e = S.entities[args[1]]
+		if not e then return "no entity " .. tostring(args[1]) end
+		e.invulnUntil = 0
+		hitEntity(e, args[2] or 3, ps.x, ps.y, ps)
+		local live = S.entities[e.id]
+		return if live then ("%s hp %d state %s broken %s beatenBy %s"):format(e.id, e.hp, e.state, tostring(e.broken), tostring(e.beatenBy)) else e.id .. " dead"
+	elseif cmd == "people" then
+		local out = {}
+		for i, t in ipairs(S.tribes) do
+			if not args[1] or args[1] == i then
+				for _, p in ipairs(Families.villagers(S.people, i)) do
+					table.insert(out, ("%d %s %s (%s, %s, %s%s%s) %s"):format(p.id, p.first, p.last, p.sex, p.role, p.stage,
+						if p.spouse then ", spouse " .. p.spouse else "", if p.father then ", child of " .. p.father else "", tostring(p.entity)))
+				end
+			end
+		end
+		return out
+	elseif cmd == "family" then
+		local p = S.people.people[args[1]]
+		if not p then return "no person " .. tostring(args[1]) end
+		local rel = {}
+		for _, o in ipairs(Families.relatives(S.people, p)) do table.insert(rel, o.first .. " " .. o.last) end
+		return { name = Families.fullName(p), alive = p.alive, cause = p.cause, killer = p.killer, born = p.born, spouse = p.spouse, father = p.father, mother = p.mother, children = table.concat(p.children, ","), relatives = table.concat(rel, ", ") }
+	elseif cmd == "birth" then
+		-- force: the first couple in the player's village (or village 1) conceives and gives birth now
+		local ti = args[1] or 1
+		local made = 0
+		Families.formCouples(S.people, ti, S.day)
+		for _, p in ipairs(Families.villagers(S.people, ti, true)) do
+			if p.sex == "f" and p.spouse then
+				p.stage, p.role, p.due = "pregnant", "pregnant", S.day
+				local me = p.entity and S.entities[p.entity]
+				if me then morph(me, "pregnant", { role = "pregnant", radius = 2 }) end
+				made += 1
+				break
+			end
+		end
+		if made == 0 then return "no couple in village " .. ti end
+		if args[2] == "now" then tickFamilies() return "born" end
+		return "pregnant, due now: run `birth " .. ti .. " now` or wait for the daily tick"
 	elseif cmd == "camp" and ps then
 		return tostring(S.camps[ps.player.UserId] and (S.camps[ps.player.UserId].x .. "," .. S.camps[ps.player.UserId].y .. (if S.camps[ps.player.UserId].out then " out" else " lit")) or "none")
 	end

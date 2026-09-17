@@ -1027,6 +1027,146 @@
       "src": "scenes/wolf_left_1.json",
       "x": 0,
       "y": 108
+    },
+    {
+      "id": "bg73",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 18,
+      "y": 108
+    },
+    {
+      "id": "s73",
+      "type": "scene",
+      "src": "scenes/villager_preg_down_0.json",
+      "x": 18,
+      "y": 108
+    },
+    {
+      "id": "bg74",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 36,
+      "y": 108
+    },
+    {
+      "id": "s74",
+      "type": "scene",
+      "src": "scenes/villager_preg_down_1.json",
+      "x": 36,
+      "y": 108
+    },
+    {
+      "id": "bg75",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 54,
+      "y": 108
+    },
+    {
+      "id": "s75",
+      "type": "scene",
+      "src": "scenes/villager_preg_up_0.json",
+      "x": 54,
+      "y": 108
+    },
+    {
+      "id": "bg76",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 72,
+      "y": 108
+    },
+    {
+      "id": "s76",
+      "type": "scene",
+      "src": "scenes/villager_preg_up_1.json",
+      "x": 72,
+      "y": 108
+    },
+    {
+      "id": "bg77",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 90,
+      "y": 108
+    },
+    {
+      "id": "s77",
+      "type": "scene",
+      "src": "scenes/villager_preg_left_0.json",
+      "x": 90,
+      "y": 108
+    },
+    {
+      "id": "bg78",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 108,
+      "y": 108
+    },
+    {
+      "id": "s78",
+      "type": "scene",
+      "src": "scenes/villager_preg_left_1.json",
+      "x": 108,
+      "y": 108
+    },
+    {
+      "id": "bg79",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 126,
+      "y": 108
+    },
+    {
+      "id": "s79",
+      "type": "scene",
+      "src": "scenes/baby_down_0.json",
+      "x": 126,
+      "y": 108
+    },
+    {
+      "id": "bg80",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 144,
+      "y": 108
+    },
+    {
+      "id": "s80",
+      "type": "scene",
+      "src": "scenes/baby_down_1.json",
+      "x": 144,
+      "y": 108
+    },
+    {
+      "id": "bg81",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 162,
+      "y": 108
+    },
+    {
+      "id": "s81",
+      "type": "scene",
+      "src": "scenes/villager_preg_right_0.json",
+      "x": 162,
+      "y": 108
+    },
+    {
+      "id": "bg82",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 180,
+      "y": 108
+    },
+    {
+      "id": "s82",
+      "type": "scene",
+      "src": "scenes/villager_preg_right_1.json",
+      "x": 180,
+      "y": 108
     }
   ]
 }

@@ -21,6 +21,8 @@ Stats.Kinds = {
 	survivor = kind("survivor", "villager", 5, 1, 0, 0.8, { flees = true, label = "survivor" }),
 	guard = kind("guard", "guard", 12, 3, 1, 1.0),
 	merchant = kind("merchant", "merchant", 5, 1, 0, 0.8, { flees = true }),
+	pregnant = kind("pregnant", "villager_preg", 5, 1, 0, 0.7, { flees = true, label = "villager" }),
+	baby = kind("baby", "baby", 2, 0, 0, 0, { flees = false, label = "baby" }), -- stays where it is put
 	caravan_master = kind("caravan_master", "merchant", 6, 1, 0, 0.9, { flees = true, label = "caravan master" }),
 	caravan_guard = kind("caravan_guard", "guard", 10, 3, 1, 1.0, { label = "caravan guard" }),
 	hunter = kind("hunter", "hunter", 10, 4, 1, 1.05),

@@ -137,6 +137,17 @@ Two numbers per (tribe, player), plus what individuals remember.
 - **Reputation** is the current feeling, from hostile to family. It moves on events: trade, gifts, killing
   their people, protecting their caravan, paying tribute, freeing captives. It **fades toward neutral**: half
   the distance every in-game month, so a new player who blundered can come back.
+- **Reputation is a record of your conduct, never of your luck** (Danzo, 2026-09-17). The rules, in order:
+  - Who drew first is the story. Hitting someone who attacked you costs nothing; killing someone who attacked
+    you costs half. Hitting someone who never touched you costs a little (-1 a blow); killing them costs the big
+    number (villager -25, guard or hunter -20, bandit -15 with the plunderers and +5 with the settled tribes).
+  - Beating someone and letting them go is worth more than killing them: when a broken fighter gets away from
+    you, +3 with their tribe, once per fight. They come home with a story, and a story is what gossip carries.
+  - Killing someone who is running from you is murder: the full kill penalty, plus a grudge in rung 3.
+  - Being killed costs nothing. Dying never feeds a grudge and never stacks, however many times the same band
+    kills you. Being murdered is their doing, not yours.
+  - If the band chases you and loses you, +2 with the plunderers: they respect what they could not catch.
+    Nothing for escaping guards or wolves.
 - **Grudge** is the scar. It only comes from serious harm, decays very slowly (years), and it **multiplies**
   the damage of any new bad act against the same people: reputation damage = base x (1 + grudge). So you can be
   forgiven, but if you come back and do it again without ever making amends, they remember everything at once.
@@ -169,6 +180,11 @@ Reputation, gossip and the ecosystem are invisible numbers unless the game shows
     and they won't trade at all. Or worse."
 - Role NPCs are **named people**. If one dies, another villager takes the role, preferably a relative (same
   last name). The knowledge bank belongs to the village, not the person, so the role carries on.
+- **Names identify people; roles decide what they can tell you.** A guard knows guard things (danger, the road,
+  who was seen where), a merchant prices and scarcity, a caravan master trade and standing, an elder or priest
+  (later) the tribe's politics, grudges and the long arc: story beats, tutorial beats, player events. Each role
+  reads its own slice of the village bank, and the bank holds only what has happened here or what gossip has
+  carried here. Far villages know less about you, and about the world, than near ones.
 - NPCs that are hostile to you won't talk. That is itself information.
 - A standing screen on a key shows your reputation per tribe as words, not numbers ("wary", "welcome").
 
@@ -204,6 +220,13 @@ Reputation, gossip and the ecosystem are invisible numbers unless the game shows
 - Attack: left mouse button. Strikes the adjacent tile in the facing direction. Weapons change damage and reach.
 - **Combat feel (rung 2)**: attack cooldown, hit flash, one-tile knockback, short invulnerability after being
   hit, enemies telegraph for a beat before they swing. Bows for hunters later.
+- **Fights end in flight, not always in death.** Every fighter has a break point and runs for home or for its
+  group when it is reached, and stops fighting unless chased: bandits at 40% health (guerrillas avoid a fair
+  fight), boar and wolves at 30% (a pack retreats), guards at 25% (they are defending home), hunters at 20%
+  (the best fighters one on one). Villagers and merchants run at the first blow, deer at the first sight of you.
+  A runner that reaches home heals over a day. Surrender in words is a talk-system feature (rung 3); for now
+  running is the surrender. The point: a fight that always ends in death leaves no witnesses, and witnesses are
+  what "everything remembers" is made of.
 - **Later**: dash on double-tap Space; block by holding right mouse with a shield equipped.
 - Interact: F. A prompt ("F: Trade", "F: Talk", "F: Pick up", "F: Rest", "F: Camp") appears when adjacent to
   something interactable. Only one prompt at a time, the nearest.
@@ -270,6 +293,23 @@ Every entity gets a random first name and last name: NPCs, players' NPC relative
 simulation keep the father's last name, so a family you wronged stays recognisable across generations. Names are
 how gossip refers to people and how grudges stay attached to someone.
 
+**Families (from rung 2).** Every person is a record with parents, children, birth day and, when it comes,
+death day and cause (who, or what). That is the family tree, and it is the spine of grudges and gossip later:
+"you killed my father" is a lookup. The human clock runs on the in-game calendar and is much slower than the
+beasts', which breed on the daily ecology tick:
+- Three stages, no in-betweens, one sprite each (Danzo, 2026-09-17): a **pregnant** woman (her own sprite) for
+  one in-game week (70 real minutes), then a **baby** (its own sprite, it stays where it is put, by the parents'
+  hut) for two weeks, then an **adult** villager (the sprite that exists). Villagers carry a sex; there is no
+  separate adult woman sprite yet.
+- A village with room under its visible cap (9 named people) and at least one couple conceives about once an
+  in-game week. The baby takes the father's surname and its own first name. Killing a baby or a pregnant woman is
+  the worst thing you can do to a village (-40).
+- Couples form between two unrelated adults of the same village; widows and widowers may re-pair after a month.
+- Villages lose people to fights, calamities and (later) raids; they refill by births, not by respawning, so a
+  village you emptied stays empty for weeks and its neighbours notice. This is what keeps the population loop
+  from becoming murder, respawn, repeat.
+- Ideas box: villagers are named, but their roles are what the world sees. See §8.
+
 ## 16. Build rungs
 
 Rung 1 is done (grid, movement, one room, rain timer, upload pipeline).
@@ -284,6 +324,9 @@ Rung 1 is done (grid, movement, one room, rain timer, upload pipeline).
 - Wildlife from regional counts: deer and boar visible, wolves at night. Border migration on.
 - Weekly calamity clock with two calamities (flood, beast tide). Day/night tint.
 - No persistence yet (world regenerates each server) but the state is already structured for it.
+- Part 3 (after the first QA loop): fights end in flight (break points per kind, runners go home and heal),
+  conduct-based reputation (who drew first, mercy, escape), families (records with parents and children, births
+  on the weekly clock, children come of age, villages refill by birth only).
 
 **Rung 3: memory and money**
 - Gossip propagation, grudges and amends. Tribute, tax, extortion. Size tiers. Hunger. Save + catch-up.

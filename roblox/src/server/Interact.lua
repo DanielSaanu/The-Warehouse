@@ -61,6 +61,7 @@ function Interact.context(ps, tribeIdx: number): Talk.Context
 		prices = table.concat(parts, ", "),
 		scarce = Items.def(Trade.NEEDS[t.tribeType]).label, makes = Items.def(Trade.MAKES[t.tribeType]).label,
 		survivorName = if survivor then survivor.first .. " " .. survivor.last else S.tribes[1].surnames[1],
+		familyNews = t.news,
 		playerName = ps.player.DisplayName,
 	}
 end
@@ -115,6 +116,8 @@ local function talkTo(ps, e)
 		if e.kind == "bandit" and rep < -10 then dialogue(ps, "bandit", { Talk.groupLine("bandit", ctx) }) return end
 		if not Reputation.willTalk(rep) then dialogue(ps, e.label, { Talk.refusal(ctx) }) return end
 		dialogue(ps, e.label, { Talk.groupLine(e.kind, ctx) })
+	elseif e.kind == "baby" then
+		Sim.text(ps, ("%s. Asleep. Best leave it that way."):format(e.first or "The baby"))
 	elseif e.species then
 		Sim.text(ps, ("The %s watches you."):format(e.kind))
 	else

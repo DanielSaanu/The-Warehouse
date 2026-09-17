@@ -58,6 +58,23 @@ viewport, validated movement). Everything below is server-authoritative; clients
 13. **State is shaped for persistence** (rung 3): tribes, groups, regions, calamity clock and player state are
     plain tables in `server/Sim.lua`, nothing lives only in closures.
 
+## Part 3 additions (after the round 1 review, Danzo's direction)
+
+14. **Fights end in flight.** Bandits break at 40% health, boar and wolves at 30%, guards at 25%, hunters at
+    20%; villagers and merchants run at the first blow. A broken fighter runs for home (its village or its group)
+    and heals an hp an hour; it does not fight again until healed. Debug: `list bandit` shows `flee` and the
+    entity's `broken` state.
+15. **Conduct-based reputation.** A blow on an innocent -1, nothing for hitting someone who attacked you first,
+    a kill is the big number (villager -25, guard/hunter -20, baby or pregnant woman -40, bandit -15/+5), half if
+    they drew first, full if they were running (murder). Mercy: a beaten person who gets away from you is +3 with
+    their tribe, once ("X got away. Word of that will travel."). Escape: the band losing you is +2 with the
+    plunderers. Dying costs nothing.
+16. **Families.** Every villager is a person record (parents, children, sex, spouse, birth and death with cause).
+    Couples form in each village; on the first day of each week a couple may conceive; the mother is `pregnant`
+    (her own sprite) for a week, then a `baby` (its own sprite, stays by the hut) for two weeks, then an adult.
+    A dead guard or merchant is replaced by a relative or another villager. Villagers talk about births and
+    successions. Debug: `people [tribe]`, `family <id>`, `birth 1 now` (forces a birth in village 1).
+
 ## Out of scope (rung 3+; do not penalise absence)
 
 Gossip, grudges and amends; tribute, tax, extortion; size tiers; hunger; save + catch-up; blizzard and drought;
@@ -66,7 +83,8 @@ healing and ruins; touch d-pad; music; title screen.
 
 ## Known limitations the builder is aware of
 
-- One first pass of pixel art; people are one base body recoloured per kind, animals face left/right only.
+- One first pass of pixel art; people are one base body recoloured per kind, animals face left/right only. The
+  pregnant sprite is the farmer-brown villager for every tribe; the baby is a bundle (one sprite, two frames).
 - The abstract simulation is deliberately small: one group per tribe, three species, two calamities.
 - Calamities are weekly (70 real minutes). Use the Debug hook to see one without waiting.
 - No PvP. Other players are visible and named but cannot be hit.

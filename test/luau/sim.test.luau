@@ -59,8 +59,6 @@ do
 	assert(rep.farmer == 0, "killing your own villager")
 	assert(Reputation.priceMult(-60) == nil and Reputation.priceMult(-20) == 1.3 and Reputation.priceMult(60) == 0.8, "price multiplier")
 	assert(not Reputation.allowsRest(-20) and Reputation.allowsRest(0), "wary villages refuse a bed")
-	assert(Reputation.deltas("died_to", "bandit", "plunderer").plunderer == -10, "dying is a flat hit with that tribe")
-	assert(Reputation.deltas("died_to", "bandit", "plunderer").farmer == nil, "and nobody else's business")
 	assert(math.abs(Reputation.fade(40, Config.REP_FADE_DAYS) - 20) < 1e-9, "half the distance per fade period")
 	for _ = 1, 100 do Reputation.apply(rep, Reputation.deltas("kill", "villager", "farmer")) end
 	assert(rep.farmer == Reputation.MIN, "clamped")
@@ -202,3 +200,59 @@ do
 end
 
 print("sim modules ok")
+
+-- Conduct-based reputation: who drew first, mercy, murder of a runner, dying costs nothing.
+do
+	local d = Reputation.deltas("hit", "villager", "farmer")
+	assert(d.farmer == -1, "a blow on an innocent is -1")
+	assert(next(Reputation.deltas("hit", "bandit", "plunderer", { aggressor = true })) == nil, "hitting someone who attacked you costs nothing")
+	assert(Reputation.deltas("kill", "villager", "farmer").farmer == -25, "murder")
+	assert(Reputation.deltas("kill", "guard", "farmer", { aggressor = true }).farmer == -10, "self-defence is half")
+	assert(Reputation.deltas("kill", "guard", "farmer", { aggressor = true, fleeing = true }).farmer == -20, "killing a runner is the full number")
+	assert(Reputation.deltas("kill", "baby", "farmer").farmer == -40, "babies")
+	assert(Reputation.deltas("kill", "bandit", "plunderer", { aggressor = true }).plunderer == -8 and Reputation.deltas("kill", "bandit", "plunderer").farmer == 5, "bandits")
+	assert(Reputation.deltas("mercy", "bandit", "plunderer").plunderer == 3, "mercy")
+	assert(Reputation.deltas("escape", "bandit", "plunderer").plunderer == 2 and next(Reputation.deltas("escape", "guard", "farmer")) == nil, "escape only counts with the band")
+	assert(next(Reputation.deltas("died_to", "bandit", "plunderer")) == nil, "dying costs nothing")
+end
+
+-- Families: couples, weekly conception, gestation, babies growing up, deaths and succession.
+do
+	local Families = __require("Families")
+	local rng = Rng.new(21)
+	local reg = Families.new()
+	local surnames = { "Ashford", "Oakley" }
+	for i = 1, 6 do Families.newAdult(reg, rng, 1, "Testham", "villager", 1, surnames[(i % 2) + 1], if i <= 3 then "m" else "f") end
+	local guard = Families.newAdult(reg, rng, 1, "Testham", "guard", 1, "Ashford", "m")
+	assert(Families.formCouples(reg, 1, 1) >= 2, "couples form between unrelated adults")
+	for _, p in pairs(reg.people) do
+		if p.spouse then
+			local s = reg.people[p.spouse]
+			assert(s.spouse == p.id and s.sex ~= p.sex and s.last ~= p.last, "a couple is one man, one woman, different surnames")
+		end
+	end
+	local pregnant = {}
+	for wk = 1, 8 do
+		for _, m in ipairs(Families.weeklyConceive(reg, rng, 1, wk * 7)) do table.insert(pregnant, m) end
+	end
+	assert(#pregnant >= 1, "somebody falls pregnant over eight weeks")
+	assert(pregnant[1].stage == "pregnant" and pregnant[1].due, "pregnant with a due day")
+	local born, grown = {}, {}
+	for day = 1, 120 do
+		local r = Families.daily(reg, rng, day)
+		for _, b in ipairs(r.born) do table.insert(born, b) end
+		for _, g in ipairs(r.grown) do table.insert(grown, g) end
+	end
+	assert(#born >= 1, "babies are born")
+	local baby = born[1]
+	assert(baby.stage == "adult" or reg.people[baby.id].stage == "adult", "babies grow up within 120 days")
+	assert(baby.father and baby.mother and baby.last == reg.people[baby.father].last, "the baby takes the father's surname")
+	assert(table.find(reg.people[baby.mother].children, baby.id), "the mother's record lists the child")
+	assert(#Families.villagers(reg, 1) <= Families.MAX_PEOPLE, "villages stay under the visible cap")
+	Families.die(reg, guard.id, 50, "killed", "Dan")
+	assert(not guard.alive and guard.killer == "Dan", "a death is recorded with its cause")
+	local heir = Families.successor(reg, guard)
+	assert(heir and heir.role == "villager", "a villager takes the dead guard's place")
+	assert(#Families.relatives(reg, baby) >= 2, "relatives are findable for gossip")
+	print(("families: %d born, %d grown, %d couples"):format(#born, #grown, 2))
+end

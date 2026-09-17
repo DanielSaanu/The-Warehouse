@@ -1,6 +1,9 @@
 --!strict
 -- Reputation: one number per (tribe, player) from -100 (hostile) to 100 (family). Shown to the player as words.
 -- Moves on events, fades toward neutral (half the distance every REP_FADE_DAYS). Grudges and gossip are rung 3.
+--
+-- Reputation is a record of your conduct, never of your luck (DESIGN.md §7): who drew first is the story, mercy
+-- is worth more than a kill, murder of a runner is the worst, and being killed costs nothing.
 local Config = require(script.Parent.Config)
 
 local Reputation = {}
@@ -43,31 +46,40 @@ function Reputation.fade(v: number, days: number): number
 end
 
 export type Deltas = { [string]: number }
+--- Context for a violent event: did they attack you first (self-defence), were they running from you (murder).
+export type Context = { aggressor: boolean?, fleeing: boolean? }
+
+--- The big number for killing a person of a kind. A child or a baby is the worst thing you can do to a village.
+local KILL = { villager = -25, survivor = -25, merchant = -25, caravan_master = -25, pregnant = -40, baby = -40, child = -40, guard = -20, caravan_guard = -20, hunter = -20 } :: { [string]: number }
 
 --- Reputation changes caused by an event, per tribe type. `victimTribe` is the tribe type of the person acted on
---- (nil for wildlife). The bandit rule: every settled tribe likes a bandit killer, the plunderers do not.
-function Reputation.deltas(event: string, victimKind: string?, victimTribe: string?): Deltas
+--- (nil for wildlife). Events: trade, hit, kill, mercy (a beaten person got away from you), escape (a band lost
+--- you), died_to (nothing), rest.
+function Reputation.deltas(event: string, victimKind: string?, victimTribe: string?, ctx: Context?): Deltas
 	local d: Deltas = {}
+	local c: Context = ctx or {}
 	if event == "trade" and victimTribe then
 		d[victimTribe] = 2
 	elseif event == "hit" and victimTribe then
-		if victimKind == "bandit" then d[victimTribe] = -2 else d[victimTribe] = -5 end
+		-- a blow on someone who attacked you costs nothing; on an innocent, a little
+		if not c.aggressor then d[victimTribe] = -1 end
 	elseif event == "kill" and victimTribe then
 		if victimKind == "bandit" then
-			d.plunderer = -15
+			-- every settled tribe likes a bandit killer; the plunderers do not (less so when he drew first)
+			d.plunderer = if c.aggressor and not c.fleeing then -8 else -15
 			d.farmer = 5
 			d.hunter = 5
-		elseif victimKind == "guard" or victimKind == "caravan_guard" then
-			d[victimTribe] = -20
-		elseif victimKind == "hunter" then
-			d[victimTribe] = -20
 		else
-			d[victimTribe] = -25
+			local base = KILL[victimKind or ""] or -25
+			-- murder of a runner is the full number whatever they did first; self-defence is half
+			d[victimTribe] = if c.fleeing then base elseif c.aggressor then math.floor(base / 2) else base
 		end
-	elseif event == "died_to" and victimTribe then
-		-- a flat hit with the tribe that killed you. Never a grudge and never stacking: being murdered again by the
-		-- same people is their doing, not yours (Danzo, 2026-09-17). Rung 3's grudge maths must skip this event.
-		d[victimTribe] = -10
+	elseif event == "mercy" and victimTribe then
+		d[victimTribe] = 3
+	elseif event == "escape" and victimTribe then
+		if victimTribe == "plunderer" then d.plunderer = 2 end
+	elseif event == "died_to" then
+		-- being killed costs nothing: dying never feeds a grudge and never stacks (Danzo, 2026-09-17)
 	elseif event == "rest" and victimTribe then
 		d[victimTribe] = 1
 	end

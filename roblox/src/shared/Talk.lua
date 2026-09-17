@@ -23,6 +23,7 @@ export type Context = {
 	makes: string,          -- the good this village makes
 	survivorName: string?,
 	playerName: string?,
+	familyNews: string?,    -- the village's latest birth or succession, if any
 }
 
 Talk.TOPICS = { "road", "tribes", "prices", "me" }
@@ -71,6 +72,10 @@ function Talk.villagerLine(rng: Rng.Rng, ctx: Context): string
 	end
 	table.insert(pool, ctx.wildlife)
 	table.insert(pool, ctx.banditHint)
+	if ctx.familyNews then
+		table.insert(pool, ctx.familyNews)
+		table.insert(pool, ctx.familyNews)
+	end
 	table.insert(pool, ("We're short of %s. Bring some and the merchant will pay well."):format(ctx.scarce))
 	for _, l in ipairs(GENERIC) do table.insert(pool, l) end
 	for _, l in ipairs(BY_TRIBE[ctx.tribeType] or {}) do table.insert(pool, l) end
