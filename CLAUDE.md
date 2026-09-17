@@ -59,6 +59,7 @@ the UI is hidden state: every action writes a file under `scenes/`, `sprites/`, 
 
 ## QA loop
 
-`/qa-loop docs/qa/<goals>.md` (skill in `.claude/skills/qa-loop/`) runs Danzo's review experiment: three rounds
-of three Opus reviewers, fixes between rounds, reports saved to `docs/qa/`. Each PR gets a goals file in
-`docs/qa/` written by the builder before the loop starts.
+`/qa-loop docs/qa/<goals>.md` (skill in `.claude/skills/qa-loop/`) runs Danzo's review experiment: up to three
+rounds of one Opus reviewer, fixes between rounds, a `docs/qa/<goals>-summary.md` at the end. Each PR gets a goals
+file in `docs/qa/` written by the builder before the loop starts. Do not read `docs/qa/archive/` (the verbatim
+round reports) unless asked: they are stale once summarised and would leak old reviews into a build session.
