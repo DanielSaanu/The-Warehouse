@@ -5,6 +5,7 @@ import { normalizeScene, validateScene, newScene, newLayer, moveLayer } from '..
 import { renderScene } from '../src/render.js';
 import { packSprites, toLua } from '../src/sheet.js';
 import { makeNodeEnv } from '../src/node-env.js';
+import { parseImageIdFromDecalXml } from '../src/roblox.js';
 
 const env = makeNodeEnv();
 const px = (c, x, y) => [...c.getContext('2d').getImageData(x, y, 1, 1).data];
@@ -95,3 +96,10 @@ test('packSprites overflows into a second sheet', () => {
 });
 
 test('normalizeHex expands short hex', () => { assert.equal(normalizeHex('#abc'), '#aabbcc'); assert.equal(normalizeHex('FFF'), '#ffffff'); });
+
+test('parseImageIdFromDecalXml finds the texture id inside a decal', () => {
+  const xml = '<roblox version="4"><Item class="Decal"><Properties><string name="Name">warehouse sheet_0</string><Content name="Texture"><url>http://www.roblox.com/asset/?id=76691026583621</url></Content></Properties></Item></roblox>';
+  assert.equal(parseImageIdFromDecalXml(xml), '76691026583621');
+  assert.equal(parseImageIdFromDecalXml('<url>rbxassetid://42</url>'), '42');
+  assert.equal(parseImageIdFromDecalXml('nothing here'), null);
+});
