@@ -56,33 +56,35 @@ play any more." Found the survivor only when told the key. Liked the tutorial li
 idea of the weekly calamity. The bar to clear next: a new player must know what to do in the first minute without
 being told by a human.
 
+All of this is done on `rung2-part4` except where noted. Goals file: `docs/qa/rung2-part4.md`.
+
 Quick fixes (HUD, hours):
-- [ ] Hearts top-left are very thin (bug: RelativeYY with a 0.16 width scale squashes them). Draw them square.
-- [ ] Trade window text is too small and too grey to read. Bigger, white.
-- [ ] Show the keybinds on screen: F next to the prompt is there, but nothing says "F" until you are adjacent, and
+- [x] Hearts top-left are very thin (bug: RelativeYY with a 0.16 width scale squashes them). Draw them square.
+- [x] Trade window text is too small and too grey to read. Bigger, white. (The cause was `TextWrapped = false`,
+      which quietly turns `TextScaled` off: every column was pinned at 14px whatever the screen size. 13px -> 30px.)
+- [x] Show the keybinds on screen: F next to the prompt is there, but nothing says "F" until you are adjacent, and
       nothing ever says Tab, Space, X. A small always-on key legend, or the hint line staying up longer.
 
 Onboarding (the real problem, a day):
-- [ ] Make the survivor unmissable: a marker or arrow over the only person with a prompt, and a first line on
-      screen like "Someone is calling you" before the hint. He walked past them.
-- [ ] Signs. Wooden sign objects you can F-read, placed by the road and the gate: "Kenstow, east", "Wolves at
-      night", "The stall buys hides". A line at the top on first spawn: "Read the signs."
-- [ ] A visible first job, not a quest log: the survivor's last line should become a persistent one-line goal under
-      the clock ("Go east to Kenstow and find the hunters") until you enter Kenstow, then the next one.
-- [ ] Dying early is the wall: the band ambushes a new player on the north road while they have a knife and no
-      idea. Either move the ambush spot further from the start village for the first day, or have the survivor
-      warn "do not go north yet" and mark the safe road east.
+- [x] Make the survivor unmissable: a bobbing arrow over them until you have talked to them, and the banner's
+      second line reads "Someone is calling you".
+- [x] Signs. Wooden sign objects you can F-read, one at every village gate or road exit and every ford, with text
+      built from the map ("Kenstow, east. Hunters."). First spawn says "Read the signs."
+- [x] A visible first job, not a quest log: one line under the clock, five steps, retired for good at the first
+      calamity. Stored on the player record so rung 3 saves it.
+- [x] Dying early is the wall: for the first two days the band patrols near its own village, the survivor says
+      "do not go <that way> yet" and names the safe road, and bandits never chase anyone inside a village.
 
 Controls and inventory (a day):
-- [ ] Inventory key (E) opening a proper panel, and number keys / Q and E for the hot bar selection.
-- [ ] Eat food to heal (F on a food slot, or a key). Right now food does nothing and there is no heal outside a bed.
-- [ ] Gifts: F on a villager with a good selected should offer it (DESIGN.md §7 already lists gifts as a rep event).
-- [ ] Swimming: rivers walkable but slow (a "wade" speed, maybe 0.4), so the map does not funnel to three fords.
-      Keep deep lake water impassable.
+- [x] Inventory key (E) opening a proper panel, and 1-9 for the hot bar selection (again to put the slot away).
+- [x] Eat food to heal: with food in hand, F on nothing in front of you eats one for +3 hp.
+- [x] Gifts: with a good in hand, F on a villager, guard or merchant gives it. Their stock rises, +2 standing.
+- [x] Swimming: the river is its own ground tile, waded at 0.35 speed. Lakes stay impassable, fords keep 0.6, and
+      a flood puts the whole river under so the crossing closes.
 
 Art:
-- [ ] The food icon reads as a sponge. Make it a turkey leg or a loaf with a crust.
-- [ ] Rivers look like a blue carpet: animate the water tile (two or three frames, like the campfire) and add
-      shore edge tiles.
+- [x] The food icon reads as a sponge. Make it a turkey leg or a loaf with a crust. (Turkey leg.)
+- [x] Rivers look like a blue carpet: water and river now have two frames each and animate like the campfire.
+      Shore edge tiles were left out of part 4 on purpose; they are still worth doing.
 - [ ] He offered to draw sprites. Sprite files are plain text in `sprites/` (one character per pixel); the UI at
       `npm start` edits them live. Any of his get used.

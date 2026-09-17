@@ -5,6 +5,10 @@
 -- only if the epoch is current, the tile is adjacent to where the SERVER has the player, walkable, and the pace
 -- budget allows it. Any rejection snaps the player back and bumps the epoch, so moves that were already in flight
 -- (sent against the old position) are dropped silently instead of being applied from the wrong tile.
+--
+-- Pace: a step is charged the step time of the tile the player is LEAVING. The client's slide onto a tile lasts
+-- that tile's step time and the next step cannot start before it ends, so the real gap between two moves is the
+-- step time of the tile in between. Charging the tile being entered instead only agrees on uniform ground.
 local Config = require(script.Parent.Config)
 local TileTypes = require(script.Parent.TileTypes)
 local WorldGen = require(script.Parent.WorldGen)
@@ -35,10 +39,14 @@ end
 
 --- Pace check. Elapsed time earns credit (capped at MOVE_BURST); a step spends MOVE_SLACK x its step time.
 --- Returns false (and spends nothing) when the step came too soon.
+--- A step that costs more than the whole burst window (wading a river) gets the burst on top of its own price
+--- instead: otherwise the credit could never reach it and the tile would be impossible to enter, and with the cap
+--- set to the price exactly there would be no jitter tolerance left at all. Ordinary tiles are unaffected.
 function Movement.spend(budget: Budget, now: number, stepTime: number): boolean
-	budget.credit = math.min(Config.MOVE_BURST, budget.credit + math.max(0, now - budget.last))
-	budget.last = now
 	local cost = stepTime * Config.MOVE_SLACK
+	local cap = if cost > Config.MOVE_BURST then cost + Config.MOVE_BURST else Config.MOVE_BURST
+	budget.credit = math.min(cap, budget.credit + math.max(0, now - budget.last))
+	budget.last = now
 	if budget.credit < cost then return false end
 	budget.credit -= cost
 	return true

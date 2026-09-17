@@ -1,14 +1,14 @@
-# name: water
+# name: water_0
 # palette: . = transparent, W = #2c4f7c, w = #3b74ad, v = #7fb8e6
 wwwwwwwwwwwwwwww
 wwwvvwwwwwwwwwww
-wwwwwwwwwwvvvwww
+wwwwwwwwwwvvwwww
 wwwwwwwwwwwwwwww
 wWwwwwwwwwwwwwww
 wwwwwwvvwwwwwwww
 wwwwwwwwwwwwwwWw
 wwwwwwwwwwwwwwww
-wwvvvwwwwwwwwwww
+wwvvwwwwwwwwwwww
 wwwwwwwwwwwvvwww
 wwwwwwwwwwwwwwww
 wwwwwwWwwwwwwwww

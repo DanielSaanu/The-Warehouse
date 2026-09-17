@@ -19,6 +19,9 @@ local Config = require(Shared:WaitForChild("Config"))
 
 local ART = 16   -- art pixels per tile
 local MARGIN = 2 -- tiles of pool beyond each edge of the window
+-- Ground that animates: current sprite name -> its base. Frame 0 is what TileTypes names, so a freshly painted
+-- tile is always valid and only joins the animation on the next flip.
+local ANIM_GROUND = { water_0 = "water", water_1 = "water", river_0 = "river", river_1 = "river" } :: { [string]: string }
 
 local Viewport = {}
 Viewport.__index = Viewport
@@ -33,7 +36,8 @@ export type Viewport = typeof(setmetatable({} :: {
 	slots: { Slot }, poolW: number, poolH: number, maxCols: number,
 	cx: number, cy: number,
 	entities: { [any]: Entity },
-	marker: ImageLabel, markerTile: { x: number, y: number }?, fireFrame: number,
+	badges: { [any]: ImageLabel },
+	marker: ImageLabel, markerTile: { x: number, y: number }?, fireFrame: number, waterFrame: number,
 }, Viewport))
 
 function Viewport.new(parent: Instance, cols: number, rows: number, world: WorldGen.World): Viewport
@@ -107,7 +111,8 @@ function Viewport.new(parent: Instance, cols: number, rows: number, world: World
 		slots = slots, poolW = poolW, poolH = poolH, maxCols = maxCols,
 		cx = cols / 2, cy = rows / 2,
 		entities = {},
-		marker = marker, markerTile = nil :: { x: number, y: number }?, fireFrame = 0,
+		badges = {},
+		marker = marker, markerTile = nil :: { x: number, y: number }?, fireFrame = 0, waterFrame = 0,
 	}, Viewport)
 
 	local function fit()
@@ -154,7 +159,11 @@ local function assign(self: Viewport, s: Slot, tx: number, ty: number)
 	local pos = UDim2.fromOffset((tx - 1) * t, (ty - 1) * t)
 	s.ground.Position, s.object.Position = pos, pos
 	local gdef = TileTypes.Ground[WorldGen.ground(self.world, tx, ty)]
-	if s.ground.Name ~= gdef.sprite then Sprites.Apply(s.ground, gdef.sprite) s.ground.Name = gdef.sprite end
+	-- animated ground joins the animation already in progress, so scrolling never rewinds the water a frame
+	local want = gdef.sprite
+	local abase = ANIM_GROUND[want]
+	if abase then want = abase .. "_" .. self.waterFrame end
+	if s.ground.Name ~= want then Sprites.Apply(s.ground, want) s.ground.Name = want end
 	local o = WorldGen.object(self.world, tx, ty)
 	if o == 0 then
 		s.object.Visible = false
@@ -217,6 +226,20 @@ function Viewport.refresh(self: Viewport)
 	else
 		self.marker.Visible = false
 	end
+	-- a marker over someone's head bobs, so it reads as a marker and not as a hat
+	if next(self.badges) ~= nil then
+		local bob = math.sin(now * 4) * 0.09
+		for id, b in pairs(self.badges) do
+			local e = self.entities[id]
+			if e then
+				b.Position = UDim2.fromScale(0, -0.9 + bob)
+				b.Visible = true
+			else
+				b.Visible = false
+			end
+		end
+	end
+
 	-- campfires flicker
 	local frame = math.floor(now * 3) % 2
 	if frame ~= self.fireFrame then
@@ -229,6 +252,41 @@ function Viewport.refresh(self: Viewport)
 			end
 		end
 	end
+	-- and the water moves, at half that pace: a river, not a strobe
+	local wframe = math.floor(now * 1.5) % 2
+	if wframe ~= self.waterFrame then
+		self.waterFrame = wframe
+		for _, s in ipairs(self.slots) do
+			local base = ANIM_GROUND[s.ground.Name]
+			if base then
+				local name = base .. "_" .. wframe
+				if s.ground.Name ~= name then
+					Sprites.Apply(s.ground, name)
+					s.ground.Name = name
+				end
+			end
+		end
+	end
+end
+
+--- Hang a sprite over an entity's head (the survivor's marker). nil takes it down.
+function Viewport.setBadge(self: Viewport, id: any, sprite: string?)
+	local old = self.badges[id]
+	if not sprite then
+		if old then old:Destroy() self.badges[id] = nil end
+		return
+	end
+	local e = self.entities[id]
+	if not e then return end
+	if old then
+		if old.Name ~= sprite then Sprites.Apply(old, sprite) old.Name = sprite end
+		return
+	end
+	local b = Sprites.New(sprite, e.img)
+	b.Size = UDim2.fromScale(1, 1)
+	b.Position = UDim2.fromScale(0, -0.9)
+	b.ZIndex = 200
+	self.badges[id] = b
 end
 
 --- Repaint one tile after the world changed under it (a camp placed, a bag dropped).
@@ -351,6 +409,7 @@ end
 function Viewport.removeEntity(self: Viewport, id: any)
 	local e = self.entities[id]
 	if e then e.img:Destroy() self.entities[id] = nil end
+	self.badges[id] = nil -- the badge was a child of the image, so it went with it
 end
 
 function Viewport.getEntity(self: Viewport, id: any): Entity?

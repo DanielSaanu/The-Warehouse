@@ -53,12 +53,15 @@ export type Context = { aggressor: boolean?, fleeing: boolean? }
 local KILL = { villager = -25, survivor = -25, merchant = -25, caravan_master = -25, pregnant = -40, baby = -40, child = -40, guard = -20, caravan_guard = -20, hunter = -20 } :: { [string]: number }
 
 --- Reputation changes caused by an event, per tribe type. `victimTribe` is the tribe type of the person acted on
---- (nil for wildlife). Events: trade, hit, kill, mercy (a beaten person got away from you), escape (a band lost
---- you), died_to (nothing), rest.
+--- (nil for wildlife). Events: trade, gift, hit, kill, mercy (a beaten person got away from you), escape (a band
+--- lost you), died_to (nothing), rest.
 function Reputation.deltas(event: string, victimKind: string?, victimTribe: string?, ctx: Context?): Deltas
 	local d: Deltas = {}
 	local c: Context = ctx or {}
 	if event == "trade" and victimTribe then
+		d[victimTribe] = 2
+	elseif event == "gift" and victimTribe then
+		-- handing over a good for nothing: worth more than the same good sold (DESIGN.md §7)
 		d[victimTribe] = 2
 	elseif event == "hit" and victimTribe then
 		-- a blow on someone who attacked you costs nothing; on an innocent, a little

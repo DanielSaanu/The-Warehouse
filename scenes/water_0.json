@@ -1,5 +1,5 @@
 {
-  "name": "water",
+  "name": "water_0",
   "width": 16,
   "height": 16,
   "background": "transparent",
@@ -7,9 +7,9 @@
   "layers": [
     {
       "id": "t",
-      "name": "water",
+      "name": "water_0",
       "type": "image",
-      "src": "sprites/water.txt"
+      "src": "sprites/water_0.txt"
     }
   ]
 }

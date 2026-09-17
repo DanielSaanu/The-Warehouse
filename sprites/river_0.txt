@@ -1,0 +1,18 @@
+# name: river_0
+# palette: . = transparent, W = #2c4f7c, w = #3b74ad, s = #5f9fd6, v = #7fb8e6, q = #93a0b8
+sswswsvsswssssvs
+sswswsssswssssws
+sswswsssswssssws
+sswswqssswssssws
+sswwssssswssswss
+sswwssvsswssswvs
+sswwssssswssswss
+sswwssssswsqswss
+sswswsssswssssws
+sswswsssswssssws
+sqwswsvsswssssvs
+sswswsssswssssws
+sswwsssqswssswss
+sswwssssswssswss
+sswwssssswssswss
+sswwssvsswssswvs

@@ -86,6 +86,9 @@ test('packSprites packs into POT sheets with padding and toLua lists them', () =
   assert.deepEqual(sheets[0].sprites.spr0, { x: 1, y: 1, w: 16, h: 16 });
   const lua = toLua(sheets, { assetIds: { 0: '123' } });
   assert.match(lua, /rbxassetid:\/\/123/); assert.match(lua, /\["spr9"\] = \{ Sheet = 1/); assert.match(lua, /ResamplerMode.Pixelated/);
+  // A decal id has to be looked up on the server at run time; an image id is marked Resolved so it never is.
+  assert.doesNotMatch(lua, /Height = \d+, Resolved = true/);
+  assert.match(toLua(sheets, { assetIds: { 0: '123' }, resolvedIds: { 0: true } }), /Id = "rbxassetid:\/\/123", Width = \d+, Height = \d+, Resolved = true/);
 });
 
 test('packSprites overflows into a second sheet', () => {

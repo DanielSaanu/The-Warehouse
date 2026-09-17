@@ -350,11 +350,16 @@ handoff: Studio > File > Publish to Roblox, then Creator Dashboard > Settings > 
 nobody can join. Code changes need a re-publish; running servers keep the old build until they shut down.
 
 Two chores to do before strangers see it:
-- Hard-code the resolved image id (`npx warehouse roblox setid 0 <image id>`) instead of leaning on
-  `Sprites.ResolveOnServer`. The runtime decal lookup works today but runs on every server start and breaks
-  every tile if ownership ever moves (e.g. game to a group, assets on the user).
-- Reword the loading message in `Client.client.lua` — past 5 s it currently tells the player to check whether
-  `rojo serve` is running. A cold server (asset resolve + map transfer on a phone) can hit that honestly.
+- Hard-code the resolved image id instead of leaning on `Sprites.ResolveOnServer`. The runtime decal lookup works
+  today but runs on every server start and breaks every tile if ownership ever moves (e.g. game to a group, assets
+  on the user). **Half done (rung 2 part 4):** `roblox build` now writes `Resolved = true` into `Sprites.lua` for
+  any sheet whose lock entry holds a real image id, and `Sprites.ResolveOnServer` skips those, so the lookup stops
+  happening as soon as the id is a good one. Only the human can finish it, because only they can upload:
+  after `npx warehouse roblox build --upload`, take the decal id it prints, run in the Studio command bar
+  `local d = game:GetObjects("rbxassetid://<decal id>")[1] print(d.Texture)`, then
+  `npx warehouse roblox setid 0 <that number>` and commit `Sprites.lua` + `assets.lock.json`.
+- ~~Reword the loading message in `Client.client.lua`~~ **done (rung 2 part 4)**: past 5 s it now says
+  "Still loading. If this stays, the server is starting up." and never mentions `rojo`.
 
 Money: game passes and developer products via `MarketplaceService` (nothing wired yet), plus engagement-based
 payouts from Premium playtime. Robux to cash goes through DevEx (13+, ID check, Premium, a minimum balance;

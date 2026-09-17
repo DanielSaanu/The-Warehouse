@@ -21,6 +21,7 @@ local Ecology = require(Shared:WaitForChild("Ecology"))
 local Calamity = require(Shared:WaitForChild("Calamity"))
 local DayCycle = require(Shared:WaitForChild("DayCycle"))
 local Families = require(Shared:WaitForChild("Families"))
+local Talk = require(Shared:WaitForChild("Talk"))
 local World = require(script.Parent:WaitForChild("World"))
 
 local Sim = {}
@@ -107,10 +108,40 @@ local function spawnPacket(e)
 end
 
 function Sim.hud(ps)
+	-- what was in hand may have been eaten, sold or dropped since it was picked up
+	if ps.selected and not ps.inv.slots[ps.selected] then ps.selected = nil end
 	notice(ps, "hud", {
 		hp = ps.hp, maxHp = ps.maxHp, inv = Items.snapshot(ps.inv), rep = ps.rep,
 		rest = ps.restText, dead = ps.dead,
+		goal = ps.goal, metSurvivor = ps.metSurvivor, selected = ps.selected,
 	})
+end
+
+-- ---------- the goal line (docs/qa/rung2-part4.md) ----------
+-- One sentence under the clock, set here and changed by what the player does. It is stored on the player record
+-- so rung 3 saves it, and it stops for good at the first calamity: a tutorial, not a quest system.
+local function goalContext(): Talk.Context
+	local hunter, farmer = world.villages[2], world.villages[1]
+	return {
+		hunterVillage = hunter.name,
+		hunterDir = WorldGen.compass(hunter.cx - farmer.cx, hunter.cy - farmer.cy),
+	} :: any
+end
+
+--- Move the goal line to `stage` (see Talk.GOAL_STAGES), but never backwards and never after it is done.
+function Sim.setGoal(ps, stage: number)
+	if ps.goalDone or stage <= ps.goalStage then return end
+	ps.goalStage = stage
+	ps.goal = Talk.goal(stage, goalContext())
+	if not ps.goal then ps.goalDone = true end
+	Sim.hud(ps)
+end
+
+--- Retire the goal line for good (the first calamity: the world has bigger news than the tutorial).
+function Sim.clearGoal(ps)
+	if ps.goalDone then return end
+	ps.goalDone, ps.goal = true, nil
+	Sim.hud(ps)
 end
 
 -- ---------- entities ----------
@@ -337,7 +368,7 @@ local function makeGroup(id: string, kind: string, tribeIdx: number, from: World
 	local route = WorldGen.route(world, from.x, from.y, to.x, to.y, true) or {}
 	table.insert(route, 1, { x = from.x, y = from.y })
 	local g = {
-		id = id, kind = kind, tribe = tribeIdx, route = route, pos = 1, dir = 1,
+		id = id, kind = kind, tribe = tribeIdx, route = route, pos = 1, dir = 1, from = { x = from.x, y = from.y },
 		pauseUntil = os.clock() + rng:int(20, 60), pauses = pauses, speed = 1.5, acc = 0,
 		members = members, entities = {}, leader = nil, trail = {}, materialised = false,
 		target = nil, aggroUntil = 0, lastSeen = nil,
@@ -354,12 +385,17 @@ local function initGroups()
 	makeGroup("squad", "squad", 2, hunter.spawn, forestTarget(),
 		{ { kind = "hunter" }, { kind = "hunter" }, { kind = "hunter" }, { kind = "hunter" } },
 		{ 60, 90 })
-	-- the band lies in wait part way down the road from its village toward the farmers
+	-- The band lies in wait part way down the road from its village toward the farmers. Not on day one: for the
+	-- first GRACE_DAYS it stays up near its own village, so a new player walking out of the burnt village does not
+	-- meet four bandits with a knife and no idea (docs/qa/rung2-part4.md goal 4).
 	local toFarm = WorldGen.route(world, plunderer.spawn.x, plunderer.spawn.y, farmer.spawn.x, farmer.spawn.y, true) or {}
-	local ambush = toFarm[math.max(1, math.floor(#toFarm * 0.55))] or farmer.spawn
-	makeGroup("band", "band", 3, plunderer.spawn, ambush,
+	local function alongRoad(frac: number): WorldGen.Pos
+		return toFarm[math.max(1, math.floor(#toFarm * frac))] or farmer.spawn
+	end
+	makeGroup("band", "band", 3, plunderer.spawn, alongRoad(0.18),
 		{ { kind = "bandit" }, { kind = "bandit" }, { kind = "bandit" }, { kind = "bandit" } },
 		{ 60, 150 })
+	S.groups.band.lateTarget = alongRoad(0.55)
 	S.groups.band.speed = 2
 	S.groups.squad.speed = 2
 end
@@ -418,6 +454,20 @@ local function collapse(g)
 	g.materialised = false
 end
 
+--- The goal line follows the player around: walking into the hunter village is what finishes the road goal, and
+--- from day 6 the only thing being asked is that they are somewhere safe when the week turns.
+local function tickGoals()
+	local day = Sim.clock()
+	for _, ps in pairs(S.players) do
+		if not ps.goalDone and not ps.dead then
+			if ps.goalStage == 2 and WorldGen.villageAt(world, ps.x, ps.y, 1) == world.villages[2] then
+				Sim.setGoal(ps, 3)
+			end
+			if day >= Config.WEEK_DAYS - 1 then Sim.setGoal(ps, 5) end
+		end
+	end
+end
+
 --- Abstract movement for collapsed groups and materialise/collapse decisions. 1 Hz.
 local function tickGroups(now: number)
 	local floodOn = S.calamity.active and S.calamity.kind == "flood"
@@ -428,6 +478,18 @@ local function tickGroups(now: number)
 			if not anyPlayerWithin(p.x, p.y, Config.COLLAPSE_RANGE) then collapse(g) end
 		elseif near and #g.members > 0 then
 			materialise(g)
+		end
+		if g.lateTarget and S.day > Config.GRACE_DAYS and not g.materialised then
+			-- grace is over: the band takes up its real ambush, part way down the road to the farmers
+			local from, to = g.from, g.lateTarget
+			local route = WorldGen.route(world, from.x, from.y, to.x, to.y, true)
+			if route then
+				table.insert(route, 1, { x = from.x, y = from.y })
+				g.route, g.pos, g.dir, g.acc = route, 1, 1, 0
+				g.pauseUntil = now + 5
+				print("[Sim] the band has moved down the road")
+			end
+			g.lateTarget = nil
 		end
 		if not g.materialised and now >= g.pauseUntil and not (floodOn and g.kind == "caravan") then
 			-- whole tiles only: `pos` indexes the route
@@ -811,6 +873,12 @@ local function fleeStep(e)
 	if best then setPath(e, { best }) end
 end
 
+--- Bandits do not follow anyone in under a roof: a new player who runs for a village is safe there (goal 4 of
+--- docs/qa/rung2-part4.md). The footprint plus one tile, so standing in a gateway counts.
+local function inVillage(x: number, y: number): boolean
+	return WorldGen.villageAt(world, x, y, 1) ~= nil
+end
+
 local function litCampNear(x: number, y: number): boolean
 	for _, c in pairs(S.camps) do
 		if not c.out and cheb(x, y, c.x, c.y) <= Config.CAMPFIRE_RADIUS then return true end
@@ -837,6 +905,10 @@ local function chaseStep(e, now: number)
 	end
 	if e.species == "wolf" and litCampNear(ps.x, ps.y) then
 		e.state, e.target = "idle", nil
+		return
+	end
+	if e.kind == "bandit" and inVillage(ps.x, ps.y) then
+		e.state, e.target, e.windupAt = "idle", nil, nil
 		return
 	end
 	if Combat.adjacent(e.x, e.y, ps.x, ps.y) then
@@ -876,7 +948,7 @@ local function pickTarget(e, now: number)
 	local range = 0
 	local function wants(ps): boolean
 		if e.species == "wolf" then return not litCampNear(ps.x, ps.y) end
-		if e.kind == "bandit" then return ps.rep.plunderer < -10 end
+		if e.kind == "bandit" then return ps.rep.plunderer < -10 and not inVillage(ps.x, ps.y) end
 		if e.kind == "guard" or e.kind == "caravan_guard" or e.kind == "hunter" then return Reputation.hostile(ps.rep[Sim.tribeOf(e)]) end
 		return false
 	end
@@ -940,6 +1012,9 @@ end
 
 --- Group members: the leader walks the route; the others follow the leader's trail.
 local function groupStep(e, g, now: number)
+	if g.kind == "band" and g.target and S.players[g.target] and inVillage(S.players[g.target].x, S.players[g.target].y) then
+		g.target, g.aggroUntil = nil, 0
+	end
 	if g.target and now < g.aggroUntil and S.players[g.target] and not S.players[g.target].dead and not e.broken then
 		e.state, e.target, e.aggroUntil = "chase", g.target, g.aggroUntil
 		markAggression(e, g.target)
@@ -1191,6 +1266,7 @@ local function startCalamity(kind: string)
 	end
 	for _, ps in pairs(S.players) do
 		notice(ps, "calamity", { kind = kind, phase = "start", text = Calamity.notice(kind), flood = c.flood })
+		Sim.clearGoal(ps) -- the week turned: the tutorial line has said everything it had to say
 	end
 	print("[Sim] calamity: " .. kind)
 end
@@ -1298,10 +1374,14 @@ function Sim.addPlayer(player: Player, x: number, y: number, snapFn)
 		hp = Stats.get("player").hp, maxHp = Stats.get("player").hp, inv = Items.dayOneKit(), rep = Reputation.newTable(),
 		rest = { kind = "village", village = 1 }, restText = "", dead = false, lastAttack = -math.huge, invulnUntil = 0,
 		known = {}, dialogue = nil, snap = snapFn,
+		-- the first five minutes: which goal line they are on, whether the survivor has been found, and which
+		-- inventory slot is in hand (all on the record, so rung 3 saves them with everything else)
+		goalStage = 0, goal = nil, goalDone = false, metSurvivor = false, selected = nil,
 	}
 	ps.restText = Sim.restText(ps)
 	S.players[uid] = ps
 	Sim.occupied[tidx(ps.x, ps.y)] = uid
+	Sim.setGoal(ps, 1)
 	return ps
 end
 
@@ -1363,7 +1443,7 @@ function Sim.start()
 			task.wait(1)
 			local now = os.clock()
 			local day = Sim.clock()
-			for _, f in ipairs({ tickGroups, tickCamps, tickCalamity }) do
+			for _, f in ipairs({ tickGroups, tickCamps, tickCalamity, tickGoals }) do
 				local ok, err = pcall(f, now)
 				if not ok then warn("[Sim] tick: " .. tostring(err)) end
 			end
@@ -1525,6 +1605,12 @@ function Sim.debug(cmd: string, ...): any
 		if made == 0 then return "no couple in village " .. ti end
 		if args[2] == "now" then tickFamilies() return "born" end
 		return "pregnant, due now: run `birth " .. ti .. " now` or wait for the daily tick"
+	elseif cmd == "goal" and ps then
+		-- `goal` reads the tutorial line, `goal 3` jumps to a stage, `goal 0` retires it
+		if args[1] ~= nil then
+			if args[1] == 0 then Sim.clearGoal(ps) else ps.goalStage = args[1] - 1 Sim.setGoal(ps, args[1]) end
+		end
+		return { stage = ps.goalStage, goal = ps.goal, done = ps.goalDone, metSurvivor = ps.metSurvivor, held = ps.selected }
 	elseif cmd == "camp" and ps then
 		return tostring(S.camps[ps.player.UserId] and (S.camps[ps.player.UserId].x .. "," .. S.camps[ps.player.UserId].y .. (if S.camps[ps.player.UserId].out then " out" else " lit")) or "none")
 	end

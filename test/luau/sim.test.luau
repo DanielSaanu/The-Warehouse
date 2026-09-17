@@ -190,14 +190,34 @@ do
 	local rng = Rng.new(5)
 	for _, tribe in ipairs({ "farmer", "hunter", "plunderer" }) do
 		local ctx = { village = "Testham", tribeType = tribe, tribeName = "the Testham tribe", repWord = "neutral", warning = "A flood is coming.", calamity = nil,
-			wildlife = "Deer about.", banditHint = "Bandits on the north road.", hunterVillage = "Kenstow", farmerVillage = "Glenworth", plundererVillage = "Wild's Rest",
+			wildlife = "Deer about.", banditHint = "Bandits on the north road.", hunterVillage = "Kenstow", hunterDir = "east", farmerVillage = "Glenworth",
+			plundererVillage = "Wild's Rest", plundererDir = "north",
 			prices = "food 2, hides 5", scarce = "tools", makes = "food", survivorName = "Nelia Greybrook", playerName = "Dan" }
 		for _ = 1, 20 do assert(#Talk.villagerLine(rng, ctx) > 5, "villager line") end
 		for _, topic in ipairs(Talk.TOPICS) do assert(#Talk.guard(ctx, topic) > 10, "guard " .. topic) end
 		assert(#Talk.refusal(ctx) > 5 and #Talk.merchant(ctx) > 5 and #Talk.caravanMaster(ctx) == 3, "roles")
 		local s = Talk.survivor(ctx)
-		assert(#s >= 5 and table.concat(s, " "):find("Kenstow") and table.concat(s, " "):find("WASD"), "survivor teaches and points east")
+		local all = table.concat(s, " ")
+		assert(#s >= 5 and all:find("Kenstow") and all:find("WASD"), "survivor teaches and points east")
+		assert(all:find("Do not go north"), "survivor warns you off the raiders' road on day one")
+		assert(all:find("sign"), "survivor tells you to read the signs")
+		assert(#Talk.sign("Kenstow, east. Hunters.") == 1, "a sign is one page")
 	end
+end
+
+-- The goal line: one sentence at a time, in order, and it ends.
+do
+	local ctx = { hunterVillage = "Kenstow", hunterDir = "east" } :: any
+	local seen = {}
+	for stage = 1, #Talk.GOAL_STAGES do
+		local g = Talk.goal(stage, ctx)
+		assert(g and #g > 8, "goal " .. stage)
+		assert(not seen[g], "goals repeat at stage " .. stage)
+		seen[g] = true
+	end
+	assert(Talk.goal(2, ctx):find("east") and Talk.goal(2, ctx):find("Kenstow"), "the road goal names the village and the way")
+	assert(Talk.goal(#Talk.GOAL_STAGES + 1, ctx) == nil, "the chain ends, it is not a quest log")
+	assert(Talk.goal(0, ctx) == nil, "nothing is asked before the first goal")
 end
 
 print("sim modules ok")
@@ -215,6 +235,7 @@ do
 	assert(Reputation.deltas("mercy", "bandit", "plunderer").plunderer == 3, "mercy")
 	assert(Reputation.deltas("escape", "bandit", "plunderer").plunderer == 2 and next(Reputation.deltas("escape", "guard", "farmer")) == nil, "escape only counts with the band")
 	assert(next(Reputation.deltas("died_to", "bandit", "plunderer")) == nil, "dying costs nothing")
+	assert(Reputation.deltas("gift", "villager", "hunter").hunter == 2, "a gift is remembered")
 end
 
 -- Families: couples, weekly conception, gestation, babies growing up, deaths and succession.

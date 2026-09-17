@@ -58,6 +58,8 @@ function Interact.context(ps, tribeIdx: number): Talk.Context
 		wildlife = Ecology.describe(Ecology.at(S.regions, world, v.cx, v.cy)),
 		banditHint = bandHint,
 		hunterVillage = world.villages[2].name, farmerVillage = world.villages[1].name, plundererVillage = world.villages[3].name,
+		hunterDir = WorldGen.compass(world.villages[2].cx - v.cx, world.villages[2].cy - v.cy),
+		plundererDir = WorldGen.compass(world.villages[3].cx - v.cx, world.villages[3].cy - v.cy),
 		prices = table.concat(parts, ", "),
 		scarce = Items.def(Trade.NEEDS[t.tribeType]).label, makes = Items.def(Trade.MAKES[t.tribeType]).label,
 		survivorName = if survivor then survivor.first .. " " .. survivor.last else S.tribes[1].surnames[1],
@@ -101,7 +103,10 @@ local function talkTo(ps, e)
 	local rep = ps.rep[ctx.tribeType]
 	Sim.faceEntity(e, Combat.dirTo(e.x, e.y, ps.x, ps.y))
 	if e.role == "survivor" then
-		ps.metSurvivor = true
+		if not ps.metSurvivor then
+			ps.metSurvivor = true
+			Sim.hud(ps) -- the marker over their head goes out the moment you speak to them
+		end
 		dialogue(ps, e.name, Talk.survivor(ctx), nil, "survivor")
 	elseif e.role == "guard" then
 		if not Reputation.willTalk(rep) then dialogue(ps, e.label, { Talk.refusal(ctx) }) return end
@@ -140,6 +145,51 @@ local function restAt(ps, tribeIdx: number)
 	Sim.hud(ps)
 end
 
+-- Who takes a gift: the people who live somewhere, not a band on the road (DESIGN.md §7 lists gifts as a rep event).
+local GIFTABLE = { villager = true, guard = true, merchant = true, caravan_master = true, survivor = true, pregnant = true }
+
+--- The item in the selected hot bar slot, or nil.
+function Interact.held(ps): string?
+	local slot = ps.selected and ps.inv.slots[ps.selected]
+	return if slot then slot.item else nil
+end
+
+--- Hand the held good over for nothing. The village is better stocked and remembers it.
+local function giveTo(ps, e, good: string): boolean
+	local ti = e.tribe
+	local t = ti and S.tribes[ti]
+	if not t then return false end
+	if not Reputation.willTalk(ps.rep[t.tribeType]) then
+		Sim.text(ps, "They will not take anything from you.", "warn")
+		return true
+	end
+	if not Items.remove(ps.inv, good, 1) then return false end
+	t.stock[good] = (t.stock[good] or 0) + 1
+	Reputation.apply(ps.rep, Reputation.deltas("gift", e.kind, t.tribeType))
+	Sim.faceEntity(e, Combat.dirTo(e.x, e.y, ps.x, ps.y))
+	Sim.text(ps, ("You give %s your %s. A gift. They remember that."):format(e.first or e.label or "them", Items.def(good).label), "rep")
+	Sim.hud(ps)
+	return true
+end
+
+--- Eat one of the held food. The only way to heal outside a bed.
+local FOOD_HEAL = 3
+local function eat(ps): boolean
+	if not Items.remove(ps.inv, "food", 1) then return false end
+	ps.hp = math.min(ps.maxHp, ps.hp + FOOD_HEAL)
+	Sim.text(ps, "You eat.", "good")
+	Sim.hud(ps)
+	return true
+end
+
+--- Which hot bar slot is in hand. nil, or the same slot again, means empty-handed.
+function Interact.select(ps, slot: number?)
+	local n = tonumber(slot)
+	if n and ps.selected == n then n = nil end
+	ps.selected = if n and n >= 1 and n <= Items.SLOTS and ps.inv.slots[n] then n else nil
+	Sim.hud(ps)
+end
+
 --- F pressed.
 function Interact.interact(ps)
 	if ps.dead then return end
@@ -147,9 +197,20 @@ function Interact.interact(ps)
 	local tx, ty = Combat.facingTile(ps.x, ps.y, ps.facing)
 	local id = Sim.occupied[WorldGen.index(world, tx, ty)]
 	local e = id and S.entities[id]
-	if e then talkTo(ps, e) return end
+	if e then
+		local good = Interact.held(ps)
+		if good and table.find(Items.GOODS, good) and GIFTABLE[e.role or ""] and e.tribe then
+			if giveTo(ps, e, good) then return end
+		end
+		talkTo(ps, e)
+		return
+	end
 	local obj = WorldGen.object(world, tx, ty)
-	if obj == O.bed.id then
+	if obj == O.sign.id then
+		local text = world.signs and world.signs[WorldGen.index(world, tx, ty)]
+		dialogue(ps, "a wooden sign", Talk.sign(text or "The weather has taken the words off it."), nil, "sign")
+		return
+	elseif obj == O.bed.id then
 		local ti = tribeAt(tx, ty)
 		if ti then restAt(ps, ti) end
 		return
@@ -184,6 +245,8 @@ function Interact.interact(ps)
 		local b = Sim.bagAt(ps.x, ps.y)
 		if b and (b.owner == ps.player.UserId or b.public) then Sim.takeBag(ps, b) return end
 	end
+	-- food in hand and nothing in front of you: eat it
+	if Interact.held(ps) == "food" and eat(ps) then return end
 	-- a free tile outside any village: camp
 	if WorldGen.walkable(world, tx, ty) and not WorldGen.villageAt(world, tx, ty, 1) then
 		if Items.count(ps.inv, "camper_set") == 0 then
@@ -242,7 +305,10 @@ function Interact.trade(ps, op: string, good: string?, n: number?)
 			t.stock[good] = (t.stock[good] or 0) + 1
 			done += 1
 		end
-		if done > 0 then Reputation.apply(ps.rep, Reputation.deltas("trade", nil, t.tribeType)) end
+		if done > 0 then
+			Reputation.apply(ps.rep, Reputation.deltas("trade", nil, t.tribeType))
+			if ps.goalStage <= 4 then Sim.setGoal(ps, 5) end -- the first thing you ever sold
+		end
 	elseif op == "camper" then
 		local price = Trade.camperPrice(t.tribeType, mult)
 		if not price then Sim.text(ps, "They do not sell camper sets.", "warn")
@@ -259,9 +325,17 @@ function Interact.trade(ps, op: string, good: string?, n: number?)
 	Sim.hud(ps)
 end
 
+--- Closing a conversation is what moves the goal line on: you have heard the whole of what they said.
 function Interact.close(ps)
+	local d = ps.dialogue
 	ps.dialogue = nil
 	ps.trading = nil
+	if not d then return end
+	if d.role == "survivor" and ps.goalStage <= 1 then
+		Sim.setGoal(ps, 2)
+	elseif d.role == "guard" and d.tribe == 2 and ps.goalStage <= 3 then
+		Sim.setGoal(ps, 4)
+	end
 end
 
 return Interact

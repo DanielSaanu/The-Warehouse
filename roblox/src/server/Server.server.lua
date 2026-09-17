@@ -126,7 +126,11 @@ Move.OnServerEvent:Connect(function(player: Player, epoch: any, tx: any, ty: any
 		return
 	end
 	if not Movement.canStep(world, st.x, st.y, tx, ty, Sim.occupied) then snap(st) return end
-	if not Movement.spend(st.budget, os.clock(), Movement.stepTime(world, tx, ty)) then snap(st) return end
+	-- Charged for the tile being LEFT, not the one being entered: the client's slide onto a tile lasts that tile's
+	-- step time, so the gap before this move is the step time of where the player has been standing. On uniform
+	-- ground the two are the same; walking off grass into a river they are not, and charging the wrong one
+	-- rejected the first step into the water every time.
+	if not Movement.spend(st.budget, os.clock(), Movement.stepTime(world, st.x, st.y)) then snap(st) return end
 	local fx, fy = st.x, st.y
 	st.x, st.y, st.facing = tx, ty, facing
 	Sim.playerMoved(st, fx, fy)
@@ -146,6 +150,8 @@ Action.OnServerEvent:Connect(function(player: Player, kind: any, a: any, b: any,
 		if type(a) == "string" then Interact.topic(st, a) end
 	elseif kind == "trade" then
 		if type(a) == "string" then Interact.trade(st, a, if type(b) == "string" then b else nil, if type(c) == "number" then c else 1) end
+	elseif kind == "select" then
+		Interact.select(st, if type(a) == "number" then a else nil)
 	elseif kind == "close" then
 		Interact.close(st)
 	end

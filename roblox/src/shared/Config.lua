@@ -47,6 +47,10 @@ Config.CAMPFIRE_RADIUS = 3     -- wolves keep this far from a lit fire
 -- Calamities: one per week, starting this fraction into the calamity day. The warning shows the day before.
 Config.CALAMITY_START = 0.3
 
+-- Grace: for this many in-game days the bandit band waits near its own village instead of on the road to the
+-- farmers, so a new player's first walk cannot end in an ambush they had no way to see coming.
+Config.GRACE_DAYS = 2
+
 -- Reputation
 Config.REP_FADE_DAYS = 30      -- half the distance to neutral every this many in-game days
 

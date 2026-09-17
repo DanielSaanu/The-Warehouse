@@ -1,5 +1,5 @@
 {
-  "name": "item_food",
+  "name": "marker_arrow",
   "width": 16,
   "height": 16,
   "background": "transparent",
@@ -7,9 +7,9 @@
   "layers": [
     {
       "id": "t",
-      "name": "item_food",
+      "name": "marker_arrow",
       "type": "image",
-      "src": "sprites/item_food.txt"
+      "src": "sprites/marker_arrow.txt"
     }
   ]
 }
