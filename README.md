@@ -23,7 +23,9 @@ npm start                      # UI at http://localhost:4242
 npx warehouse help             # every CLI command
 ```
 
-Roblox side (Rojo, API key, upload): see **[docs/ROBLOX_SETUP.md](docs/ROBLOX_SETUP.md)**.
+**Just want to press Play?** Download [`exports/roblox/TheWarehouse.rbxmx`](exports/roblox/TheWarehouse.rbxmx),
+right-click **Workspace** in Studio's Explorer > **Insert from File**, press Play. No Rojo, no API key: the model carries the
+code and the sprite pixels. Full pipeline (Rojo live sync, API key, uploads): **[docs/ROBLOX_SETUP.md](docs/ROBLOX_SETUP.md)**.
 
 ## What is in the box
 
@@ -42,6 +44,9 @@ Roblox side (Rojo, API key, upload): see **[docs/ROBLOX_SETUP.md](docs/ROBLOX_SE
 - **Sprite sheets + Lua** (`src/sheet.js`): packs every scene into 1024-max sheets and generates
   `Sprites.lua` with `ImageRectOffset/Size` for each sprite, plus `Sprites.New` / `Sprites.Apply` helpers.
 - **Roblox upload** (`src/roblox.js`): Open Cloud Assets API, with a lock file so unchanged sheets are never re-uploaded.
+- **No-upload dev path** (`SheetData.lua` + `src/rbxmx.js`): the sheet's pixels are embedded in a Lua module and
+  rebuilt at runtime with EditableImage; every build also emits a `.rbxmx` model (insert into any place) and a
+  `.rbxlx` place, generated straight from the Rojo project without needing Rojo.
 - **Rojo project** (`roblox/`): `Grid.lua` (a screen-filling tile grid that keeps pixels crisp), a first
   playable client (walled room, WASD/tap movement, rain overlay) and a server world clock.
 
@@ -56,7 +61,7 @@ npx warehouse new slug_walk_0 16 16         # empty scene
 npx warehouse render slug_idle --scale 8    # -> exports/slug_idle@8x.png
 npx warehouse ascii slug_idle               # print the sprite as pixel-text
 npx warehouse totxt library/x.png -o sprites/x.txt   # turn a small PNG into an editable pixel-text sprite
-npx warehouse roblox build [--upload]       # sheet + Sprites.lua (+ upload with .env configured)
+npx warehouse roblox build [--upload]       # sheet + Sprites.lua + SheetData.lua + TheWarehouse.rbxmx (+ upload with .env)
 ```
 
 ## Layout

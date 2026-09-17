@@ -1,0 +1,538 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+  <Meta name="ExplicitAutoJoints">true</Meta>
+  <Item class="Folder" referent="RBX00000010">
+    <Properties>
+      <string name="Name">TheWarehouse</string>
+    </Properties>
+    <Item class="Script" referent="RBX00000001">
+      <Properties>
+        <string name="Name">Installer</string>
+        <ProtectedString name="Source"><![CDATA[-- Installer: lives at the root of TheWarehouse.rbxmx. When you press Play it moves each service folder's
+-- contents into the real service (ReplicatedStorage, ServerScriptService, StarterPlayer...), enables the
+-- server scripts, hands client scripts to players who already joined, then deletes itself.
+-- Nothing here runs in edit mode, so inserting the model does not touch your place until Play.
+local Players = game:GetService("Players")
+
+local root = script.Parent
+if not root or root == game or root:IsA("DataModel") then return end
+
+local function enableScripts(inst: Instance)
+	for _, d in ipairs(inst:GetDescendants()) do
+		if d:IsA("Script") then d.Disabled = false end
+	end
+	if inst:IsA("Script") then inst.Disabled = false end
+end
+
+-- Merge `folder`'s children into `container`. Same-named Folders merge recursively; anything else replaces.
+local function installInto(container: Instance, folder: Instance)
+	for _, child in ipairs(folder:GetChildren()) do
+		local existing = container:FindFirstChild(child.Name)
+		if existing and child:IsA("Folder") and existing:IsA("Folder") then
+			installInto(existing, child)
+		elseif existing and child:IsA("Folder") and not existing:IsA("Folder") then
+			-- e.g. our Folder "StarterPlayerScripts" merging into the real StarterPlayerScripts
+			installInto(existing, child)
+		else
+			if existing then existing:Destroy() end
+			child.Parent = container
+			enableScripts(child)
+		end
+	end
+end
+
+for _, serviceFolder in ipairs(root:GetChildren()) do
+	if serviceFolder:IsA("Folder") then
+		local ok, service = pcall(function() return game:GetService(serviceFolder.Name) end)
+		if ok and service then
+			installInto(service, serviceFolder)
+		else
+			warn("[Warehouse installer] unknown service " .. serviceFolder.Name)
+		end
+	end
+end
+
+-- Players who joined before the install happened never received the LocalScripts; give them a copy.
+local starterScripts = game:GetService("StarterPlayer"):FindFirstChild("StarterPlayerScripts")
+if starterScripts then
+	for _, player in ipairs(Players:GetPlayers()) do
+		local ps = player:FindFirstChild("PlayerScripts")
+		if ps then
+			for _, s in ipairs(starterScripts:GetChildren()) do
+				-- Folders too: Rojo puts the LocalScripts inside a "Client" folder, and LocalScripts run anywhere under PlayerScripts.
+				if not ps:FindFirstChild(s.Name) then s:Clone().Parent = ps end
+			end
+		end
+	end
+end
+
+print("[Warehouse] installed. Edit files in the repo, rebuild, re-insert TheWarehouse.rbxmx to update.")
+root:Destroy()
+]]></ProtectedString>
+        <bool name="Disabled">false</bool>
+      </Properties>
+    </Item>
+    <Item class="Folder" referent="RBX00000008">
+      <Properties>
+        <string name="Name">ReplicatedStorage</string>
+      </Properties>
+      <Item class="Folder" referent="RBX00000006">
+        <Properties>
+          <string name="Name">Shared</string>
+        </Properties>
+        <Item class="ModuleScript" referent="RBX00000002">
+          <Properties>
+            <string name="Name">Config</string>
+            <ProtectedString name="Source"><![CDATA[-- Game tuning. Safe to edit by hand.
+local Config = {}
+
+Config.COLS = 16          -- play area width in tiles
+Config.ROWS = 12          -- play area height in tiles
+Config.TILE_PX = 16       -- source sprite size (informational; the UI scales tiles to fit the screen)
+
+Config.CYCLE_SECONDS = 90 -- dry time before rain
+Config.RAIN_SECONDS = 20  -- how long the rain lasts
+Config.MOVE_TWEEN = 0.08  -- seconds per tile step
+
+return Config
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="RBX00000003">
+          <Properties>
+            <string name="Name">Grid</string>
+            <ProtectedString name="Source"><![CDATA[--!strict
+-- Grid: the whole "2D engine". A square-ish play area that scales to any screen, split into COLS x ROWS
+-- cells. Every cell is an ImageLabel pointed at a sprite from the generated Sprites module.
+local TweenService = game:GetService("TweenService")
+local Sprites = require(script.Parent.Sprites)
+
+local Grid = {}
+Grid.__index = Grid
+
+export type Grid = typeof(setmetatable({} :: {
+	cols: number,
+	rows: number,
+	root: Frame,
+	layers: { [string]: Frame },
+	cells: { [string]: ImageLabel },
+	rain: { ImageLabel },
+}, Grid))
+
+local LAYER_ORDER = { "Floor", "Objects", "Actors", "Overlay", "HUD" }
+
+function Grid.new(parent: Instance, cols: number, rows: number): Grid
+	local self = setmetatable({}, Grid)
+	self.cols = cols
+	self.rows = rows
+	self.cells = {}
+	self.rain = {}
+
+	local root = Instance.new("Frame")
+	root.Name = "PlayArea"
+	root.BackgroundColor3 = Color3.fromRGB(16, 16, 24)
+	root.BorderSizePixel = 0
+	root.AnchorPoint = Vector2.new(0.5, 0.5)
+	root.Position = UDim2.fromScale(0.5, 0.5)
+	root.Size = UDim2.fromScale(1, 1)
+
+	-- Keep the tile aspect ratio on every screen: the area shrinks to fit, never stretches.
+	local aspect = Instance.new("UIAspectRatioConstraint")
+	aspect.AspectRatio = cols / rows
+	aspect.AspectType = Enum.AspectType.FitWithinMaxSize
+	aspect.DominantAxis = Enum.DominantAxis.Width
+	aspect.Parent = root
+	root.Parent = parent
+	self.root = root
+
+	self.layers = {}
+	for i, name in ipairs(LAYER_ORDER) do
+		local f = Instance.new("Frame")
+		f.Name = name
+		f.BackgroundTransparency = 1
+		f.Size = UDim2.fromScale(1, 1)
+		f.ZIndex = i
+		f.Parent = root
+		self.layers[name] = f
+	end
+	return self
+end
+
+function Grid.cellSize(self: Grid): UDim2
+	return UDim2.fromScale(1 / self.cols, 1 / self.rows)
+end
+
+function Grid.cellPos(self: Grid, x: number, y: number): UDim2
+	return UDim2.fromScale((x - 1) / self.cols, (y - 1) / self.rows)
+end
+
+function Grid.inBounds(self: Grid, x: number, y: number): boolean
+	return x >= 1 and y >= 1 and x <= self.cols and y <= self.rows
+end
+
+--- Set the floor sprite of a cell.
+function Grid.setTile(self: Grid, x: number, y: number, spriteName: string): ImageLabel
+	local key = x .. "," .. y
+	local img = self.cells[key]
+	if not img then
+		img = Sprites.New(spriteName, self.layers.Floor)
+		img.Size = self:cellSize()
+		img.Position = self:cellPos(x, y)
+		self.cells[key] = img
+	else
+		Sprites.Apply(img, spriteName)
+	end
+	return img
+end
+
+--- Spawn a movable sprite (creature, item) on a layer. Returns the ImageLabel; keep it to move it later.
+function Grid.spawn(self: Grid, spriteName: string, x: number, y: number, layer: string?): ImageLabel
+	local img = Sprites.New(spriteName, self.layers[layer or "Actors"])
+	img.Size = self:cellSize()
+	img.Position = self:cellPos(x, y)
+	return img
+end
+
+--- Slide a sprite to a cell.
+function Grid.moveTo(self: Grid, img: ImageLabel, x: number, y: number, seconds: number?)
+	local goal = { Position = self:cellPos(x, y) }
+	if seconds and seconds > 0 then
+		TweenService:Create(img, TweenInfo.new(seconds, Enum.EasingStyle.Linear), goal):Play()
+	else
+		img.Position = goal.Position
+	end
+end
+
+--- Face left (-1) or right (1) by mirroring the sprite rect.
+function Grid.face(self: Grid, img: ImageLabel, dir: number)
+	local s = Sprites.Sprites[img.Name]
+	if not s then return end
+	if dir < 0 then
+		img.ImageRectOffset = Vector2.new(s.X + s.W, s.Y)
+		img.ImageRectSize = Vector2.new(-s.W, s.H)
+	else
+		img.ImageRectOffset = Vector2.new(s.X, s.Y)
+		img.ImageRectSize = Vector2.new(s.W, s.H)
+	end
+end
+
+--- Cover the whole area with a rain overlay sprite (or clear it).
+function Grid.setRain(self: Grid, on: boolean, spriteName: string?)
+	if on and #self.rain == 0 then
+		for y = 1, self.rows do
+			for x = 1, self.cols do
+				local img = self:spawn(spriteName or "rain_tile", x, y, "Overlay")
+				img.ImageTransparency = 0.25
+				table.insert(self.rain, img)
+			end
+		end
+	elseif not on then
+		for _, img in ipairs(self.rain) do img:Destroy() end
+		table.clear(self.rain)
+	end
+end
+
+return Grid
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="RBX00000004">
+          <Properties>
+            <string name="Name">SheetData</string>
+            <ProtectedString name="Source"><![CDATA[-- GENERATED by The Warehouse. Embedded sprite sheet pixels (palette + run-length). Do not edit.
+-- Used only while a sheet has no Roblox asset id. See docs/ROBLOX_SETUP.md.
+return {
+	[1] = {
+		Width = 64, Height = 64,
+		Palette = {{0,0,0,0},{45,61,51,255},{79,124,255,204},{52,72,58,255},{63,107,69,255},{27,27,47,255},{201,162,107,255},{255,222,89,255},{244,244,248,255},{143,107,61,255},{92,92,122,255},{111,111,142,255},{217,108,90,255},{138,138,168,255},{123,211,90,255},{60,143,60,255},{122,46,46,255},{242,138,201,255},{74,74,104,255},{36,85,43,255}},
+		Runs = table.concat({
+			"AA/AAAABPAAEACAAApABAADAABFADAABDAEAABBAAEACAAAGACAAAJAFDAATABEAEAABJAAMACAAAIAFAAGDAFAAASABKADAABDAABACAAASAFAAGFAFAAAR",
+			"ABAADAABNAABACAAAGACAAAKAFAAGAAHAAFAAGAAHAAFBAARABGAEAABFAEAABAAAJACAAABACAAAHAFAAGFAFAAARABPAAMACAAAIAFAAGAAIBAGAAFAAAS",
+			"ABBADAABGADAABEAADACAAASAFDAATABPAADACAAAEACAAAKAFAAJFAFAAARABCAEAABDADAABGAAJACAAAJAFAAJBAFAAJBAFAAJBAFAAAQABMAEAABBAAB",
+			"ACAAAJACAAAGAFAAJAAFBAJBAFBAJAAFAAAQABAADAABNAABACAAAJACAAAGAFAAJHAFAAAQABFAEAABDADAABDAAJACAAAKAFAAJFAFAAARABPAAEACAAAD",
+			"ACAAALAFAAJAAFBAJAAFAAASABBADAABFAEAABFAAEACAAAPAFBAJAAFBAJAAFBAARABPAAVAFCAABAFCAA/AAzAFPAATAFDAAXAFAAKGAFAALGAASAFAAMD",
+			"AFAAALAFEAAFAFAAKAANAAKEAFAALBANAALDAARAFAAMFAFAAAIAFBAOEAFBAADAFAAKGAFAALGAARAFBAHAAMAAFAAHAAMAAFAAAHAFAAOBAPEAOBAFAAAC",
+			"AFPAARAFAAMFAFAAAGAFAAOAAPIAOAAFAAABALDAFAAKGAFAAKCAASAFAAMAAIBAMAAFAAAGAFAAOAAPBAIAAFAAPCAIAAFAAPBAOAAFAAAAALBANAALAAFA",
+			"AKBANAAKDAFAAKCAATAFDAAHAFAAOAAPBAFBAPCAFBAPBAOAAFAAAAALDAFAAKGAFAAKAANAAKAAARAFAAQFAFAAAFAFAAOAAPKAOAAFAAAAAFPAAQAFAAQB",
+			"AFAAQBAFAAQBAFAAAEAFAAOAAPCAREAPCAOAAFAAAAAFAASGAFAAKGAAQAFAAQAAFBAQBAFBAQAAFAAAFAFAAOAAPIAOAAFAAABAFAASAANAASEAFAAKBANA",
+			"AKDAAQAFAAQHAFAAAGAFAATAAPGATAAFAAACAFAASGAFAAKGAARAFAAQFAFAAAGAFAATJAFAAACAFPAASAFAAQAAFBAQAAFAAAGAFAATLAFAAABAKDAFAASG",
+			"AFAALCAARAFBAQAAFBAQAAFBAAGAFLAACAKBANAAKAAFAASBANAASDAFAALBANAAARAFCAABAFCAAVAKDAFAASGAFAALCAA/AA/AA/AA/AA/AA/AA/AA/AA/",
+			"AA/AA/AA/AA/AA/AA/AA/AA/AA/AA/AA/AA/AA/AA/AA/AA/AA/AA/AA/AA/AA/AAM",
+		}),
+	},
+}
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="RBX00000005">
+          <Properties>
+            <string name="Name">Sprites</string>
+            <ProtectedString name="Source"><![CDATA[-- GENERATED by The Warehouse (warehouse roblox build). Do not edit by hand; edit scenes/ and rebuild.
+local AssetService = game:GetService("AssetService")
+
+local Sprites = {}
+
+Sprites.Sheets = {
+	[1] = { Id = "rbxassetid://0", Width = 64, Height = 64 },
+}
+
+Sprites.Sprites = {
+	["floor_moss"] = { Sheet = 1, X = 1, Y = 1, W = 16, H = 16 },
+	["rain_tile"] = { Sheet = 1, X = 18, Y = 1, W = 16, H = 16 },
+	["scav_idle"] = { Sheet = 1, X = 35, Y = 1, W = 16, H = 16 },
+	["scav_red"] = { Sheet = 1, X = 1, Y = 18, W = 16, H = 16 },
+	["slug_idle"] = { Sheet = 1, X = 18, Y = 18, W = 16, H = 16 },
+	["wall_stone"] = { Sheet = 1, X = 35, Y = 18, W = 16, H = 16 },
+}
+
+-- Embedded pixels (SheetData.lua next to this module) let the game run before anything is uploaded.
+local sheetDataModule = script.Parent and script.Parent:FindFirstChild("SheetData")
+local SheetData = if sheetDataModule then require(sheetDataModule) else nil
+local editables = {}
+
+local ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+local LOOKUP = {}
+for i = 1, 64 do LOOKUP[string.byte(ALPHA, i)] = i - 1 end
+
+--- Decode one embedded sheet into an RGBA8 buffer (pure Luau, no Roblox APIs).
+function Sprites.DecodePixels(data)
+	local w, h = data.Width, data.Height
+	local buf = buffer.create(w * h * 4)
+	local pal, runs = data.Palette, data.Runs
+	local pos = 0
+	for i = 1, #runs, 3 do
+		local a, b, c = string.byte(runs, i, i + 2)
+		local color = pal[LOOKUP[a] * 64 + LOOKUP[b] + 1]
+		local r, g, bl, al = color[1], color[2], color[3], color[4]
+		for _ = 1, LOOKUP[c] + 1 do
+			buffer.writeu8(buf, pos, r)
+			buffer.writeu8(buf, pos + 1, g)
+			buffer.writeu8(buf, pos + 2, bl)
+			buffer.writeu8(buf, pos + 3, al)
+			pos += 4
+		end
+	end
+	return buf, w, h
+end
+
+local function editableFor(sheetIndex)
+	if editables[sheetIndex] ~= nil then return editables[sheetIndex] or nil end
+	local data = SheetData and SheetData[sheetIndex]
+	if not data then editables[sheetIndex] = false return nil end
+	local ok, result = pcall(function()
+		local buf, w, h = Sprites.DecodePixels(data)
+		local img = AssetService:CreateEditableImage({ Size = Vector2.new(w, h) })
+		img:WritePixelsBuffer(Vector2.zero, Vector2.new(w, h), buf)
+		return img
+	end)
+	if not ok then warn("[Sprites] could not build embedded sheet " .. sheetIndex .. ": " .. tostring(result)) editables[sheetIndex] = false return nil end
+	editables[sheetIndex] = result
+	return result
+end
+
+function Sprites.HasEmbedded(sheetIndex: number?): boolean
+	return SheetData ~= nil and SheetData[sheetIndex or 1] ~= nil
+end
+
+--- Point an ImageLabel/ImageButton at a named sprite. Keeps pixels crisp.
+function Sprites.Apply(image: ImageLabel | ImageButton, spriteName: string)
+	local s = Sprites.Sprites[spriteName]
+	if not s then warn("[Sprites] unknown sprite " .. tostring(spriteName)) return end
+	local sheet = Sprites.Sheets[s.Sheet]
+	if sheet.Id ~= "rbxassetid://0" then
+		image.Image = sheet.Id
+	else
+		local editable = editableFor(s.Sheet)
+		if editable then
+			image.ImageContent = Content.fromObject(editable)
+		else
+			warn("[Sprites] sheet " .. s.Sheet .. " has no asset id and no embedded pixels. Run: warehouse roblox build")
+		end
+	end
+	image.ImageRectOffset = Vector2.new(s.X, s.Y)
+	image.ImageRectSize = Vector2.new(s.W, s.H)
+	image.ResampleMode = Enum.ResamplerMode.Pixelated
+	image.ScaleType = Enum.ScaleType.Stretch
+end
+
+--- Create a new ImageLabel showing a sprite.
+function Sprites.New(spriteName: string, parent: Instance?): ImageLabel
+	local img = Instance.new("ImageLabel")
+	img.BackgroundTransparency = 1
+	img.BorderSizePixel = 0
+	img.Name = spriteName
+	Sprites.Apply(img, spriteName)
+	if parent then img.Parent = parent end
+	return img
+end
+
+function Sprites.Has(spriteName: string): boolean return Sprites.Sprites[spriteName] ~= nil end
+
+return Sprites
+]]></ProtectedString>
+          </Properties>
+        </Item>
+      </Item>
+      <Item class="RemoteEvent" referent="RBX00000007">
+        <Properties>
+          <string name="Name">RainState</string>
+        </Properties>
+      </Item>
+    </Item>
+    <Item class="Folder" referent="RBX0000000b">
+      <Properties>
+        <string name="Name">ServerScriptService</string>
+      </Properties>
+      <Item class="Folder" referent="RBX0000000a">
+        <Properties>
+          <string name="Name">Server</string>
+        </Properties>
+        <Item class="Script" referent="RBX00000009">
+          <Properties>
+            <string name="Name">Server</string>
+            <ProtectedString name="Source"><![CDATA[--!strict
+-- Server: owns the world clock. Clients only draw what the server tells them.
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+local RainState = ReplicatedStorage:WaitForChild("RainState") :: RemoteEvent
+
+local raining = false
+local timeLeft = Config.CYCLE_SECONDS
+
+Players.PlayerAdded:Connect(function(p)
+	RainState:FireClient(p, raining, timeLeft)
+end)
+
+while true do
+	task.wait(1)
+	timeLeft -= 1
+	if timeLeft <= 0 then
+		raining = not raining
+		timeLeft = if raining then Config.RAIN_SECONDS else Config.CYCLE_SECONDS
+	end
+	RainState:FireAllClients(raining, timeLeft)
+end
+]]></ProtectedString>
+            <bool name="Disabled">true</bool>
+          </Properties>
+        </Item>
+      </Item>
+    </Item>
+    <Item class="Folder" referent="RBX0000000f">
+      <Properties>
+        <string name="Name">StarterPlayer</string>
+      </Properties>
+      <Item class="Folder" referent="RBX0000000e">
+        <Properties>
+          <string name="Name">StarterPlayerScripts</string>
+        </Properties>
+        <Item class="Folder" referent="RBX0000000d">
+          <Properties>
+            <string name="Name">Client</string>
+          </Properties>
+          <Item class="LocalScript" referent="RBX0000000c">
+            <Properties>
+              <string name="Name">Client</string>
+              <ProtectedString name="Source"><![CDATA[--!strict
+-- First playable: a walled room, a player you can move with WASD / arrows / tap, and a rain cycle from the server.
+-- Everything visual comes from Sprites.lua, which The Warehouse generates. Add a scene there, rebuild, use it here.
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Grid = require(Shared:WaitForChild("Grid"))
+local Config = require(Shared:WaitForChild("Config"))
+local Sprites = require(Shared:WaitForChild("Sprites"))
+local RainState = ReplicatedStorage:WaitForChild("RainState") :: RemoteEvent
+
+local player = Players.LocalPlayer
+local gui = Instance.new("ScreenGui")
+gui.Name = "Game"
+gui.IgnoreGuiInset = true
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+if Sprites.Sheets[1].Id == "rbxassetid://0" and not Sprites.HasEmbedded(1) then
+	warn("[Warehouse] Sprites.lua has no asset id and no embedded pixels. Run: warehouse roblox build (see docs/ROBLOX_SETUP.md)")
+end
+
+local grid = Grid.new(gui, Config.COLS, Config.ROWS)
+
+-- World: walls around the edge, moss inside. Later this comes from the server / generator.
+local solid: { [string]: boolean } = {}
+for y = 1, Config.ROWS do
+	for x = 1, Config.COLS do
+		local wall = x == 1 or y == 1 or x == Config.COLS or y == Config.ROWS
+		grid:setTile(x, y, if wall then "wall_stone" else "floor_moss")
+		if wall then solid[x .. "," .. y] = true end
+	end
+end
+
+-- A couple of scavengers standing around, so the room is not empty.
+grid:spawn("scav_idle", 10, 4)
+grid:spawn("scav_red", 12, 8)
+
+-- Player
+local px, py = 3, 3
+local me = grid:spawn("slug_idle", px, py)
+
+local function tryMove(dx: number, dy: number)
+	local nx, ny = px + dx, py + dy
+	if not grid:inBounds(nx, ny) or solid[nx .. "," .. ny] then return end
+	px, py = nx, ny
+	grid:moveTo(me, px, py, Config.MOVE_TWEEN)
+	if dx ~= 0 then grid:face(me, dx) end
+end
+
+local KEYS = {
+	[Enum.KeyCode.W] = { 0, -1 }, [Enum.KeyCode.Up] = { 0, -1 },
+	[Enum.KeyCode.S] = { 0, 1 }, [Enum.KeyCode.Down] = { 0, 1 },
+	[Enum.KeyCode.A] = { -1, 0 }, [Enum.KeyCode.Left] = { -1, 0 },
+	[Enum.KeyCode.D] = { 1, 0 }, [Enum.KeyCode.Right] = { 1, 0 },
+}
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if input.UserInputType == Enum.UserInputType.Keyboard then
+		local d = KEYS[input.KeyCode]
+		if d then tryMove(d[1], d[2]) end
+	elseif input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		-- Tap: move one step toward the tapped cell (dominant axis).
+		local root = grid.root
+		local rel = (input.Position - Vector3.new(root.AbsolutePosition.X, root.AbsolutePosition.Y, 0))
+		local cx = math.floor(rel.X / root.AbsoluteSize.X * Config.COLS) + 1
+		local cy = math.floor(rel.Y / root.AbsoluteSize.Y * Config.ROWS) + 1
+		local dx, dy = cx - px, cy - py
+		if math.abs(dx) >= math.abs(dy) then tryMove(math.sign(dx), 0) else tryMove(0, math.sign(dy)) end
+	end
+end)
+
+-- HUD (Roblox text is fine for now; a baked pixel-font logo can replace it later via a "text" scene).
+local hud = Instance.new("TextLabel")
+hud.Name = "Cycle"
+hud.BackgroundTransparency = 0.4
+hud.BackgroundColor3 = Color3.fromRGB(27, 27, 47)
+hud.TextColor3 = Color3.fromRGB(244, 244, 248)
+hud.Font = Enum.Font.Code
+hud.TextScaled = true
+hud.Size = UDim2.fromScale(0.35, 0.06)
+hud.Position = UDim2.fromScale(0.01, 0.01)
+hud.ZIndex = 10
+hud.Parent = grid.layers.HUD
+
+RainState.OnClientEvent:Connect(function(raining: boolean, secondsLeft: number)
+	grid:setRain(raining)
+	hud.Text = if raining then ("RAIN  %ds"):format(secondsLeft) else ("rain in %ds"):format(secondsLeft)
+end)
+]]></ProtectedString>
+              <bool name="Disabled">false</bool>
+            </Properties>
+          </Item>
+        </Item>
+      </Item>
+    </Item>
+  </Item>
+</roblox>

@@ -21,7 +21,10 @@ the UI is hidden state: every action writes a file under `scenes/`, `sprites/`, 
 - **Borrow** with `search`/`fetch` (Kenney CC0 packs, OpenGameArt, game-icons, LoSpec palettes). The license
   lands in `library/index.json`; keep CC-BY attributions when shipping.
 - **Ship** with `node bin/warehouse.js roblox build` (add `--upload` only if the human has set up `.env`).
-  This regenerates `roblox/src/shared/Sprites.lua`. Never hand-edit that file.
+  This regenerates `roblox/src/shared/Sprites.lua`, `SheetData.lua` (embedded pixels so Play works with no
+  upload), and `exports/roblox/TheWarehouse.rbxmx` + `.rbxlx` (committed on purpose: the human downloads the
+  model file and inserts it into Studio). Never hand-edit the generated files. Always rebuild and commit after
+  changing sprites, scenes, or anything under `roblox/src/`.
 - **Game code** lives in `roblox/src/`, synced to Studio by Rojo. `Grid.lua` is the tile renderer,
   `Client.client.lua` the first playable, `Server.server.lua` the world clock.
 
@@ -33,5 +36,7 @@ the UI is hidden state: every action writes a file under `scenes/`, `sprites/`, 
 - Renderer is `src/render.js` and runs unchanged in the browser and node. If you change it, run `npm test`
   and re-check the UI with `npm start`.
 - The UI polls the scene file on disk every 2.5 s. When you edit a scene JSON, the human sees it live.
-- Commit `sprites/`, `scenes/`, `ideas/`, `library/index.json` and small library images. Do not commit
-  `cache/`, `.env`, or `exports/*.png`.
+- Commit `sprites/`, `scenes/`, `ideas/`, `library/index.json`, small library images, and `exports/roblox/`
+  (built model files). Do not commit `cache/`, `.env`, or other `exports/*.png`.
+- Luau can be syntax-checked without Studio: download the `luau` release zip from GitHub, run
+  `luau-analyze --formatter=plain <file>` and ignore unknown-global warnings for Roblox APIs.
