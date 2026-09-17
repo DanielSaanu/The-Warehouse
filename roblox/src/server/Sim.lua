@@ -1417,6 +1417,13 @@ function Sim.debug(cmd: string, ...): any
 	elseif cmd == "night" then
 		S.dayStart = os.clock() - Config.DAY_SECONDS * (1 - Config.NIGHT_FRACTION + 0.01)
 		return "dusk"
+	elseif cmd == "jump" then
+		-- set the calendar: `jump 6` = morning of day 6 (the warning), `jump 7 0.29` = a moment before the calamity
+		local day, frac = args[1] or 7, args[2] or 0.1
+		S.day = day
+		S.dayStart = os.clock() - Config.DAY_SECONDS * frac
+		S.lastDailyTick = day -- one jump does not run six days of births and breeding
+		return ("day %d, %.0f%% through it"):format(day, frac * 100)
 	elseif cmd == "day" then
 		S.dayStart = os.clock() - Config.DAY_SECONDS * (args[1] or 0.1)
 		return "morning"

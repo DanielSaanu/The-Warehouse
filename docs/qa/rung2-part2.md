@@ -46,7 +46,9 @@ viewport, validated movement). Everything below is server-authoritative; clients
    attribute `DebugResult` (JSON for tables). Commands: `state`, `player`, `list [kind|role]`, `entity <id>`,
    `calamity flood|beast_tide`, `teleport x y`, `give <item|coin> n`, `rep <tribeIndex> <value>`, `night`, `day`,
    `hurt n`, `kill`, `spawn <kind> [x y]`, `summon caravan|squad|band` (brings the group to the player),
-   `group <id>`, `camp`, `freeze 1|0` (NPCs stop thinking, for deterministic tests), `verbose 1|0` (log hits).
+   `group <id>`, `camp`, `freeze 1|0` (NPCs stop thinking, for deterministic tests), `verbose 1|0` (log hits),
+   `jump <day> [frac]` (set the calendar: `jump 6` for the warning day, `jump 7 0.29` for a moment before the
+   calamity hits).
    `ServerStorage.Debug` is the same thing as a BindableFunction for scripts that are allowed to invoke it.
 10. **Villages look different**: hunter huts are hide tents with a totem, plunderer huts are dark and spiked with a
     skull post, farmers keep the thatched huts and the palisade.
