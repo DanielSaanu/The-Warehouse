@@ -223,8 +223,9 @@ Reputation, gossip and the ecosystem are invisible numbers unless the game shows
   The plundered starting village is your first rest point automatically.
 - Death: respawn where you last rested, village bed or camp. If a camp was destroyed, or a village has since turned hostile
   (you did something, or gossip caught up), you wake at the nearest village that still allows you, and the game tells you why.
-  Inventory dropped where you fell in a bag only you can see for 10 minutes, then anyone. Dying costs no
-  reputation: being murdered is not your fault.
+  Inventory dropped where you fell in a bag only you can see for 10 minutes, then anyone. A flat reputation hit
+  with the tribe you died fighting, and only that: dying never adds a grudge and never stacks, however many times
+  the same band kills you. Being murdered is their doing, not yours.
 - Hunger comes in rung 3 if it makes the food economy matter; not in v1.
 
 ## 12. The first five minutes

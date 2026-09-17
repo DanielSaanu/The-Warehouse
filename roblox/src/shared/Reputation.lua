@@ -64,8 +64,10 @@ function Reputation.deltas(event: string, victimKind: string?, victimTribe: stri
 		else
 			d[victimTribe] = -25
 		end
-	elseif event == "died_to" then
-		-- being murdered is not your fault: no standing change (Danzo, 2026-09-17)
+	elseif event == "died_to" and victimTribe then
+		-- a flat hit with the tribe that killed you. Never a grudge and never stacking: being murdered again by the
+		-- same people is their doing, not yours (Danzo, 2026-09-17). Rung 3's grudge maths must skip this event.
+		d[victimTribe] = -10
 	elseif event == "rest" and victimTribe then
 		d[victimTribe] = 1
 	end

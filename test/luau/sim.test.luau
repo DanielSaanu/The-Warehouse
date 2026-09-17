@@ -59,7 +59,8 @@ do
 	assert(rep.farmer == 0, "killing your own villager")
 	assert(Reputation.priceMult(-60) == nil and Reputation.priceMult(-20) == 1.3 and Reputation.priceMult(60) == 0.8, "price multiplier")
 	assert(not Reputation.allowsRest(-20) and Reputation.allowsRest(0), "wary villages refuse a bed")
-	assert(next(Reputation.deltas("died_to", "bandit", "plunderer")) == nil, "being murdered costs no standing")
+	assert(Reputation.deltas("died_to", "bandit", "plunderer").plunderer == -10, "dying is a flat hit with that tribe")
+	assert(Reputation.deltas("died_to", "bandit", "plunderer").farmer == nil, "and nobody else's business")
 	assert(math.abs(Reputation.fade(40, Config.REP_FADE_DAYS) - 20) < 1e-9, "half the distance per fade period")
 	for _ = 1, 100 do Reputation.apply(rep, Reputation.deltas("kill", "villager", "farmer")) end
 	assert(rep.farmer == Reputation.MIN, "clamped")

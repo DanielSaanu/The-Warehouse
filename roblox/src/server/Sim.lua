@@ -617,6 +617,8 @@ local function killPlayer(ps, killer)
 	print(("[Sim] %s died to %s"):format(ps.player.Name, if killer then killer.kind .. " " .. tostring(killer.id) else "nothing"))
 	ps.dead = true
 	ps.hp = 0
+	local tribe = killer and Sim.tribeOf(killer)
+	if tribe then applyRep(ps, Reputation.deltas("died_to", killer.kind, tribe)) end
 	dropBag(ps)
 	local by = if killer then (killer.label or killer.kind) else "something"
 	notice(ps, "died", { by = by, seconds = Config.RESPAWN_SECONDS, at = Sim.restText(ps) })
