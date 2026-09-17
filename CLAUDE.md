@@ -56,3 +56,10 @@ the UI is hidden state: every action writes a file under `scenes/`, `sprites/`, 
 - **Generated files**: any sprite or scene change means `node bin/warehouse.js roblox build`, then the human runs
   `--upload` and commits `roblox/src/shared/Sprites.lua` + `roblox/assets.lock.json`. On the PC, if those two are
   locally modified, `git checkout -- roblox/src/shared/Sprites.lua roblox/assets.lock.json` before `git pull`.
+
+## QA loop
+
+`/qa-loop docs/qa/<goals>.md` (skill in `.claude/skills/qa-loop/`) runs Danzo's review experiment: up to three
+rounds of one Opus reviewer, fixes between rounds, a `docs/qa/<goals>-summary.md` at the end. Each PR gets a goals
+file in `docs/qa/` written by the builder before the loop starts. Do not read `docs/qa/archive/` (the verbatim
+round reports) unless asked: they are stale once summarised and would leak old reviews into a build session.

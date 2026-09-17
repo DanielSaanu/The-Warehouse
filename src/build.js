@@ -64,7 +64,7 @@ export async function buildRoblox({ upload = false, log = console.log } = {}) {
         // Uploaded earlier but the image id could not be looked up then; try again.
         const { imageId, resolved } = await resolveImageId(prev.decalId);
         if (resolved) { prev.assetId = imageId; delete prev.unresolved; log(`  resolved image id ${imageId} for decal ${prev.decalId}`); }
-        else log(`  still using decal id ${prev.decalId}; if tiles are blank see "Decal id vs image id" in docs/ROBLOX_SETUP.md`);
+        else log(`  decal ${prev.decalId} (the server resolves the image id at runtime; see docs/ROBLOX_SETUP.md if tiles stay blank)`);
       }
       assetIds[i] = prev.assetId; log(`  unchanged, asset ${prev.assetId}`); continue;
     }
@@ -75,7 +75,7 @@ export async function buildRoblox({ upload = false, log = console.log } = {}) {
       assetIds[i] = imageId;
       lock[`sheet_${i}`] = { hash, decalId, assetId: imageId, uploadedAt: new Date().toISOString(), ...(resolved ? {} : { unresolved: true }) };
       if (resolved) log(`  uploaded decal ${decalId}, using image id ${imageId}`);
-      else log(`  uploaded decal ${decalId}. Could not look up its image id automatically; using the decal id. If tiles are blank, see "Decal id vs image id" in docs/ROBLOX_SETUP.md`);
+      else log(`  uploaded decal ${decalId}. Roblox will not reveal its image id from outside (auth required); the game server resolves it at runtime. If tiles stay blank in Studio, command bar: local d = game:GetObjects("rbxassetid://${decalId}")[1] print(d.Texture)  then: warehouse roblox setid ${i} <that number>`);
     } else if (prev?.assetId) {
       assetIds[i] = prev.assetId;
       log(`  CHANGED since last upload (still using old asset ${prev.assetId}); run with --upload`);

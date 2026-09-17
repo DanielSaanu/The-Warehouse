@@ -11,10 +11,11 @@ local TileTypes = require(script.Parent.TileTypes)
 local WorldGen = {}
 
 export type Pos = { x: number, y: number }
+export type Gate = { x: number, y: number, exit: Pos }
 export type Village = {
 	name: string, tribeType: string, tribeName: string,
 	cx: number, cy: number, x0: number, y0: number, x1: number, y1: number,
-	spawn: Pos, bed: Pos, stall: Pos,
+	spawn: Pos, bed: Pos, stall: Pos, gates: { Gate },
 }
 export type World = {
 	seed: number, width: number, height: number,
@@ -79,20 +80,23 @@ end
 
 -- ---------- village templates ----------
 -- '.' clear grass, 'p' path, '@' spawn (path), 'W' wall, 'G' gate, 'H' hut, 'B' burnt hut, 'S' stall, 'b' bed,
--- 'F' farm, 'T' tall grass, 'R' rock
+-- 'F' farm, 'T' tall grass, 'R' rock. A gate on the template's edge is where a road leaves (see WorldGen.generate).
 local TEMPLATES = {
+	-- The plundered start: a palisade all round, a gate on the north and east sides (each gets a road), and a
+	-- breach in the south-west corner where the raiders broke in.
 	farmer = {
 		"WWWWWWGWWWWWW",
-		"......p......",
-		".B....p..H...",
-		"......p......",
-		"..S...p....b.",
-		"pppppp@pppppp",
-		"......p......",
-		".H....p..B...",
-		"......p......",
-		".FF...p..FF..",
-		".FF......FF..",
+		"W.....p.....W",
+		"W.B...p..H..W",
+		"W.....p.....W",
+		"W.S...p...b.W",
+		"W.....@pppppG",
+		"W.....p.....W",
+		"W.B...p..B..W",
+		"W.....p.....W",
+		"W.FF..p..FF.W",
+		"W.FF.....FF.W",
+		"WW..WWWWWWWWW",
 	},
 	hunter = {
 		"..T...H...T..",
@@ -132,7 +136,7 @@ local function countWater(world: World, x0: number, y0: number, x1: number, y1: 
 	return n
 end
 
-local function placeVillage(world: World, rng: Rng.Rng, tribeType: string, wantX: number, wantY: number): Village
+local function placeVillage(world: World, rng: Rng.Rng, tribeType: string, wantX: number, wantY: number, taken: { string }): Village
 	local rows = TEMPLATES[tribeType]
 	local tw, th = #rows[1], #rows
 	local hx, hy = math.floor(tw / 2), math.floor(th / 2)
@@ -156,10 +160,11 @@ local function placeVillage(world: World, rng: Rng.Rng, tribeType: string, wantX
 		end
 	end
 	local v: Village = {
-		name = Names.place(rng, tribeType), tribeType = tribeType, tribeName = "",
+		name = Names.place(rng, tribeType, taken), tribeType = tribeType, tribeName = "",
 		cx = cx, cy = cy, x0 = x0, y0 = y0, x1 = x0 + tw - 1, y1 = y0 + th - 1,
-		spawn = { x = cx, y = cy }, bed = { x = cx, y = cy }, stall = { x = cx, y = cy },
+		spawn = { x = cx, y = cy }, bed = { x = cx, y = cy }, stall = { x = cx, y = cy }, gates = {},
 	}
+	table.insert(taken, v.name)
 	v.tribeName = Names.tribe(v.name, tribeType)
 	for r, row in ipairs(rows) do
 		for c = 1, #row do
@@ -172,7 +177,12 @@ local function placeVillage(world: World, rng: Rng.Rng, tribeType: string, wantX
 			end
 			if ch == "@" then v.spawn = { x = x, y = y }
 			elseif ch == "b" then v.bed = { x = x, y = y }
-			elseif ch == "S" then v.stall = { x = x, y = y } end
+			elseif ch == "S" then v.stall = { x = x, y = y }
+			elseif ch == "G" then
+				local ex, ey = x, y
+				if r == 1 then ey -= 1 elseif r == th then ey += 1 elseif c == 1 then ex -= 1 elseif c == tw then ex += 1 end
+				table.insert(v.gates, { x = x, y = y, exit = { x = ex, y = ey } })
+			end
 		end
 	end
 	return v
@@ -182,7 +192,7 @@ end
 local function stepCost(world: World, x: number, y: number): number
 	local g, o = WorldGen.ground(world, x, y), WorldGen.object(world, x, y)
 	if o == O.hut.id or o == O.hut_burnt.id or o == O.wall.id or o == O.stall.id or o == O.bed.id or o == O.cave.id then return math.huge end
-	if g == G.path.id or g == G.ford.id or o == O.gate.id then return 0.5 end
+	if g == G.path.id or g == G.ford.id or o == O.gate.id then return 0.85 end -- roads reuse roads a little, not always
 	if g == G.water.id then return 9 end
 	if o == O.rock.id then return 12 end
 	if o == O.tree.id then return 3 end
@@ -221,7 +231,9 @@ local function heapPop(heap: { { number } }): { number }?
 	return top
 end
 
-local function findPath(world: World, sx: number, sy: number, tx: number, ty: number): { number }?
+--- A* over road costs. Tiles inside any of `avoid`'s footprints are off limits (roads go around walled villages and
+--- enter only through their gates).
+local function findPath(world: World, sx: number, sy: number, tx: number, ty: number, avoid: { Village }?): { number }?
 	local w = world.width
 	local start, goal = idx(w, sx, sy), idx(w, tx, ty)
 	local gScore: { [number]: number } = { [start] = 0 }
@@ -245,6 +257,11 @@ local function findPath(world: World, sx: number, sy: number, tx: number, ty: nu
 				local nx, ny = cx + d[1], cy + d[2]
 				if WorldGen.inBounds(world, nx, ny) then
 					local cost = stepCost(world, nx, ny)
+					if avoid and not (nx == tx and ny == ty) then
+						for _, v in ipairs(avoid) do
+							if nx >= v.x0 and nx <= v.x1 and ny >= v.y0 and ny <= v.y1 then cost = math.huge break end
+						end
+					end
 					if cost < math.huge then
 						local ni = idx(w, nx, ny)
 						local ng = gScore[ci] + cost
@@ -269,6 +286,29 @@ local function carveRoad(world: World, path: { number })
 	end
 end
 
+--- Every tile reachable on foot from (sx, sy), as a set of tile indices.
+local function flood(world: World, sx: number, sy: number): { [number]: boolean }
+	local w = world.width
+	local seen: { [number]: boolean } = {}
+	if not WorldGen.walkable(world, sx, sy) then return seen end
+	seen[idx(w, sx, sy)] = true
+	local queue = { idx(w, sx, sy) }
+	local head = 1
+	while head <= #queue do
+		local ci = queue[head]
+		head += 1
+		local cx, cy = (ci - 1) % w + 1, math.floor((ci - 1) / w) + 1
+		for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+			local nx, ny = cx + d[1], cy + d[2]
+			if WorldGen.walkable(world, nx, ny) then
+				local ni = idx(w, nx, ny)
+				if not seen[ni] then seen[ni] = true; table.insert(queue, ni) end
+			end
+		end
+	end
+	return seen
+end
+
 -- ---------- generation ----------
 function WorldGen.generate(seed: number, width: number?, height: number?): World
 	local w, h = width or WorldGen.DEFAULT_WIDTH, height or WorldGen.DEFAULT_HEIGHT
@@ -288,7 +328,8 @@ function WorldGen.generate(seed: number, width: number?, height: number?): World
 		end
 	end
 
-	-- River: top to bottom, two tiles wide, wandering.
+	-- River: top to bottom, two tiles wide, wandering. riverX[y] is its left column on row y.
+	local riverX: { number } = {}
 	do
 		local rrng = rng:fork(7)
 		local x = rrng:int(math.floor(w * 0.4), math.floor(w * 0.6))
@@ -296,6 +337,7 @@ function WorldGen.generate(seed: number, width: number?, height: number?): World
 		for y = 1, h do
 			if rrng:chance(0.35) then drift = rrng:int(-1, 1) end
 			x = math.max(4, math.min(w - 4, x + drift))
+			riverX[y] = x
 			setG(world, x, y, G.water.id)
 			setG(world, x + 1, y, G.water.id)
 			if rrng:chance(0.2) then setG(world, x - 1, y, G.water.id) end
@@ -324,15 +366,119 @@ function WorldGen.generate(seed: number, width: number?, height: number?): World
 	-- Map edge: rock ring so the world has a visible border.
 	for x = 1, w do setO(world, x, 1, O.rock.id); setO(world, x, h, O.rock.id) end
 	for y = 1, h do setO(world, 1, y, O.rock.id); setO(world, w, y, O.rock.id) end
-	-- Cave mouths: rock tiles flanked by rock with open ground directly south. Collect every candidate,
-	-- then pick up to 3 that are far apart, so every seed gets caves.
+	-- Villages: farmers south-west (the plundered start), hunters east, plunderers north (the bandits came from the north).
+	local vrng = rng:fork(9)
+	local taken: { string } = {}
+	local farmer = placeVillage(world, vrng, "farmer", math.floor(w * 0.28) + vrng:int(-5, 5), math.floor(h * 0.72) + vrng:int(-4, 4), taken)
+	local hunter = placeVillage(world, vrng, "hunter", math.floor(w * 0.76) + vrng:int(-5, 5), math.floor(h * 0.60) + vrng:int(-4, 4), taken)
+	local plunderer = placeVillage(world, vrng, "plunderer", math.floor(w * 0.52) + vrng:int(-6, 6), math.floor(h * 0.18) + vrng:int(-3, 3), taken)
+	world.villages = { farmer, hunter, plunderer }
+	world.spawn = { x = farmer.spawn.x, y = farmer.spawn.y }
+
+	-- Fords: three natural crossings far apart along the river, carved before the roads so the roads spread across
+	-- them instead of all sharing one. A crossing is a row where the river is at most 3 tiles wide with dry banks.
+	do
+		local frng = rng:fork(10)
+		local fordRows: { number } = {}
+		for y = 1, h do
+			for x = 1, w do
+				if world.ground[idx(w, x, y)] == G.ford.id then table.insert(fordRows, y) break end
+			end
+		end
+		local rows: { number } = {}
+		for y = 8, h - 7 do table.insert(rows, y) end
+		for i = #rows, 2, -1 do
+			local j = frng:int(1, i)
+			rows[i], rows[j] = rows[j], rows[i]
+		end
+		local added = 0
+		for _, y in ipairs(rows) do
+			if added >= 3 then break end
+			local farEnough = true
+			for _, fy in ipairs(fordRows) do
+				if math.abs(fy - y) < 20 then farEnough = false break end
+			end
+			local rx = riverX[y]
+			if farEnough and rx and WorldGen.ground(world, rx, y) == G.water.id then
+				local x0, x1 = rx, rx
+				while WorldGen.ground(world, x0 - 1, y) == G.water.id and rx - x0 < 4 do x0 -= 1 end
+				while WorldGen.ground(world, x1 + 1, y) == G.water.id and x1 - rx < 4 do x1 += 1 end
+				local wx, ex = x0 - 1, x1 + 1
+				if x1 - x0 + 1 <= 3 and wx > 1 and ex < w
+					and WorldGen.ground(world, wx, y) ~= G.water.id and WorldGen.ground(world, ex, y) ~= G.water.id then
+					for x = x0, x1 do setG(world, x, y, G.ford.id) end
+					-- Clear trees and rocks off the banks so the crossing can be reached.
+					for _, bx in ipairs({ wx - 1, wx, ex, ex + 1 }) do
+						local o = WorldGen.object(world, bx, y)
+						if bx > 1 and bx < w and (o == O.tree.id or o == O.rock.id) then setO(world, bx, y, 0) end
+					end
+					table.insert(fordRows, y)
+					added += 1
+				end
+			end
+		end
+	end
+	-- Roads. A road leaves (or enters) a walled village through the gate on the side facing the other village and
+	-- never cuts back through the village it leaves. A gate no road chose still gets a road out to the network, so no
+	-- gate opens onto nothing.
+	local function facingGate(from: Village, tx: number, ty: number): Gate?
+		local best: Gate? = nil
+		local bestScore = -math.huge
+		local dx, dy = tx - from.spawn.x, ty - from.spawn.y
+		local len = math.max(1, math.sqrt(dx * dx + dy * dy))
+		for _, g in ipairs(from.gates) do
+			local gx, gy = g.exit.x - from.spawn.x, g.exit.y - from.spawn.y
+			local score = (gx * dx + gy * dy) / (len * math.max(1, math.sqrt(gx * gx + gy * gy)))
+			if score > bestScore then best, bestScore = g, score end
+		end
+		return best
+	end
+	local walled: { Village } = {}
+	for _, v in ipairs(world.villages) do if #v.gates > 0 then table.insert(walled, v) end end
+	local usedGates: { [Gate]: boolean } = {}
+	local function endpoint(v: Village, toward: Village): Pos
+		local g = facingGate(v, toward.spawn.x, toward.spawn.y)
+		if not g then return v.spawn end
+		usedGates[g] = true
+		return g.exit
+	end
+	for _, pair in ipairs({ { farmer, hunter }, { farmer, plunderer }, { hunter, plunderer } }) do
+		local a, b = pair[1], pair[2]
+		local s0, t0 = endpoint(a, b), endpoint(b, a)
+		local path = findPath(world, s0.x, s0.y, t0.x, t0.y, walled)
+		if path then carveRoad(world, path) end
+	end
+	for _, v in ipairs(world.villages) do
+		for _, g in ipairs(v.gates) do
+			if not usedGates[g] then
+				-- Join the nearest road tile outside every village.
+				local bx, by, bestD = 0, 0, math.huge
+				for y = 2, h - 1 do
+					for x = 2, w - 1 do
+						local d = math.abs(x - g.exit.x) + math.abs(y - g.exit.y)
+						if d > 0 and d < bestD and world.ground[idx(w, x, y)] == G.path.id and not WorldGen.villageAt(world, x, y, 0) then
+							bx, by, bestD = x, y, d
+						end
+					end
+				end
+				local path = if bestD < math.huge then findPath(world, g.exit.x, g.exit.y, bx, by, walled) else nil
+				if path then carveRoad(world, path) end
+			end
+			setG(world, g.exit.x, g.exit.y, G.path.id)
+		end
+	end
+
+	-- Cave mouths: rock tiles flanked by rock with open ground directly south that the player can walk to from the
+	-- spawn. Placed after the roads (which clear rocks). Collect every candidate, then pick up to 3 far apart.
 	do
 		local crng = rng:fork(8)
+		local open = flood(world, world.spawn.x, world.spawn.y)
 		local candidates: { Pos } = {}
 		for y = 3, h - 3 do
 			for x = 3, w - 2 do
 				if WorldGen.object(world, x, y) == O.rock.id and WorldGen.object(world, x, y + 1) == 0 and WorldGen.ground(world, x, y + 1) ~= G.water.id
-					and WorldGen.object(world, x - 1, y) == O.rock.id and WorldGen.object(world, x + 1, y) == O.rock.id then
+					and WorldGen.object(world, x - 1, y) == O.rock.id and WorldGen.object(world, x + 1, y) == O.rock.id
+					and open[idx(w, x, y + 1)] then
 					table.insert(candidates, { x = x, y = y })
 				end
 			end
@@ -356,20 +502,6 @@ function WorldGen.generate(seed: number, width: number?, height: number?): World
 		end
 	end
 
-	-- Villages: farmers south-west (the plundered start), hunters east, plunderers north (the bandits came from the north).
-	local vrng = rng:fork(9)
-	local farmer = placeVillage(world, vrng, "farmer", math.floor(w * 0.28) + vrng:int(-5, 5), math.floor(h * 0.72) + vrng:int(-4, 4))
-	local hunter = placeVillage(world, vrng, "hunter", math.floor(w * 0.76) + vrng:int(-5, 5), math.floor(h * 0.60) + vrng:int(-4, 4))
-	local plunderer = placeVillage(world, vrng, "plunderer", math.floor(w * 0.52) + vrng:int(-6, 6), math.floor(h * 0.18) + vrng:int(-3, 3))
-	world.villages = { farmer, hunter, plunderer }
-	world.spawn = { x = farmer.spawn.x, y = farmer.spawn.y }
-
-	-- Roads.
-	for _, pair in ipairs({ { farmer, hunter }, { farmer, plunderer }, { hunter, plunderer } }) do
-		local a, b = pair[1], pair[2]
-		local path = findPath(world, a.spawn.x, a.spawn.y, b.spawn.x, b.spawn.y)
-		if path then carveRoad(world, path) end
-	end
 	return world
 end
 
