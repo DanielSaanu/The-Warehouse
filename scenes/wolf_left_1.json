@@ -1,0 +1,16 @@
+{
+  "name": "wolf_left_1",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "layers": [
+    {
+      "id": "t",
+      "name": "wolf_left_1",
+      "type": "image",
+      "src": "sprites/wolf_right_1.txt",
+      "flipX": true
+    }
+  ]
+}

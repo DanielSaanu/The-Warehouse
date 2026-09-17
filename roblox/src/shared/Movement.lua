@@ -19,9 +19,12 @@ function Movement.stepTime(world: WorldGen.World, x: number, y: number): number
 	return Config.MOVE_STEP / (if speed > 0 then speed else 1)
 end
 
---- Can something standing on (x, y) step onto (tx, ty)?
-function Movement.canStep(world: WorldGen.World, x: number, y: number, tx: number, ty: number): boolean
-	return math.abs(tx - x) + math.abs(ty - y) == 1 and WorldGen.walkable(world, tx, ty)
+--- Can something standing on (x, y) step onto (tx, ty)? `occupied` is a set of tile indices with a creature on them
+--- (people and animals block each other; the client builds it from the entities it can see).
+function Movement.canStep(world: WorldGen.World, x: number, y: number, tx: number, ty: number, occupied: { [number]: any }?): boolean
+	if math.abs(tx - x) + math.abs(ty - y) ~= 1 or not WorldGen.walkable(world, tx, ty) then return false end
+	if occupied and occupied[WorldGen.index(world, tx, ty)] then return false end
+	return true
 end
 
 export type Budget = { credit: number, last: number }

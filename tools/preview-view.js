@@ -11,7 +11,9 @@ import { ROOT } from '../src/paths.js';
 const COLS = 16, ROWS = 12;
 const CHAR = { ' ': ['grass'], ',': ['tall_grass'], '.': ['path'], '~': ['water'], '=': ['ford'], '#': ['farm'],
   'T': ['grass', 'tree'], '^': ['grass', 'rock'], 'O': ['grass', 'cave'], 'H': ['grass', 'hut'], 'B': ['grass', 'hut_burnt'],
-  'W': ['grass', 'wall'], 'G': ['path', 'gate'], 'S': ['grass', 'stall'], 'b': ['grass', 'bed'], '@': ['path'] };
+  'W': ['grass', 'wall'], 'G': ['path', 'gate'], 'S': ['grass', 'stall'], 'b': ['grass', 'bed'],
+  'h': ['grass', 'hut_hunter'], 'n': ['grass', 'hut_plunderer'], 'L': ['grass', 'totem'], 'X': ['grass', 'skull_post'],
+  'c': ['grass', 'camp_lit_0'], 'g': ['grass', 'bag'], '%': ['flood'], '@': ['path'] };
 
 const [file = 'exports/world_1.txt', xs, ys, scaleS = '5', nightS = '0'] = process.argv.slice(2);
 const rows = (await fs.readFile(path.resolve(ROOT, file), 'utf8')).replace(/\n+$/, '').split('\n');

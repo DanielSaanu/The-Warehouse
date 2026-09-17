@@ -1,0 +1,30 @@
+{
+  "name": "hunter_left_1",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "notes": "hunter: the player body recoloured (edit sprites/player_*.txt to change everyone)",
+  "layers": [
+    {
+      "id": "t",
+      "name": "hunter_left_1",
+      "type": "image",
+      "src": "sprites/player_left_1.txt",
+      "recolor": [
+        {
+          "from": "#b8383c",
+          "to": "#3d8244"
+        },
+        {
+          "from": "#7e2a2d",
+          "to": "#2d5f33"
+        },
+        {
+          "from": "#3f4b6b",
+          "to": "#4a3323"
+        }
+      ]
+    }
+  ]
+}

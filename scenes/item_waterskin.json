@@ -1,0 +1,15 @@
+{
+  "name": "item_waterskin",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "layers": [
+    {
+      "id": "t",
+      "name": "item_waterskin",
+      "type": "image",
+      "src": "sprites/item_waterskin.txt"
+    }
+  ]
+}

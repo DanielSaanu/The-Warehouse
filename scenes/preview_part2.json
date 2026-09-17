@@ -1,0 +1,1032 @@
+{
+  "name": "preview_part2",
+  "width": 216,
+  "height": 126,
+  "background": "#101018",
+  "pixelated": true,
+  "export": false,
+  "layers": [
+    {
+      "id": "bg0",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "s0",
+      "type": "scene",
+      "src": "scenes/deer_right_0.json",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "bg1",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 18,
+      "y": 0
+    },
+    {
+      "id": "s1",
+      "type": "scene",
+      "src": "scenes/deer_right_1.json",
+      "x": 18,
+      "y": 0
+    },
+    {
+      "id": "bg2",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 36,
+      "y": 0
+    },
+    {
+      "id": "s2",
+      "type": "scene",
+      "src": "scenes/boar_right_0.json",
+      "x": 36,
+      "y": 0
+    },
+    {
+      "id": "bg3",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 54,
+      "y": 0
+    },
+    {
+      "id": "s3",
+      "type": "scene",
+      "src": "scenes/boar_right_1.json",
+      "x": 54,
+      "y": 0
+    },
+    {
+      "id": "bg4",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 72,
+      "y": 0
+    },
+    {
+      "id": "s4",
+      "type": "scene",
+      "src": "scenes/wolf_right_0.json",
+      "x": 72,
+      "y": 0
+    },
+    {
+      "id": "bg5",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 90,
+      "y": 0
+    },
+    {
+      "id": "s5",
+      "type": "scene",
+      "src": "scenes/wolf_right_1.json",
+      "x": 90,
+      "y": 0
+    },
+    {
+      "id": "bg6",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 108,
+      "y": 0
+    },
+    {
+      "id": "s6",
+      "type": "scene",
+      "src": "scenes/item_knife.json",
+      "x": 108,
+      "y": 0
+    },
+    {
+      "id": "bg7",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 126,
+      "y": 0
+    },
+    {
+      "id": "s7",
+      "type": "scene",
+      "src": "scenes/item_waterskin.json",
+      "x": 126,
+      "y": 0
+    },
+    {
+      "id": "bg8",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 144,
+      "y": 0
+    },
+    {
+      "id": "s8",
+      "type": "scene",
+      "src": "scenes/item_food.json",
+      "x": 144,
+      "y": 0
+    },
+    {
+      "id": "bg9",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 162,
+      "y": 0
+    },
+    {
+      "id": "s9",
+      "type": "scene",
+      "src": "scenes/item_hide.json",
+      "x": 162,
+      "y": 0
+    },
+    {
+      "id": "bg10",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 180,
+      "y": 0
+    },
+    {
+      "id": "s10",
+      "type": "scene",
+      "src": "scenes/item_tool.json",
+      "x": 180,
+      "y": 0
+    },
+    {
+      "id": "bg11",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 198,
+      "y": 0
+    },
+    {
+      "id": "s11",
+      "type": "scene",
+      "src": "scenes/item_ore.json",
+      "x": 198,
+      "y": 0
+    },
+    {
+      "id": "bg12",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 0,
+      "y": 18
+    },
+    {
+      "id": "s12",
+      "type": "scene",
+      "src": "scenes/item_camper.json",
+      "x": 0,
+      "y": 18
+    },
+    {
+      "id": "bg13",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 18,
+      "y": 18
+    },
+    {
+      "id": "s13",
+      "type": "scene",
+      "src": "scenes/item_coin.json",
+      "x": 18,
+      "y": 18
+    },
+    {
+      "id": "bg14",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 36,
+      "y": 18
+    },
+    {
+      "id": "s14",
+      "type": "scene",
+      "src": "scenes/camp_lit_0.json",
+      "x": 36,
+      "y": 18
+    },
+    {
+      "id": "bg15",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 54,
+      "y": 18
+    },
+    {
+      "id": "s15",
+      "type": "scene",
+      "src": "scenes/camp_lit_1.json",
+      "x": 54,
+      "y": 18
+    },
+    {
+      "id": "bg16",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 72,
+      "y": 18
+    },
+    {
+      "id": "s16",
+      "type": "scene",
+      "src": "scenes/camp_out.json",
+      "x": 72,
+      "y": 18
+    },
+    {
+      "id": "bg17",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 90,
+      "y": 18
+    },
+    {
+      "id": "s17",
+      "type": "scene",
+      "src": "scenes/hut_hunter.json",
+      "x": 90,
+      "y": 18
+    },
+    {
+      "id": "bg18",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 108,
+      "y": 18
+    },
+    {
+      "id": "s18",
+      "type": "scene",
+      "src": "scenes/hut_plunderer.json",
+      "x": 108,
+      "y": 18
+    },
+    {
+      "id": "bg19",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 126,
+      "y": 18
+    },
+    {
+      "id": "s19",
+      "type": "scene",
+      "src": "scenes/totem.json",
+      "x": 126,
+      "y": 18
+    },
+    {
+      "id": "bg20",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 144,
+      "y": 18
+    },
+    {
+      "id": "s20",
+      "type": "scene",
+      "src": "scenes/skull_post.json",
+      "x": 144,
+      "y": 18
+    },
+    {
+      "id": "bg21",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 162,
+      "y": 18
+    },
+    {
+      "id": "s21",
+      "type": "scene",
+      "src": "scenes/flood.json",
+      "x": 162,
+      "y": 18
+    },
+    {
+      "id": "bg22",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 180,
+      "y": 18
+    },
+    {
+      "id": "s22",
+      "type": "scene",
+      "src": "scenes/bag.json",
+      "x": 180,
+      "y": 18
+    },
+    {
+      "id": "bg23",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 198,
+      "y": 18
+    },
+    {
+      "id": "s23",
+      "type": "scene",
+      "src": "scenes/heart.json",
+      "x": 198,
+      "y": 18
+    },
+    {
+      "id": "bg24",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 0,
+      "y": 36
+    },
+    {
+      "id": "s24",
+      "type": "scene",
+      "src": "scenes/heart_half.json",
+      "x": 0,
+      "y": 36
+    },
+    {
+      "id": "bg25",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 18,
+      "y": 36
+    },
+    {
+      "id": "s25",
+      "type": "scene",
+      "src": "scenes/heart_empty.json",
+      "x": 18,
+      "y": 36
+    },
+    {
+      "id": "bg26",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 36,
+      "y": 36
+    },
+    {
+      "id": "s26",
+      "type": "scene",
+      "src": "scenes/marker.json",
+      "x": 36,
+      "y": 36
+    },
+    {
+      "id": "bg27",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 54,
+      "y": 36
+    },
+    {
+      "id": "s27",
+      "type": "scene",
+      "src": "scenes/villager_down_0.json",
+      "x": 54,
+      "y": 36
+    },
+    {
+      "id": "bg28",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 72,
+      "y": 36
+    },
+    {
+      "id": "s28",
+      "type": "scene",
+      "src": "scenes/villager_down_1.json",
+      "x": 72,
+      "y": 36
+    },
+    {
+      "id": "bg29",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 90,
+      "y": 36
+    },
+    {
+      "id": "s29",
+      "type": "scene",
+      "src": "scenes/villager_up_0.json",
+      "x": 90,
+      "y": 36
+    },
+    {
+      "id": "bg30",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 108,
+      "y": 36
+    },
+    {
+      "id": "s30",
+      "type": "scene",
+      "src": "scenes/villager_up_1.json",
+      "x": 108,
+      "y": 36
+    },
+    {
+      "id": "bg31",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 126,
+      "y": 36
+    },
+    {
+      "id": "s31",
+      "type": "scene",
+      "src": "scenes/villager_left_0.json",
+      "x": 126,
+      "y": 36
+    },
+    {
+      "id": "bg32",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 144,
+      "y": 36
+    },
+    {
+      "id": "s32",
+      "type": "scene",
+      "src": "scenes/villager_left_1.json",
+      "x": 144,
+      "y": 36
+    },
+    {
+      "id": "bg33",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 162,
+      "y": 36
+    },
+    {
+      "id": "s33",
+      "type": "scene",
+      "src": "scenes/villager_right_0.json",
+      "x": 162,
+      "y": 36
+    },
+    {
+      "id": "bg34",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 180,
+      "y": 36
+    },
+    {
+      "id": "s34",
+      "type": "scene",
+      "src": "scenes/villager_right_1.json",
+      "x": 180,
+      "y": 36
+    },
+    {
+      "id": "bg35",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 198,
+      "y": 36
+    },
+    {
+      "id": "s35",
+      "type": "scene",
+      "src": "scenes/guard_down_0.json",
+      "x": 198,
+      "y": 36
+    },
+    {
+      "id": "bg36",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 0,
+      "y": 54
+    },
+    {
+      "id": "s36",
+      "type": "scene",
+      "src": "scenes/guard_down_1.json",
+      "x": 0,
+      "y": 54
+    },
+    {
+      "id": "bg37",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 18,
+      "y": 54
+    },
+    {
+      "id": "s37",
+      "type": "scene",
+      "src": "scenes/guard_up_0.json",
+      "x": 18,
+      "y": 54
+    },
+    {
+      "id": "bg38",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 36,
+      "y": 54
+    },
+    {
+      "id": "s38",
+      "type": "scene",
+      "src": "scenes/guard_up_1.json",
+      "x": 36,
+      "y": 54
+    },
+    {
+      "id": "bg39",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 54,
+      "y": 54
+    },
+    {
+      "id": "s39",
+      "type": "scene",
+      "src": "scenes/guard_left_0.json",
+      "x": 54,
+      "y": 54
+    },
+    {
+      "id": "bg40",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 72,
+      "y": 54
+    },
+    {
+      "id": "s40",
+      "type": "scene",
+      "src": "scenes/guard_left_1.json",
+      "x": 72,
+      "y": 54
+    },
+    {
+      "id": "bg41",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 90,
+      "y": 54
+    },
+    {
+      "id": "s41",
+      "type": "scene",
+      "src": "scenes/guard_right_0.json",
+      "x": 90,
+      "y": 54
+    },
+    {
+      "id": "bg42",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 108,
+      "y": 54
+    },
+    {
+      "id": "s42",
+      "type": "scene",
+      "src": "scenes/guard_right_1.json",
+      "x": 108,
+      "y": 54
+    },
+    {
+      "id": "bg43",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 126,
+      "y": 54
+    },
+    {
+      "id": "s43",
+      "type": "scene",
+      "src": "scenes/merchant_down_0.json",
+      "x": 126,
+      "y": 54
+    },
+    {
+      "id": "bg44",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 144,
+      "y": 54
+    },
+    {
+      "id": "s44",
+      "type": "scene",
+      "src": "scenes/merchant_down_1.json",
+      "x": 144,
+      "y": 54
+    },
+    {
+      "id": "bg45",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 162,
+      "y": 54
+    },
+    {
+      "id": "s45",
+      "type": "scene",
+      "src": "scenes/merchant_up_0.json",
+      "x": 162,
+      "y": 54
+    },
+    {
+      "id": "bg46",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 180,
+      "y": 54
+    },
+    {
+      "id": "s46",
+      "type": "scene",
+      "src": "scenes/merchant_up_1.json",
+      "x": 180,
+      "y": 54
+    },
+    {
+      "id": "bg47",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 198,
+      "y": 54
+    },
+    {
+      "id": "s47",
+      "type": "scene",
+      "src": "scenes/merchant_left_0.json",
+      "x": 198,
+      "y": 54
+    },
+    {
+      "id": "bg48",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 0,
+      "y": 72
+    },
+    {
+      "id": "s48",
+      "type": "scene",
+      "src": "scenes/merchant_left_1.json",
+      "x": 0,
+      "y": 72
+    },
+    {
+      "id": "bg49",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 18,
+      "y": 72
+    },
+    {
+      "id": "s49",
+      "type": "scene",
+      "src": "scenes/merchant_right_0.json",
+      "x": 18,
+      "y": 72
+    },
+    {
+      "id": "bg50",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 36,
+      "y": 72
+    },
+    {
+      "id": "s50",
+      "type": "scene",
+      "src": "scenes/merchant_right_1.json",
+      "x": 36,
+      "y": 72
+    },
+    {
+      "id": "bg51",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 54,
+      "y": 72
+    },
+    {
+      "id": "s51",
+      "type": "scene",
+      "src": "scenes/hunter_down_0.json",
+      "x": 54,
+      "y": 72
+    },
+    {
+      "id": "bg52",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 72,
+      "y": 72
+    },
+    {
+      "id": "s52",
+      "type": "scene",
+      "src": "scenes/hunter_down_1.json",
+      "x": 72,
+      "y": 72
+    },
+    {
+      "id": "bg53",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 90,
+      "y": 72
+    },
+    {
+      "id": "s53",
+      "type": "scene",
+      "src": "scenes/hunter_up_0.json",
+      "x": 90,
+      "y": 72
+    },
+    {
+      "id": "bg54",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 108,
+      "y": 72
+    },
+    {
+      "id": "s54",
+      "type": "scene",
+      "src": "scenes/hunter_up_1.json",
+      "x": 108,
+      "y": 72
+    },
+    {
+      "id": "bg55",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 126,
+      "y": 72
+    },
+    {
+      "id": "s55",
+      "type": "scene",
+      "src": "scenes/hunter_left_0.json",
+      "x": 126,
+      "y": 72
+    },
+    {
+      "id": "bg56",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 144,
+      "y": 72
+    },
+    {
+      "id": "s56",
+      "type": "scene",
+      "src": "scenes/hunter_left_1.json",
+      "x": 144,
+      "y": 72
+    },
+    {
+      "id": "bg57",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 162,
+      "y": 72
+    },
+    {
+      "id": "s57",
+      "type": "scene",
+      "src": "scenes/hunter_right_0.json",
+      "x": 162,
+      "y": 72
+    },
+    {
+      "id": "bg58",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 180,
+      "y": 72
+    },
+    {
+      "id": "s58",
+      "type": "scene",
+      "src": "scenes/hunter_right_1.json",
+      "x": 180,
+      "y": 72
+    },
+    {
+      "id": "bg59",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 198,
+      "y": 72
+    },
+    {
+      "id": "s59",
+      "type": "scene",
+      "src": "scenes/bandit_down_0.json",
+      "x": 198,
+      "y": 72
+    },
+    {
+      "id": "bg60",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 0,
+      "y": 90
+    },
+    {
+      "id": "s60",
+      "type": "scene",
+      "src": "scenes/bandit_down_1.json",
+      "x": 0,
+      "y": 90
+    },
+    {
+      "id": "bg61",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 18,
+      "y": 90
+    },
+    {
+      "id": "s61",
+      "type": "scene",
+      "src": "scenes/bandit_up_0.json",
+      "x": 18,
+      "y": 90
+    },
+    {
+      "id": "bg62",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 36,
+      "y": 90
+    },
+    {
+      "id": "s62",
+      "type": "scene",
+      "src": "scenes/bandit_up_1.json",
+      "x": 36,
+      "y": 90
+    },
+    {
+      "id": "bg63",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 54,
+      "y": 90
+    },
+    {
+      "id": "s63",
+      "type": "scene",
+      "src": "scenes/bandit_left_0.json",
+      "x": 54,
+      "y": 90
+    },
+    {
+      "id": "bg64",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 72,
+      "y": 90
+    },
+    {
+      "id": "s64",
+      "type": "scene",
+      "src": "scenes/bandit_left_1.json",
+      "x": 72,
+      "y": 90
+    },
+    {
+      "id": "bg65",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 90,
+      "y": 90
+    },
+    {
+      "id": "s65",
+      "type": "scene",
+      "src": "scenes/bandit_right_0.json",
+      "x": 90,
+      "y": 90
+    },
+    {
+      "id": "bg66",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 108,
+      "y": 90
+    },
+    {
+      "id": "s66",
+      "type": "scene",
+      "src": "scenes/bandit_right_1.json",
+      "x": 108,
+      "y": 90
+    },
+    {
+      "id": "bg67",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 126,
+      "y": 90
+    },
+    {
+      "id": "s67",
+      "type": "scene",
+      "src": "scenes/deer_left_0.json",
+      "x": 126,
+      "y": 90
+    },
+    {
+      "id": "bg68",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 144,
+      "y": 90
+    },
+    {
+      "id": "s68",
+      "type": "scene",
+      "src": "scenes/deer_left_1.json",
+      "x": 144,
+      "y": 90
+    },
+    {
+      "id": "bg69",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 162,
+      "y": 90
+    },
+    {
+      "id": "s69",
+      "type": "scene",
+      "src": "scenes/boar_left_0.json",
+      "x": 162,
+      "y": 90
+    },
+    {
+      "id": "bg70",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 180,
+      "y": 90
+    },
+    {
+      "id": "s70",
+      "type": "scene",
+      "src": "scenes/boar_left_1.json",
+      "x": 180,
+      "y": 90
+    },
+    {
+      "id": "bg71",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 198,
+      "y": 90
+    },
+    {
+      "id": "s71",
+      "type": "scene",
+      "src": "scenes/wolf_left_0.json",
+      "x": 198,
+      "y": 90
+    },
+    {
+      "id": "bg72",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 0,
+      "y": 108
+    },
+    {
+      "id": "s72",
+      "type": "scene",
+      "src": "scenes/wolf_left_1.json",
+      "x": 0,
+      "y": 108
+    }
+  ]
+}

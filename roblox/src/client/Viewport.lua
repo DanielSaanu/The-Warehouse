@@ -15,6 +15,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Sprites = require(Shared:WaitForChild("Sprites"))
 local TileTypes = require(Shared:WaitForChild("TileTypes"))
 local WorldGen = require(Shared:WaitForChild("WorldGen"))
+local Config = require(Shared:WaitForChild("Config"))
 
 local ART = 16   -- art pixels per tile
 local MARGIN = 2 -- tiles of pool beyond each edge of the window
@@ -22,15 +23,17 @@ local MARGIN = 2 -- tiles of pool beyond each edge of the window
 local Viewport = {}
 Viewport.__index = Viewport
 
-export type Entity = { img: ImageLabel, sprite: string, x: number, y: number, px: number, py: number, fromX: number, fromY: number, moveStart: number, moveTime: number, label: TextLabel? }
+export type Entity = { img: ImageLabel, sprite: string, x: number, y: number, px: number, py: number, fromX: number, fromY: number, moveStart: number, moveTime: number, label: TextLabel?,
+	fxUntil: number, fxX: number, fxY: number, hpBar: Frame?, hpFill: Frame? }
 type Slot = { tx: number, ty: number, ground: ImageLabel, object: ImageLabel }
 
 export type Viewport = typeof(setmetatable({} :: {
 	cols: number, rows: number, world: WorldGen.World, tilePx: number,
 	container: Frame, root: Frame, worldFrame: Frame, layers: { [string]: Frame }, night: Frame, overlay: Frame,
-	slots: { Slot }, poolW: number, poolH: number,
+	slots: { Slot }, poolW: number, poolH: number, maxCols: number,
 	cx: number, cy: number,
 	entities: { [any]: Entity },
+	marker: ImageLabel, markerTile: { x: number, y: number }?, fireFrame: number,
 }, Viewport))
 
 function Viewport.new(parent: Instance, cols: number, rows: number, world: WorldGen.World): Viewport
@@ -64,7 +67,9 @@ function Viewport.new(parent: Instance, cols: number, rows: number, world: World
 		layers[name] = f
 	end
 
-	local poolW, poolH = cols + 2 * MARGIN, rows + 2 * MARGIN
+	-- The pool is sized for the widest window (Config.MAX_COLS); `cols` grows with the screen's aspect ratio in fit().
+	local maxCols = math.max(cols, Config.MAX_COLS)
+	local poolW, poolH = maxCols + 2 * MARGIN, rows + 2 * MARGIN
 	local slots: { Slot } = {}
 	for _ = 1, poolW * poolH do
 		local g = Sprites.New("grass", layers.Ground)
@@ -92,31 +97,40 @@ function Viewport.new(parent: Instance, cols: number, rows: number, world: World
 	overlay.ZIndex = 20
 	overlay.Parent = root
 
+	local marker = Sprites.New("marker", layers.Entities)
+	marker.Visible = false
+	marker.ZIndex = 1
+
 	local self = setmetatable({
 		cols = cols, rows = rows, world = world, tilePx = ART,
 		container = container, root = root, worldFrame = worldFrame, layers = layers, night = night, overlay = overlay,
-		slots = slots, poolW = poolW, poolH = poolH,
+		slots = slots, poolW = poolW, poolH = poolH, maxCols = maxCols,
 		cx = cols / 2, cy = rows / 2,
 		entities = {},
+		marker = marker, markerTile = nil :: { x: number, y: number }?, fireFrame = 0,
 	}, Viewport)
 
 	local function fit()
 		local size = container.AbsoluteSize
 		if size.X <= 0 or size.Y <= 0 then return end
-		local best = math.min(size.X / cols, size.Y / rows)
+		-- Wide screens see more columns (up to MAX_COLS) instead of black bars.
+		local wantCols = math.clamp(math.floor(size.X / (size.Y / rows)), cols, maxCols)
+		self.cols = wantCols
+		local best = math.min(size.X / wantCols, size.Y / rows)
 		-- A whole multiple of 16 keeps every art pixel the same size; use it unless it would waste much of the screen.
 		local whole = math.floor(best / ART) * ART
 		local t = if whole >= ART and whole >= best * 0.85 then whole else math.max(1, math.floor(best))
 		self.tilePx = t
 		-- Centred on a whole pixel (an anchor of 0.5 lands on a half pixel when the screen width is odd).
-		root.Position = UDim2.fromOffset(math.floor((size.X - t * cols) / 2), math.floor((size.Y - t * rows) / 2))
-		root.Size = UDim2.fromOffset(t * cols, t * rows)
+		root.Position = UDim2.fromOffset(math.floor((size.X - t * wantCols) / 2), math.floor((size.Y - t * rows) / 2))
+		root.Size = UDim2.fromOffset(t * wantCols, t * rows)
 		local cell = UDim2.fromOffset(t, t)
 		for _, s in ipairs(slots) do
 			s.ground.Size, s.object.Size = cell, cell
 			s.tx = 0 -- positions depend on t: lay every slot out again
 		end
 		for _, e in pairs(self.entities) do e.img.Size = cell end
+		marker.Size = cell
 	end
 	container:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
 	fit()
@@ -189,16 +203,96 @@ function Viewport.refresh(self: Viewport)
 	-- from its on-screen coordinate, so the followed player never wobbles against the world.
 	local wx, wy = snap(-vx), snap(-vy)
 	self.worldFrame.Position = UDim2.fromOffset(wx, wy)
+	local now = os.clock()
 	for _, e in pairs(self.entities) do
-		e.img.Position = UDim2.fromOffset(snap(e.px - vx) - wx, snap(e.py - vy) - wy)
+		local ox, oy = 0, 0
+		if now < e.fxUntil then ox, oy = e.fxX * t / ART, e.fxY * t / ART end
+		e.img.Position = UDim2.fromOffset(snap(e.px - vx) - wx + ox, snap(e.py - vy) - wy + oy)
 		e.img.ZIndex = 1 + math.floor(e.py + 0.5)
 	end
+	local m = self.markerTile
+	if m then
+		self.marker.Position = UDim2.fromOffset(snap(m.x - 1 - vx) - wx, snap(m.y - 1 - vy) - wy)
+		self.marker.Visible = true
+	else
+		self.marker.Visible = false
+	end
+	-- campfires flicker
+	local frame = math.floor(now * 3) % 2
+	if frame ~= self.fireFrame then
+		self.fireFrame = frame
+		local name = "camp_lit_" .. frame
+		for _, s in ipairs(self.slots) do
+			if s.object.Visible and (s.object.Name == "camp_lit_0" or s.object.Name == "camp_lit_1") and s.object.Name ~= name then
+				Sprites.Apply(s.object, name)
+				s.object.Name = name
+			end
+		end
+	end
+end
+
+--- Repaint one tile after the world changed under it (a camp placed, a bag dropped).
+function Viewport.repaint(self: Viewport, tx: number, ty: number)
+	local s = self.slots[(ty % self.poolH) * self.poolW + (tx % self.poolW) + 1]
+	if s and s.tx == tx and s.ty == ty then assign(self, s, tx, ty) end
+end
+
+--- Repaint everything (a flood).
+function Viewport.repaintAll(self: Viewport)
+	for _, s in ipairs(self.slots) do s.tx = 0 end
+end
+
+function Viewport.setMarker(self: Viewport, x: number?, y: number?)
+	self.markerTile = if x and y then { x = x, y = y } else nil
+end
+
+--- Hit flash: a red-white blink and a nudge away from the attacker.
+function Viewport.flash(self: Viewport, id: any, color: Color3?, seconds: number?)
+	local e = self.entities[id]
+	if not e then return end
+	e.img.ImageColor3 = color or Color3.fromRGB(255, 120, 120)
+	task.delay(seconds or 0.12, function()
+		if self.entities[id] == e then e.img.ImageColor3 = Color3.new(1, 1, 1) end
+	end)
+end
+
+--- A short lunge in a direction (attack swing) or a shake (wind-up), in art pixels.
+function Viewport.nudge(self: Viewport, id: any, dx: number, dy: number, seconds: number)
+	local e = self.entities[id]
+	if not e then return end
+	e.fxX, e.fxY, e.fxUntil = dx, dy, os.clock() + seconds
+end
+
+--- A thin health bar under a hurt entity (hidden at full health).
+function Viewport.setHp(self: Viewport, id: any, frac: number)
+	local e = self.entities[id]
+	if not e then return end
+	if frac >= 1 or frac <= 0 then
+		if e.hpBar then e.hpBar.Visible = false end
+		return
+	end
+	if not e.hpBar then
+		local bar = Instance.new("Frame")
+		bar.BackgroundColor3 = Color3.fromRGB(27, 27, 47)
+		bar.BorderSizePixel = 0
+		bar.Size = UDim2.fromScale(0.8, 0.1)
+		bar.Position = UDim2.fromScale(0.1, 1.02)
+		bar.Parent = e.img
+		local fill = Instance.new("Frame")
+		fill.BackgroundColor3 = Color3.fromRGB(184, 56, 60)
+		fill.BorderSizePixel = 0
+		fill.Size = UDim2.fromScale(1, 1)
+		fill.Parent = bar
+		e.hpBar, e.hpFill = bar, fill
+	end
+	e.hpBar.Visible = true
+	e.hpFill.Size = UDim2.fromScale(math.clamp(frac, 0, 1), 1)
 end
 
 function Viewport.addEntity(self: Viewport, id: any, sprite: string, x: number, y: number, label: string?): Entity
 	local img = Sprites.New(sprite, self.layers.Entities)
 	img.Size = UDim2.fromOffset(self.tilePx, self.tilePx)
-	local e: Entity = { img = img, sprite = sprite, x = x, y = y, px = x - 1, py = y - 1, fromX = x - 1, fromY = y - 1, moveStart = 0, moveTime = 0 }
+	local e: Entity = { img = img, sprite = sprite, x = x, y = y, px = x - 1, py = y - 1, fromX = x - 1, fromY = y - 1, moveStart = 0, moveTime = 0, fxUntil = 0, fxX = 0, fxY = 0 }
 	if label then
 		local t = Instance.new("TextLabel")
 		t.BackgroundTransparency = 1

@@ -21,6 +21,7 @@ export type World = {
 	seed: number, width: number, height: number,
 	ground: { number }, object: { number },
 	villages: { Village }, spawn: Pos,
+	floodBackup: { [number]: number }?,
 }
 
 local G = TileTypes.GroundByName
@@ -79,8 +80,9 @@ local function makeNoise(rng: Rng.Rng, w: number, h: number, cell: number): (num
 end
 
 -- ---------- village templates ----------
--- '.' clear grass, 'p' path, '@' spawn (path), 'W' wall, 'G' gate, 'H' hut, 'B' burnt hut, 'S' stall, 'b' bed,
--- 'F' farm, 'T' tall grass, 'R' rock. A gate on the template's edge is where a road leaves (see WorldGen.generate).
+-- '.' clear grass, 'p' path, '@' spawn (path), 'W' wall, 'G' gate, 'H' hut (the tribe's own kind), 'B' burnt hut,
+-- 'S' stall, 'b' bed, 'F' farm, 'T' tall grass, 'R' rock, 'L' landmark (totem for hunters, skull post for
+-- plunderers). A gate on the template's edge is where a road leaves (see WorldGen.generate).
 local TEMPLATES = {
 	-- The plundered start: a palisade all round, a gate on the north and east sides (each gets a road), and a
 	-- breach in the south-west corner where the raiders broke in.
@@ -101,7 +103,7 @@ local TEMPLATES = {
 	hunter = {
 		"..T...H...T..",
 		".H....p....H.",
-		"..T...p..T...",
+		"..T..Lp..T...",
 		"pppppp@pppppp",
 		".S....p....b.",
 		"..H...p..H...",
@@ -110,7 +112,7 @@ local TEMPLATES = {
 	plunderer = {
 		".R....H....R.",
 		"..H...p..H...",
-		"......p......",
+		"......pL.....",
 		"pppppp@pppppp",
 		".b....p....S.",
 		"..H.......H..",
@@ -124,6 +126,12 @@ local TEMPLATE_TILES = {
 	["H"] = { G.grass.id, O.hut.id }, ["B"] = { G.grass.id, O.hut_burnt.id },
 	["S"] = { G.grass.id, O.stall.id }, ["b"] = { G.grass.id, O.bed.id },
 	["F"] = { G.farm.id, 0 }, ["T"] = { G.tall_grass.id, 0 }, ["R"] = { G.grass.id, O.rock.id },
+}
+-- Per-tribe overrides for 'H' and 'L'.
+local TRIBE_TILES = {
+	farmer = { H = { G.grass.id, O.hut.id }, L = { G.grass.id, 0 } },
+	hunter = { H = { G.grass.id, O.hut_hunter.id }, L = { G.grass.id, O.totem.id } },
+	plunderer = { H = { G.grass.id, O.hut_plunderer.id }, L = { G.grass.id, O.skull_post.id } },
 }
 
 local function countWater(world: World, x0: number, y0: number, x1: number, y1: number): number
@@ -170,7 +178,7 @@ local function placeVillage(world: World, rng: Rng.Rng, tribeType: string, wantX
 		for c = 1, #row do
 			local ch = row:sub(c, c)
 			local x, y = x0 + c - 1, y0 + r - 1
-			local t = TEMPLATE_TILES[ch]
+			local t: { number }? = TRIBE_TILES[tribeType][ch] or TEMPLATE_TILES[ch]
 			if t then
 				setG(world, x, y, t[1])
 				setO(world, x, y, t[2])
@@ -191,7 +199,7 @@ end
 -- ---------- A* roads ----------
 local function stepCost(world: World, x: number, y: number): number
 	local g, o = WorldGen.ground(world, x, y), WorldGen.object(world, x, y)
-	if o == O.hut.id or o == O.hut_burnt.id or o == O.wall.id or o == O.stall.id or o == O.bed.id or o == O.cave.id then return math.huge end
+	if o ~= 0 and o ~= O.tree.id and o ~= O.rock.id and o ~= O.gate.id then return math.huge end
 	if g == G.path.id or g == G.ford.id or o == O.gate.id then return 0.85 end -- roads reuse roads a little, not always
 	if g == G.water.id then return 9 end
 	if o == O.rock.id then return 12 end
@@ -231,10 +239,11 @@ local function heapPop(heap: { { number } }): { number }?
 	return top
 end
 
---- A* over road costs. Tiles inside any of `avoid`'s footprints are off limits (roads go around walled villages and
---- enter only through their gates).
-local function findPath(world: World, sx: number, sy: number, tx: number, ty: number, avoid: { Village }?): { number }?
+--- A* over a per-tile cost. Tiles inside any of `avoid`'s footprints are off limits (roads go around walled villages
+--- and enter only through their gates). Returns tile indices from start to goal, or nil.
+local function astar(world: World, sx: number, sy: number, tx: number, ty: number, cost: (World, number, number) -> number, avoid: { Village }?, maxNodes: number?): { number }?
 	local w = world.width
+	local budget = maxNodes or math.huge
 	local start, goal = idx(w, sx, sy), idx(w, tx, ty)
 	local gScore: { [number]: number } = { [start] = 0 }
 	local cameFrom: { [number]: number } = {}
@@ -252,19 +261,21 @@ local function findPath(world: World, sx: number, sy: number, tx: number, ty: nu
 		end
 		if not closed[ci] then
 			closed[ci] = true
+			budget -= 1
+			if budget < 0 then return nil end
 			local cx, cy = (ci - 1) % w + 1, math.floor((ci - 1) / w) + 1
 			for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
 				local nx, ny = cx + d[1], cy + d[2]
 				if WorldGen.inBounds(world, nx, ny) then
-					local cost = stepCost(world, nx, ny)
+					local c = cost(world, nx, ny)
 					if avoid and not (nx == tx and ny == ty) then
 						for _, v in ipairs(avoid) do
-							if nx >= v.x0 and nx <= v.x1 and ny >= v.y0 and ny <= v.y1 then cost = math.huge break end
+							if nx >= v.x0 and nx <= v.x1 and ny >= v.y0 and ny <= v.y1 then c = math.huge break end
 						end
 					end
-					if cost < math.huge then
+					if c < math.huge then
 						local ni = idx(w, nx, ny)
-						local ng = gScore[ci] + cost
+						local ng = gScore[ci] + c
 						if gScore[ni] == nil or ng < gScore[ni] then
 							gScore[ni] = ng
 							cameFrom[ni] = ci
@@ -275,6 +286,10 @@ local function findPath(world: World, sx: number, sy: number, tx: number, ty: nu
 			end
 		end
 	end
+end
+
+local function findPath(world: World, sx: number, sy: number, tx: number, ty: number, avoid: { Village }?): { number }?
+	return astar(world, sx, sy, tx, ty, stepCost, avoid)
 end
 
 local function carveRoad(world: World, path: { number })
@@ -529,6 +544,99 @@ function WorldGen.reachable(world: World, sx: number, sy: number, tx: number, ty
 	return false
 end
 
+local function walkCost(world: World, x: number, y: number): number
+	return if WorldGen.walkable(world, x, y) then 1 else math.huge
+end
+local function roadCost(world: World, x: number, y: number): number
+	if not WorldGen.walkable(world, x, y) then return math.huge end
+	local g = WorldGen.ground(world, x, y)
+	if g == G.path.id or g == G.ford.id then return 0.5 end
+	if g == G.tall_grass.id then return 1.5 end
+	return 1.2
+end
+
+--- Walking route over walkable tiles from (sx, sy) to (tx, ty): the tiles to step onto, in order (start excluded).
+--- `preferRoads` makes NPC groups keep to the roads. `maxNodes` bounds the search for tap-to-move. nil if unreachable.
+function WorldGen.route(world: World, sx: number, sy: number, tx: number, ty: number, preferRoads: boolean?, maxNodes: number?): { Pos }?
+	if not WorldGen.walkable(world, tx, ty) then return nil end
+	local path = astar(world, sx, sy, tx, ty, if preferRoads then roadCost else walkCost, nil, maxNodes)
+	if not path then return nil end
+	local out: { Pos } = {}
+	local w = world.width
+	for i = 2, #path do
+		local ci = path[i]
+		table.insert(out, { x = (ci - 1) % w + 1, y = math.floor((ci - 1) / w) + 1 })
+	end
+	return out
+end
+
+function WorldGen.index(world: World, x: number, y: number): number
+	return idx(world.width, x, y)
+end
+
+--- Regions: the map cut into REGION x REGION squares, numbered row-major from 1.
+WorldGen.REGION = 16
+function WorldGen.regionCols(world: World): number
+	return math.ceil(world.width / WorldGen.REGION)
+end
+function WorldGen.regionRows(world: World): number
+	return math.ceil(world.height / WorldGen.REGION)
+end
+function WorldGen.regionOf(world: World, x: number, y: number): number
+	local rc = WorldGen.regionCols(world)
+	local cx = math.clamp(math.floor((x - 1) / WorldGen.REGION), 0, rc - 1)
+	local cy = math.clamp(math.floor((y - 1) / WorldGen.REGION), 0, WorldGen.regionRows(world) - 1)
+	return cy * rc + cx + 1
+end
+--- Tile bounds of a region: x0, y0, x1, y1.
+function WorldGen.regionBounds(world: World, r: number): (number, number, number, number)
+	local rc = WorldGen.regionCols(world)
+	local cx, cy = (r - 1) % rc, math.floor((r - 1) / rc)
+	local R = WorldGen.REGION
+	return cx * R + 1, cy * R + 1, math.min(world.width, (cx + 1) * R), math.min(world.height, (cy + 1) * R)
+end
+
+--- Tiles a flood covers: dry ground within 2 tiles of river or lake water, outside village footprints. Fords go under
+--- too, so the river cannot be crossed until the water drops. Returns tile indices.
+function WorldGen.floodTiles(world: World): { number }
+	local w, h = world.width, world.height
+	local out: { number } = {}
+	for y = 2, h - 1 do
+		for x = 2, w - 1 do
+			local g = WorldGen.ground(world, x, y)
+			if g ~= G.water.id and g ~= G.flood.id and WorldGen.object(world, x, y) == 0 and not WorldGen.villageAt(world, x, y, 0) then
+				local near = false
+				for dy = -2, 2 do
+					for dx = -2, 2 do
+						if WorldGen.ground(world, x + dx, y + dy) == G.water.id then near = true break end
+					end
+					if near then break end
+				end
+				if near then table.insert(out, idx(w, x, y)) end
+			end
+		end
+	end
+	return out
+end
+
+--- Put the flood on the map (ground becomes `flood`, remembered so it can be lifted). Idempotent.
+function WorldGen.setFlood(world: World, tiles: { number })
+	if world.floodBackup then WorldGen.clearFlood(world) end
+	local backup: { [number]: number } = {}
+	for _, i in ipairs(tiles) do
+		backup[i] = world.ground[i]
+		world.ground[i] = G.flood.id
+	end
+	world.floodBackup = backup
+end
+
+function WorldGen.clearFlood(world: World)
+	local backup = world.floodBackup
+	if not backup then return end
+	for i, g in pairs(backup) do world.ground[i] = g end
+	world.floodBackup = nil
+end
+
 --- Nearest walkable tile to (x, y), searching outward. Used to spawn things next to beds, stalls, etc.
 function WorldGen.nearestWalkable(world: World, x: number, y: number, maxR: number?): Pos?
 	for r = 0, maxR or 6 do
@@ -592,8 +700,9 @@ function WorldGen.decode(e: Encoded): World
 end
 
 -- ---------- debug ----------
-local ASCII_G = { [G.grass.id] = " ", [G.grass_2.id] = " ", [G.tall_grass.id] = ",", [G.path.id] = ".", [G.water.id] = "~", [G.ford.id] = "=", [G.farm.id] = "#" }
-local ASCII_O = { [O.tree.id] = "T", [O.rock.id] = "^", [O.cave.id] = "O", [O.hut.id] = "H", [O.hut_burnt.id] = "B", [O.wall.id] = "W", [O.gate.id] = "G", [O.stall.id] = "S", [O.bed.id] = "b" }
+local ASCII_G = { [G.grass.id] = " ", [G.grass_2.id] = " ", [G.tall_grass.id] = ",", [G.path.id] = ".", [G.water.id] = "~", [G.ford.id] = "=", [G.farm.id] = "#", [G.flood.id] = "%" }
+local ASCII_O = { [O.tree.id] = "T", [O.rock.id] = "^", [O.cave.id] = "O", [O.hut.id] = "H", [O.hut_burnt.id] = "B", [O.wall.id] = "W", [O.gate.id] = "G", [O.stall.id] = "S", [O.bed.id] = "b",
+	[O.hut_hunter.id] = "h", [O.hut_plunderer.id] = "n", [O.totem.id] = "L", [O.skull_post.id] = "X", [O.camp_lit.id] = "c", [O.camp_out.id] = "c", [O.bag.id] = "g" }
 
 function WorldGen.ascii(world: World): string
 	local lines = {}

@@ -1,0 +1,15 @@
+{
+  "name": "item_coin",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "layers": [
+    {
+      "id": "t",
+      "name": "item_coin",
+      "type": "image",
+      "src": "sprites/item_coin.txt"
+    }
+  ]
+}

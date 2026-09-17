@@ -1,0 +1,15 @@
+{
+  "name": "item_tool",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "layers": [
+    {
+      "id": "t",
+      "name": "item_tool",
+      "type": "image",
+      "src": "sprites/item_tool.txt"
+    }
+  ]
+}
