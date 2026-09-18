@@ -35,7 +35,7 @@ function Headlines.describe(h, people, villageNames: { [number]: string }): stri
 	local p = h.id and people.people[h.id]
 	if not p then return nil end
 	if h.kind == "died" then
-		local by = if h.by and h.by ~= "the wild" then " by " .. h.by else ""
+		local by = if p.killer and p.killer ~= "the wild" then " by " .. p.killer else "" -- the registry already keeps the killer, gravestones too
 		return ("%s%s was killed%s."):format(fullName(p), if where then " of " .. where else "", by)
 	elseif h.kind == "born" then
 		local mother = p.mother and people.people[p.mother]
@@ -47,7 +47,8 @@ end
 
 --- The welcome for somebody who last saw the world on `lastSeenDay`: { days, title, text, lines } or nil if they
 --- were not gone a whole day. `tells(tribe)` says whether that tribe would tell this player its news (calamities
---- are everybody's). The most important SHOWN headlines, then newest first; `more` counts the rest.
+--- are everybody's). The most important SHOWN headlines, then newest first; `more` counts the rest. Each line is
+--- { text, color } for Hud.notice.
 function Headlines.welcome(meta, people, lastSeenDay: number, today: number, tells: (number) -> boolean, villageNames: { [number]: string })
 	local days = today - lastSeenDay
 	if days < 1 then return nil end
@@ -63,12 +64,24 @@ function Headlines.welcome(meta, people, lastSeenDay: number, today: number, tel
 		if ra ~= rb then return ra < rb end
 		return a.i > b.i
 	end)
+	local shown = {}
+	for i = 1, math.min(Headlines.SHOWN, #found) do shown[i] = found[i] end
+	-- a massacre must not bury its own cause: three deaths in a beast tide would otherwise never mention the tide.
+	-- The newest calamity always gets the last place if it did not earn one.
+	local calamity, has = nil, false
+	for _, f in ipairs(found) do
+		if f.h.kind == "calamity" and (not calamity or f.i > calamity.i) then calamity = f end
+	end
+	for _, f in ipairs(shown) do if f == calamity then has = true end end
+	if calamity and not has then shown[#shown] = calamity end
 	local lines = {}
-	for i = 1, math.min(Headlines.SHOWN, #found) do lines[i] = found[i].text end
+	for i, f in ipairs(shown) do lines[i] = { text = f.text, color = if f.h.kind == "born" then "good" else "warn" } end
+	-- an honest empty: the world did tick, and nothing in it was news to this player
+	if #lines == 0 then lines[1] = { text = "It was quiet while you were away.", color = "" } end
 	return {
 		days = days, title = "Welcome back",
 		text = if days == 1 then "You were gone a day." else ("You were gone %d days."):format(days),
-		lines = lines, more = math.max(0, #found - #lines),
+		lines = lines, more = math.max(0, #found - #shown),
 	}
 end
 

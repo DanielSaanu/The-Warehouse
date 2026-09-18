@@ -216,6 +216,7 @@ function Hud.new(overlay: Frame, callbacks, touch: boolean?)
 	self.goal.Size = UDim2.new(0.52, 0, 0.045, 0)
 	self.goal.Position = UDim2.new(0, 6, 0.125, 14)
 	self.goal.TextXAlignment = Enum.TextXAlignment.Left
+	self.goal.ZIndex = 5 -- above the banner frame, which overlaps it
 	self.goal.Visible = false
 
 	-- warning line (tomorrow's calamity) and rest point

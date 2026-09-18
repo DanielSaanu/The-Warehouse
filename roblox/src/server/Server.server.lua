@@ -88,14 +88,13 @@ local function sendWorld(st)
 	local d, frac = Sim.clock()
 	local c = Sim.state.calamity
 	WorldInit:FireClient(player, Map.encoded, { x = st.x, y = st.y, facing = st.facing, epoch = st.epoch }, others, { day = d, frac = frac }, sheetIds,
-		{ kind = c.kind, active = c.active, flood = c.flood, warning = Sim.calamityWarning() })
+		{ kind = c.kind, active = c.active, flood = c.flood, warning = Sim.calamityWarning() },
+		st.welcome or (st.lastSeenDay and {})) -- ({} = back the same day: no news, but no day-one beat either)
+		-- a returning player's news rides IN the world payload: the client only ever processes one
+		-- WorldInit, after its HUD exists, so it can neither race the HUD nor be dropped (a separate Notice could)
 	-- interest management re-sends the entities it can see
 	st.known = {}
 	Sim.hud(st)
-	if st.welcome then -- a returning player: once, now that the client has a HUD to show it on
-		Sim.notice(st, "welcome", st.welcome)
-		st.welcome = nil
-	end
 end
 
 local joining = {} :: { [number]: boolean }
@@ -111,6 +110,7 @@ local function addPlayer(player: Player)
 	joining[uid] = nil
 	if player.Parent ~= Players then return nil end
 	local st = Sim.addPlayer(player, world.spawn.x, world.spawn.y, snap, saved)
+	if st.welcome then print(("[Server] %s is back: %s (%d lines)"):format(player.Name, st.welcome.text, #st.welcome.lines)) end
 	st.noSave = not readOk -- never write a key we failed to read: they play on a fresh kit and keep their real one
 	publish(st)
 	broadcast(player, "spawn", player.UserId, "player", st.x, st.y, st.facing, player.DisplayName, 1, "player")
@@ -142,6 +142,7 @@ Move.OnServerEvent:Connect(function(player: Player, epoch: any, tx: any, ty: any
 	local st = players[player.UserId]
 	if not st or st.dead then return end
 	if type(epoch) ~= "number" or type(tx) ~= "number" or type(ty) ~= "number" or type(facing) ~= "string" or not FACINGS[facing] then return end
+	st.sawWorld = true -- a client that can send a move has drawn the world, and with it any welcome
 	if epoch ~= st.epoch then return end -- sent before the client heard our last correction
 	if tx == st.x and ty == st.y then
 		-- Turn in place. Only broadcast real changes.

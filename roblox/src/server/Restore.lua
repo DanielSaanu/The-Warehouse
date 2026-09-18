@@ -57,6 +57,7 @@ function Restore.player(ps, saved, x: number, y: number): (number, number)
 		x, y = p.x, p.y
 	end
 	local lastSeen = saved.lastSeenDay or S.day
+	ps.lastSeenDay = lastSeen -- kept so a player who leaves before seeing the welcome is still 'away since then'
 	local away = math.max(0, S.day - lastSeen)
 	if away > 0 then
 		for tribe, v in pairs(ps.rep) do ps.rep[tribe] = Reputation.fade(v, away) end

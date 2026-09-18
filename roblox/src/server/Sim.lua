@@ -636,7 +636,7 @@ local function killEntity(e, killer, ctx, byEntity)
 		local p = S.people.people[e.person]
 		local by = if killer then killer.player.Name else "the wild"
 		Families.die(S.people, e.person, S.day, "killed", by)
-		if p and e.tribe then Headlines.push(S.meta, { day = S.day, kind = "died", tribe = e.tribe, id = p.id, by = by }) end
+		if p and e.tribe then Headlines.push(S.meta, { day = S.day, kind = "died", tribe = e.tribe, id = p.id }) end
 		local t = e.tribe and S.tribes[e.tribe]
 		if p and t and (e.role == "guard" or e.role == "merchant") then
 			local heir = Families.successor(S.people, p)

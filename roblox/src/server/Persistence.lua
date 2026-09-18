@@ -145,6 +145,8 @@ end
 function Persistence.savePlayer(ps, day: number): boolean
 	if not Config.SAVE_WORLD or ps.noSave then return false end
 	local data = Save.encodePlayer(ps, day)
+	-- somebody who left before their client ever drew the world never saw their welcome: their absence is not over
+	if ps.welcome and not ps.sawWorld and ps.lastSeenDay then data.lastSeenDay = ps.lastSeenDay end
 	if ps.dead then data.x, data.y, data.hp = nil, nil, ps.maxHp end -- the dead wake at their rest point, whole
 	if not Save.check(data) then warn("[Persistence] a player record is not JSON-safe; not saved") return false end
 	local ok = attempt("saving player " .. ps.player.UserId, function() getStore():SetAsync("player_" .. ps.player.UserId, data) end)
