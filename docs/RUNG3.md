@@ -49,7 +49,39 @@ the thing most likely to outgrow a key; it may need pruning of the long dead.
 **Done when:** stop the server mid-game, start it again, and your coin, your standing, your camp and the guard's
 name are all still there, and the calendar moved on.
 
-## Part 2 — Gossip and grudges
+## Part 2 — The world up close
+
+**What it is.** DESIGN.md §20, found by Danzo in play on 2026-09-18 and verified in the code: every interaction in
+the game has the player on one end of it. Wolves hunt only the player, bandits raid only the player, predation
+happens once a day as a number in `Ecology.dailyTick`, farms are a tile with no logic behind it anywhere in
+`roblox/src/server/`, and villagers have exactly one behaviour, which is to wander.
+
+That is the opposite of §1 pillar 1, "the world does not need you", and it is almost certainly what "kind of
+boring, I don't know what to do" meant in the playtest note in `ideas/INBOX.md`. A player who stands still for
+thirty seconds should see the world do something that is not about them.
+
+- **Hostility stops being player-only.** `pickNpcTarget` currently exits unless the entity is a hunter, a guard or
+  a caravan guard. Every hostile kind gets a target test: wolves hunt deer and boar, bandits ambush caravans and
+  anyone caught outside walls, boar defend themselves against whatever hit them.
+- **Predation you can watch.** A kill near a player materialises and plays out; with nobody near it stays a number.
+  The region count moves either way, so `Ecology` stays the authority and the ecosystem does not change shape
+  based on who is looking.
+- **Villagers get a day.** A work tile, a home hut, and a night that sends them to it. The family records that
+  already exist (parents, children, succession) become something you can see rather than something the debug
+  command can print.
+- **Farms grow.** Stock that rises, is harvested into the tribe's food, and is worth raiding — which is what makes
+  a plunderer band attacking a farmer village mean anything.
+
+**Depends on:** nothing. It could be built before part 1. It is second only because part 1 gates money and the
+whole of rung 3, and this is the item most likely to grow while it is being built.
+
+**Feeds:** part 3. Gossip is NPCs telling each other what they saw, and right now there is almost nothing for them
+to see that does not involve the player.
+
+**Done when:** stand in a meadow at night and watch a wolf take a deer without ever touching either; leave a
+caravan on the north road and come back to find the band has been at it.
+
+## Part 3 — Gossip and grudges
 
 **What it is.** The pillar from DESIGN.md §7, and the reason the game is not just another survival game.
 
@@ -72,7 +104,7 @@ placeholder. What §7 describes is information that has to **travel**.
 **Done when:** kill a hunter where only one person sees it, walk the other way, and watch the news reach their
 village over the next in-game day — and arrive at the far tribe later still, weaker and vaguer.
 
-## Part 3 — Tribute, tax and extortion
+## Part 4 — Tribute, tax and extortion
 
 **What it is.** The tribes stop being scenery and start wanting things from you. `ideas/INBOX.md` describes this
 at length and none of it exists yet.
@@ -83,17 +115,17 @@ at length and none of it exists yet.
 - Farmer tribes collect tax from smaller villages in their territory and send caravans out from the strongest.
 - The player can pay, refuse, or fight, and each is remembered by part 2's machinery.
 
-**Depends on:** part 2, so that refusing a demand actually costs you something that lasts.
+**Depends on:** part 3, so that refusing a demand actually costs you something that lasts.
 
-## Part 4 — Hunger, and making food matter
+## Part 5 — Hunger, and making food matter
 
 DESIGN.md §11 parks hunger with a condition on it: **"if it makes the food economy matter"**. It only does once
-there is something to spend food on and something to lose by running out. After parts 1 and 3 there is: caravans
+there is something to spend food on and something to lose by running out. After parts 1 and 4 there is: caravans
 to supply, tribute to pay, a long walk between villages that persists across sessions.
 
 Small, and it makes the farmer tribes' whole existence legible.
 
-## Part 5 — The rest of the list
+## Part 6 — The rest of the list
 
 Ordered by how much each adds per day of work:
 
@@ -112,10 +144,13 @@ slipped in any time it is wanted — it changes no server code at all.
 
 ## Suggested order, and why
 
-1. **Save and catch-up** — gates everything, least fun, so do it first.
-2. **Gossip and grudges** — the pillar; the reason to play.
-3. **Tribute, tax, extortion** — gives the tribes a reason to come to you.
-4. **Hunger** — small, and only earns its place after 3.
-5. **The rest** — content, in whatever order looks most fun.
+1. **Save and catch-up** — gates everything and all the money, least fun, so do it first.
+2. **The world up close** — the pillar §1 claims and the code does not keep. Found in play, and it is what
+   "boring" meant. No dependency: move it to first if the next playtest matters more than the next feature.
+3. **Gossip and grudges** — the pillar; the reason to play. Wants 2 first, because gossip is NPCs telling each
+   other what they saw.
+4. **Tribute, tax, extortion** — gives the tribes a reason to come to you.
+5. **Hunger** — small, and only earns its place after 4.
+6. **The rest** — content, in whatever order looks most fun.
 
 Publishing free happens before all of it (rung 2 part 5), because real players will change what is on this list.
