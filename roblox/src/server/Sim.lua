@@ -245,11 +245,30 @@ local function followPath(e, now: number)
 	local step = e.path[e.pathI]
 	if not step then e.path = nil return end
 	if not Movement.canStep(world, e.x, e.y, step.x, step.y, Sim.occupied) then
-		-- someone is in the way: wait a beat, then give up on this path so the thinker re-plans
-		e.nextStepAt = now + 0.3
+		-- Someone is in the way. Roads are one tile wide, so a single person standing on one used to stop a whole
+		-- caravan indefinitely: the route says "next tile", the next tile is occupied, and re-planning returns the
+		-- same road. So step around instead — any free neighbour that gets us closer to where the path goes next.
 		e.blockedCount = (e.blockedCount or 0) + 1
 		faceEntity(e, Combat.dirTo(e.x, e.y, step.x, step.y))
-		if e.blockedCount > 3 then e.path = nil e.blockedCount = 0 end
+		local goal = e.path[e.pathI + 1] or step
+		local best, bestD = nil, math.min(cheb(e.x, e.y, goal.x, goal.y), cheb(step.x, step.y, goal.x, goal.y) + 1)
+		for _, d in pairs(Movement.DIRS) do
+			local nx, ny = e.x + d[1], e.y + d[2]
+			if freeTile(nx, ny) then
+				local dd = cheb(nx, ny, goal.x, goal.y)
+				if dd < bestD then best, bestD = { x = nx, y = ny }, dd end
+			end
+		end
+		if best and e.blockedCount >= 2 then
+			-- slip past them, then carry on to the rest of the route from there
+			placeEntity(e, best.x, best.y, Combat.dirTo(e.x, e.y, best.x, best.y))
+			e.nextStepAt = now + Movement.stepTime(world, best.x, best.y) / e.speed
+			e.blockedCount = 0
+			if e.path[e.pathI + 1] then e.pathI += 1 else e.path = nil end
+			return
+		end
+		e.nextStepAt = now + 0.3
+		if e.blockedCount > 4 then e.path = nil e.blockedCount = 0 end
 		return
 	end
 	e.blockedCount = 0
@@ -374,6 +393,7 @@ local function makeGroup(id: string, kind: string, tribeIdx: number, from: World
 		pauseUntil = os.clock() + rng:int(20, 60), pauses = pauses, speed = 1.5, acc = 0,
 		members = members, entities = {}, leader = nil, trail = {}, materialised = false,
 		target = nil, aggroUntil = 0, lastSeen = nil,
+		carry = {}, retreatUntil = 0,   -- what they are bringing home, and whether they have had enough
 	}
 	S.groups[id] = g
 	return g
@@ -410,11 +430,37 @@ function Sim.groupPos(g): WorldGen.Pos
 	return g.route[math.clamp(g.pos, 1, #g.route)]
 end
 
+--- How much a group is hauling.
+local function carryTotal(g): number
+	local n = 0
+	for _, v in pairs(g.carry) do n += v end
+	return n
+end
+
+--- Home with the kill: the hides and meat go into the village's stock. This is the point of a hunt, and until
+--- now an NPC kill produced nothing at all (Danzo, 2026-09-18: "they dont seem like they hunt and return back
+--- with theyre materials").
+local function depositCarry(g)
+	if carryTotal(g) == 0 then return end
+	local t = S.tribes[g.tribe]
+	local parts = {}
+	for item, n in pairs(g.carry) do
+		if n > 0 and t.stock[item] ~= nil then
+			t.stock[item] += n
+			table.insert(parts, ("%d %s"):format(n, item))
+		end
+	end
+	g.carry = {}
+	if #parts > 0 then print(("[Sim] the %s squad came home with %s"):format(t.village.name, table.concat(parts, ", "))) end
+end
+
 local function groupAtEnd(g): boolean
 	return (g.dir == 1 and g.pos >= #g.route) or (g.dir == -1 and g.pos <= 1)
 end
 
 local function groupTurn(g)
+	-- dir -1 is the walk home, so turning while heading home means they have arrived
+	if g.dir == -1 then depositCarry(g) end
 	g.dir = -g.dir
 	g.pauseUntil = os.clock() + (if g.dir == 1 then g.pauses[1] else g.pauses[2])
 end
@@ -591,7 +637,23 @@ local function applyRep(ps, deltas)
 	return changed
 end
 
-local function killEntity(e, killer, ctx)
+local function killEntity(e, killer, ctx, byEntity)
+	-- An NPC kill used to produce nothing. Now it goes into the killer's group to be carried home, and the
+	-- killer stops being hungry for a while, which is what stops a hunt being a slaughter.
+	if byEntity and e.species then
+		local now = os.clock()
+		byEntity.fedUntil = now + (if byEntity.species then Config.FED_SECONDS else Config.FED_HUNTER)
+		local g = byEntity.group and S.groups[byEntity.group]
+		if g then
+			for item, n in pairs(Combat.loot(e.kind, rng)) do
+				if item ~= "coin" then g.carry[item] = (g.carry[item] or 0) + n end
+			end
+			-- laden: turn for home rather than keep killing
+			if g.dir == 1 and carryTotal(g) >= Config.SQUAD_LOAD then
+				g.dir, g.pauseUntil = -1, 0
+			end
+		end
+	end
 	if killer then
 		lootTo(killer, Combat.loot(e.kind, rng))
 		applyRep(killer, Reputation.deltas("kill", e.kind, Sim.tribeOf(e), ctx))
@@ -626,7 +688,20 @@ local function killEntity(e, killer, ctx)
 		if g then
 			-- the record loses a member; the tribe replaces them at home after a while
 			table.remove(g.members, #g.members)
-			g.replenishAt = os.clock() + Config.DAY_SECONDS
+			local now = os.clock()
+			g.replenishAt = now + Config.DAY_SECONDS
+			-- A band is the weakest tribe and fights by ambush (ideas/INBOX.md): losing someone ends the ambush.
+			-- They run for home instead of standing to be wiped out.
+			if g.kind == "band" then
+				g.retreatUntil = now + Config.BAND_RETREAT
+				g.target, g.aggroUntil, g.pauseUntil = nil, 0, 0
+				g.dir = -1
+				for id in pairs(g.entities) do
+					local m = S.entities[id]
+					if m and m ~= e then m.state, m.target, m.npcTarget, m.windupAt = "idle", nil, nil, nil end
+				end
+				print("[Sim] the band has broken off and is running for home")
+			end
 		end
 	end
 	local t = e.tribe and S.tribes[e.tribe]
@@ -671,7 +746,7 @@ local function hitEntity(e, dmg: number, ax: number, ay: number, attacker, byEnt
 	e.path = nil
 	broadcastEntity(e, "hit", e.id, math.max(0, e.hp) / e.maxHp)
 	if e.hp <= 0 then
-		killEntity(e, attacker, ctx)
+		killEntity(e, attacker, ctx, byEntity)
 		return
 	end
 	local kx, ky = Combat.knockbackTile(ax, ay, e.x, e.y)
@@ -953,7 +1028,11 @@ local function pickTarget(e, now: number, nearerThan: number?)
 	local range = 0
 	local function wants(ps): boolean
 		if e.species == "wolf" then return not litCampNear(ps.x, ps.y) end
-		if e.kind == "bandit" then return ps.rep.plunderer < -10 and not Sides.sheltered(ps, e) end
+		if e.kind == "bandit" then
+			local g = e.group and S.groups[e.group]
+			if g and now < (g.retreatUntil or 0) then return false end
+			return ps.rep.plunderer < -10 and not Sides.sheltered(ps, e)
+		end
 		if e.tribe then return Sides.hostileToPlayer(e, ps) end
 		return false
 	end
@@ -1032,6 +1111,8 @@ local function groupStep(e, g, now: number)
 	if g.kind == "band" and g.target and S.players[g.target] and Sides.sheltered(S.players[g.target], e) then
 		g.target, g.aggroUntil = nil, 0
 	end
+	-- Running for home: no aggro, no hunting, just go.
+	if now < (g.retreatUntil or 0) then g.target, g.aggroUntil = nil, 0 end
 	if g.target and now < g.aggroUntil and S.players[g.target] and not S.players[g.target].dead and not e.broken then
 		e.state, e.target, e.aggroUntil = "chase", g.target, g.aggroUntil
 		markAggression(e, g.target)
@@ -1047,11 +1128,23 @@ local function groupStep(e, g, now: number)
 		local r = g.route[nextI]
 		if not e.path then
 			if Combat.adjacent(e.x, e.y, r.x, r.y) or (e.x == r.x and e.y == r.y) then
-				if freeTile(r.x, r.y) then setPath(e, { r }) g.pos = nextI
-				elseif e.x == r.x and e.y == r.y then g.pos = nextI end
+				if freeTile(r.x, r.y) then setPath(e, { r }) g.pos = nextI g.stuck = 0
+				elseif e.x == r.x and e.y == r.y then g.pos = nextI g.stuck = 0
+				else
+					-- somebody is standing on the next tile of the route: after a few tries, walk on to the one
+					-- after it rather than waiting for them to move
+					g.stuck = (g.stuck or 0) + 1
+					if g.stuck > 3 then
+						g.pos = nextI
+						g.stuck = 0
+						local after = g.route[nextI + g.dir]
+						if after then pathTo(e, after.x, after.y, 200, true) end
+					end
+				end
 			else
 				pathTo(e, r.x, r.y, 200, true)
 				g.pos = nextI
+				g.stuck = 0
 			end
 		end
 	else

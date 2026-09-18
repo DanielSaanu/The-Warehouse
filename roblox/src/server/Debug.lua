@@ -89,7 +89,12 @@ function Debug.run(cmd: string, ...): any
 		local g = S.groups[args[1] or "band"]
 		if not g then return "no such group" end
 		local p = Sim.groupPos(g)
-		return ("%s at %d,%d dir %d pos %d/%d%s"):format(g.id, p.x, p.y, g.dir, g.pos, #g.route, if g.materialised then " visible" else "")
+		local carry = {}
+		for item, n in pairs(g.carry or {}) do table.insert(carry, ("%d %s"):format(n, item)) end
+		table.sort(carry)
+		return ("%s at %d,%d dir %d pos %d/%d%s carrying[%s]%s"):format(g.id, p.x, p.y, g.dir, g.pos, #g.route,
+			if g.materialised then " visible" else "", table.concat(carry, ", "),
+			if os.clock() < (g.retreatUntil or 0) then " RETREATING" else "")
 	elseif cmd == "summon" and ps then
 		-- bring a group next to the player
 		local g = S.groups[args[1] or "band"]

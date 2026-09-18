@@ -32,6 +32,11 @@ Persistence (part 2); gossip and grudges (part 3); joining a squad or a band (pa
 (part 6). Squads do not yet trade what they bring home, and the player cannot yet buy it from them directly —
 that is the merchant's stock going up, which is all this part claims.
 
+6. **One person cannot body-block a caravan.** (Danzo, same playtest.) Roads are one tile wide, so someone
+   standing on the next route tile stalled a whole group indefinitely: the route says "next tile", the tile is
+   occupied, and re-planning returns the same road. A blocked walker now steps around, and a group leader walks
+   on to the tile after the blocked one rather than waiting for it to clear.
+
 ## Known limitations expected going in
 
 - Carried goods are a flat table on the group record, not items on individual hunters. Killing a laden squad does

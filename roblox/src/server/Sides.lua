@@ -230,6 +230,9 @@ end
 --- feud. Wolves hunting deer is what Ecology has done in the numbers since rung 2; this is the same thing where
 --- a player can watch it (docs/RUNG3.md part 1).
 function Sides.preysOn(e, o): boolean
+	-- A full belly is a reason to stop. Without it a predator kills everything it can reach for as long as it
+	-- can reach it, which is what "too bloodthirsty" means (Danzo, 2026-09-18).
+	if o.species and os.clock() < (e.fedUntil or 0) then return false end
 	if e.species == "wolf" then return o.species == "deer" or o.species == "boar" end
 	if e.species then return false end
 	if e.kind == "hunter" and o.species then return true end       -- hunters hunt: that is the job
