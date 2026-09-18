@@ -56,39 +56,7 @@ matter.
 
 ---
 
-## Part 1 — Save and catch-up
-
-**What it is.** The world and every player survive a server restart, and time keeps passing while nobody is
-looking. It goes first: every other item in rung 3 is worth less until it lands.
-
-- A grudge that decays over years is meaningless in a world that forgets overnight.
-- Tribute is a relationship over weeks, and there are no weeks.
-- A caravan you are three days into is not a thing you can be three days into.
-- DESIGN.md §16 is explicit: **do not charge for anything before save + catch-up lands.**
-
-`Sim.state` was structured for this from the start: `day`, `tribes`, `people`, `regions`, `groups`, `players`,
-`camps`, `bags`, `calamity` are already plain tables. Entities are deliberately not saved — they are materialised
-from records when a player is near, and rebuilt on load.
-
-- **World save**: seed, day, tribe stock and population, the family registry, region ecology counts, group route
-  positions, camps and bags. Versioned, written on a timer and on `BindToClose` (§14 says every 2 minutes).
-- **Player save**: position, inventory, coin, reputation per tribe, rest point, `goalStage`. Keyed by UserId.
-- **Catch-up**: on load, run the missed days through the daily tick at coarse steps — one per in-game hour,
-  capped at four weeks (§14) — so caravans arrive, tribes breed, the ecosystem drifts. Players are not simulated
-  while offline. Tell the player what changed: "You were gone eleven days. Kenstow has a new guard."
-- **The data budget applies here first** (DESIGN.md §4). A person record carries only small fixed fields —
-  parents, children, birth day, death day and cause, role, sex. Anything list-shaped, per-player or growing lives
-  on the village, group or tribe, and the long dead are pruned to name, surname, death day and killer. That is
-  what keeps the registry inside a 4 MB key, and it is a rule to build to from the first commit.
-
-**Risks:** DataStore request budgets, 4 MB per key, writes on shutdown that do not finish.
-
-**Done when:** stop the server mid-game, start it again, and your coin, your standing, your camp and the guard's
-name are all still there, and the calendar moved on.
-
----
-
-## Part 2 — The world answers for itself
+## Part 1 — The world answers for itself
 
 **What it is.** The living world stops being true only in the numbers and becomes true on screen. Three small
 things, all of which make the parts after this one legible.
@@ -141,12 +109,46 @@ things, all of which make the parts after this one legible.
   Villagers still flee — a farmer running is correct — but the village as a whole should not be a bystander.
   This falls out of the witness rule: a wolf is something everyone dislikes.
 
-**Depends on:** nothing. It could be built before part 1 if a quick visible win were wanted.
+**Depends on:** nothing at all, which is why it goes first. It is also the only part of rung 3 a player can see
+happening without being told, and the ground part 4 stands on.
 
 **Done when:** stand still in a forest at night and watch a wolf take a deer. Get chased by bandits into a
 village that likes you and watch four people turn out for you; do it again at a village that is wary of you and
 watch them fold their arms. Kill a villager in a square where you are family, and watch the same people who
 would have defended you come for you instead.
+
+---
+
+## Part 2 — Save and catch-up
+
+**What it is.** The world and every player survive a server restart, and time keeps passing while nobody is
+looking. Part 1 is the one thing that goes before it, because part 1 is small, visible and depends on nothing;
+everything from part 3 on is worth less until this lands.
+
+- A grudge that decays over years is meaningless in a world that forgets overnight.
+- Tribute is a relationship over weeks, and there are no weeks.
+- A caravan you are three days into is not a thing you can be three days into.
+- DESIGN.md §16 is explicit: **do not charge for anything before save + catch-up lands.**
+
+`Sim.state` was structured for this from the start: `day`, `tribes`, `people`, `regions`, `groups`, `players`,
+`camps`, `bags`, `calamity` are already plain tables. Entities are deliberately not saved — they are materialised
+from records when a player is near, and rebuilt on load.
+
+- **World save**: seed, day, tribe stock and population, the family registry, region ecology counts, group route
+  positions, camps and bags. Versioned, written on a timer and on `BindToClose` (§14 says every 2 minutes).
+- **Player save**: position, inventory, coin, reputation per tribe, rest point, `goalStage`. Keyed by UserId.
+- **Catch-up**: on load, run the missed days through the daily tick at coarse steps — one per in-game hour,
+  capped at four weeks (§14) — so caravans arrive, tribes breed, the ecosystem drifts. Players are not simulated
+  while offline. Tell the player what changed: "You were gone eleven days. Kenstow has a new guard."
+- **The data budget applies here first** (DESIGN.md §4). A person record carries only small fixed fields —
+  parents, children, birth day, death day and cause, role, sex. Anything list-shaped, per-player or growing lives
+  on the village, group or tribe, and the long dead are pruned to name, surname, death day and killer. That is
+  what keeps the registry inside a 4 MB key, and it is a rule to build to from the first commit.
+
+**Risks:** DataStore request budgets, 4 MB per key, writes on shutdown that do not finish.
+
+**Done when:** stop the server mid-game, start it again, and your coin, your standing, your camp and the guard's
+name are all still there, and the calendar moved on.
 
 ---
 
@@ -169,7 +171,7 @@ What §7 describes is information that has to **travel**.
 - The payoff a player can feel: you can outrun your reputation for a while, and a tribe on the far side of the
   map may not know you yet.
 
-**Depends on:** part 1 (a grudge that resets nightly is not a grudge).
+**Depends on:** part 2 (a grudge that resets nightly is not a grudge).
 
 **Done when:** kill a hunter where only one person sees it, walk the other way, and watch the news reach their
 village over the next in-game day — and reach the far tribe later still, weaker and vaguer.
@@ -201,7 +203,7 @@ player joining a group is the player becoming one of its members.** Same record,
 - **How you join is a conversation, not a menu.** You ask a person, they say yes or no based on what they think
   of you, and you walk with them. No party UI, no gold, no confirm button.
 
-**Depends on:** part 2 (so the world can notice whose side you are on) and part 3 (so it travels). Buildable
+**Depends on:** part 1 (so the world can notice whose side you are on) and part 3 (so it travels). Buildable
 without part 3, but riding with a band is only interesting once word gets out.
 
 **Done when:** you walk Glenworth to Kenstow as a caravan guard, get ambushed on the road, and arrive to find the
@@ -233,7 +235,7 @@ at length and none of it exists yet.
 ## Part 6 — Hunger, and the second axis on goods
 
 DESIGN.md §11 parks hunger with a condition: **"if it makes the food economy matter"**. It only does once there
-is something to spend food on and something to lose by running out. After parts 1, 4 and 5 there is: a caravan to
+is something to spend food on and something to lose by running out. After parts 2, 4 and 5 there is: a caravan to
 supply, tribute to pay, and a long walk that persists across sessions.
 
 It is also the cheapest answer to §19's **"do goods get a second axis?"** — goods are pure sell-value today,
@@ -277,8 +279,10 @@ layer, cliff edges, drop shadows — changes no server code at all and could be 
 
 ## Suggested order, and why
 
-1. **Save and catch-up** — gates everything, least fun, so do it first.
-2. **The world answers for itself** — small, visible, and it is the ground part 4 stands on.
+1. **The world answers for itself** — depends on nothing, is the only part anyone can *see*, and it is the
+   ground part 4 stands on. Danzo put it first on 2026-09-18, ahead of persistence, and he is right: it is an
+   afternoon's work against weeks of invisible plumbing, and it makes every later part legible.
+2. **Save and catch-up** — gates everything from part 3 on, and is the least fun, so it goes before them.
 3. **Gossip and grudges** — the pillar; the reason to play.
 4. **Belonging** — the player stops being a visitor. The biggest win in the rung.
 5. **Tribute, tax, extortion** — the tribes come to you, and you can be on either side of it.
@@ -289,7 +293,7 @@ Publishing free happens before all of it (rung 2 part 5), because real players w
 
 ---
 
-## The one thing principle 1 changes, and it is urgent
+## The one thing principle 1 changes
 
 Rung 2 part 4 gave the game a goal line and **retired it for good at the first calamity** — about seventy real
 minutes in. That was right for what it was: scaffolding for the first minute. But principle 1 names two moments a
@@ -299,13 +303,11 @@ compass exists for, and we built only one:
 - the **lost minute at hour twenty**, where open worlds actually lose people, and which is invisible in a
   thirty-minute playtest.
 
-Nothing replaces the goal line when it retires. A published player who gets past day 7 has no direction at all,
-and part 1 is weeks away. DESIGN.md §12 already specifies the fix — **the elder answers "what now"**, from where
-the player actually stands, as a topic on a role that already exists reading a bank that already exists — and
-§19 prices it at about half a day.
+Nothing replaces the goal line when it retires. A player who gets past day 7 has no direction at all. DESIGN.md
+§12 already specifies the fix — **the elder answers "what now"**, from where the player actually stands, as a
+topic on a role that already exists reading a bank that already exists — and §19 prices it at about half a day.
 
-**Recommendation: do it before the first public players, as a small rung 2 part 6.** Half a day against the only
-failure mode we already know loses players, on a game about to be published. It can point at what exists today —
-a village that will trade with you, a tribe that is wary of you, a calamity coming on day 7, somewhere you have
-not been — and it gets more to say with every part above. Note it is a *person* answering, who can be wrong,
-biased, far away or dead; never a quest log.
+Danzo dropped the rush to publish on 2026-09-18, so this is no longer a race against strangers arriving. It is
+still the only answer to the hour-twenty lost minute, and it is still half a day. **Fold it in wherever it is
+convenient** — it rides along with almost anything, and it gets more to say with every part above. Note it is a
+*person* answering, who can be wrong, biased, far away or dead; never a quest log.

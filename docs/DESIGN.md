@@ -104,7 +104,7 @@ Mostly he is right, and the answer differs by what you hang it on:
   list, tree or table there costs nothing and never grows on its own. Hang things here by default.
 - **Per group: nearly free.** Capped at 40 alive (above), so a gossip table per group is affordable by design.
 - **Per person: the one to watch.** The family registry grows with every birth and never shrinks, and
-  `docs/RUNG3.md` part 1 already names it as the table most likely to outgrow a 4 MB DataStore key. Per-person
+  `docs/RUNG3.md` part 2 already names it as the table most likely to outgrow a 4 MB DataStore key. Per-person
   cost also multiplies by every player who has an opinion attached.
 
 So the rule: **a person record carries only small fixed fields** (parents, children, birth day, death day and
@@ -203,7 +203,7 @@ Two numbers per (tribe, player), plus what individuals remember.
   see a fight is a witness, and picks the side they dislike less: they will help someone they are merely neutral
   about against someone they hate, and they will stand and watch a player they are wary of being killed in their
   own square. Unarmed witnesses flee and carry what they saw, or run for the nearest armed kin. Built in
-  `docs/RUNG3.md` part 2; it is what makes riding with a band (part 4) mean anything.
+  `docs/RUNG3.md` part 1; it is what makes riding with a band (part 4) mean anything.
 - **Memory** is per NPC group / village: what they personally saw you do, with a timestamp.
 - **Gossip**: when two groups (or a group and a village) are on the same or adjacent tile, they exchange
   memories about players. Each hop loses detail and weight. Caravans are the big spreaders. A lone bandit tells
