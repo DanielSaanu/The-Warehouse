@@ -1,8 +1,16 @@
 # Architecture: where the data lives
 
-**Status: a plan, not the code.** Written 2026-09-18, before rung 3 part 2 (save and catch-up), because the shape
-of the data decides whether saving is a morning's work or a rewrite. Revised after review; the verbatim report is
-`docs/qa/archive/architecture-round1.md`.
+**Status: a plan, not the code, and the review is still running.** Written 2026-09-18, before rung 3 part 2
+(save and catch-up), because the shape of the data decides whether saving is a morning's work or a rewrite.
+
+> **Review loop: rounds 1 and 2 scored 7 and 8.5. Round 3 is about to start.** Danzo raised the bar to **9.5**
+> (from 8.0) and capped the loop at **5 rounds**, on 2026-09-18: *"points shouldnt be given for free, i want to
+> make sure we have this right before we start coding."* Verbatim reports:
+> `docs/qa/architecture-round1.md`, `docs/qa/architecture-round2.md`.
+>
+> **Nothing here is built yet, and nothing should be built until the loop closes** — including rung 3 part 2,
+> which depends on step 1. Between them the first two rounds found three save blockers that were invisible from
+> reading the code, which is the whole argument for finishing the review first.
 
 Danzo's brief: *"set it up in a way where the data flows instead of congesting… a village has x amount of people,
 those people are split into groups, those groups are split into individuals. Data that affects the group is
