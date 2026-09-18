@@ -8,6 +8,8 @@ Config.MAX_COLS = 22
 Config.ROWS = 12
 
 -- World
+Config.SAVE_WORLD = true       -- rung 3 part 2: the world and its players persist (server/Persistence.lua). false = a fresh world every server
+Config.AUTOSAVE_SECONDS = 120  -- and a save on shutdown; DESIGN §14
 Config.WORLD_SEED = 1          -- 0 = a new random world every server (persistence comes in rung 3)
 Config.WORLD_WIDTH = 96
 Config.WORLD_HEIGHT = 96

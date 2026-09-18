@@ -21,10 +21,13 @@ local Ecology = require(Shared:WaitForChild("Ecology"))
 local Calamity = require(Shared:WaitForChild("Calamity"))
 local DayCycle = require(Shared:WaitForChild("DayCycle"))
 local Families = require(Shared:WaitForChild("Families"))
+local Tick = require(Shared:WaitForChild("Tick"))
 local Talk = require(Shared:WaitForChild("Talk"))
 local Sides = require(script.Parent:WaitForChild("Sides"))
 local Debug = require(script.Parent:WaitForChild("Debug"))
-local World = require(script.Parent:WaitForChild("World"))
+local Restore = require(script.Parent:WaitForChild("Restore"))
+local Map = require(script.Parent:WaitForChild("Map"))
+local Calendar = require(script.Parent:WaitForChild("Calendar"))
 
 local Sim = {}
 
@@ -43,8 +46,9 @@ local nextId = 0
 
 -- ---------- state ----------
 Sim.state = {
-	day = 1, dayStart = 0,
-	tribes = {},      -- [i] = { village, tribeType, stock, population, walled, surnames, news }
+	meta = { gameSeconds = 0, lastDailyTick = 1, nextBagId = 0 }, -- the one clock (Calendar owns it); `day` below is derived, a cache
+	day = 1,
+	tribes = {},      -- [i] = { villageId, tribeType, stock, population, walled, surnames, news }
 	people = nil,     -- Families.Registry: everyone who was ever born in this world
 	regions = nil,    -- Ecology.Regions (+ live counts)
 	groups = {},      -- [id] = group record
@@ -53,7 +57,6 @@ Sim.state = {
 	camps = {},       -- [userId] = { x, y, litUntil, out }
 	bags = {},        -- [id] = { x, y, owner, slots, droppedAt }
 	calamity = { kind = nil, active = false, warnedDay = 0, day = 0, flood = nil },
-	lastDailyTick = 1,
 }
 local S = Sim.state
 
@@ -70,13 +73,9 @@ end
 
 -- ---------- clock ----------
 function Sim.clock(): (number, number)
-	local elapsed = os.clock() - S.dayStart
-	while elapsed >= Config.DAY_SECONDS do
-		elapsed -= Config.DAY_SECONDS
-		S.dayStart += Config.DAY_SECONDS
-		S.day += 1
-	end
-	return S.day, elapsed / Config.DAY_SECONDS
+	local day, frac = Calendar.clock()
+	S.day = day
+	return day, frac
 end
 
 function Sim.isNight(): boolean
@@ -155,7 +154,7 @@ local function newEntity(kind: string, x: number, y: number, opts): any
 		x = x, y = y, facing = opts.facing or "down", hp = k.hp, maxHp = k.hp, atk = k.atk, def = k.def, speed = k.speed,
 		name = opts.name, tribe = opts.tribe, group = opts.group, role = opts.role or kind,
 		home = { x = x, y = y }, radius = opts.radius or 3,
-		state = "idle", nextThink = os.clock() + rng:float(), nextStepAt = 0, path = nil, pathI = 1,
+		state = "idle", nextThink = Calendar.now() + rng:float(), nextStepAt = 0, path = nil, pathI = 1,
 		target = nil, windupAt = nil, cooldownUntil = 0, invulnUntil = 0, fleeUntil = 0,
 		region = opts.region, species = opts.species,
 		lastPathAt = 0,
@@ -231,7 +230,7 @@ local BREAK = { bandit = 0.4, boar = 0.3, wolf = 0.3, guard = 0.25, caravan_guar
 
 local function pathTo(e, tx: number, ty: number, maxNodes: number?, roads: boolean?): boolean
 	if e.x == tx and e.y == ty then e.path = nil return true end
-	local now = os.clock()
+	local now = Calendar.now()
 	e.lastPathAt = now
 	local p = WorldGen.route(world, e.x, e.y, tx, ty, roads, maxNodes or 400)
 	if not p then e.path = nil return false end
@@ -309,7 +308,7 @@ local function spawnPerson(kind: string, x: number, y: number, tribeIdx: number,
 	local t = S.tribes[tribeIdx]
 	local pos = nearestFree(x, y, 3)
 	if not pos then return nil end
-	local person = opts.person or Families.newAdult(S.people, rng, tribeIdx, t.village.name, opts.role or kind, S.day, opts.surname or rng:pick(t.surnames), opts.sex)
+	local person = opts.person or Families.newAdult(S.people, rng, tribeIdx, t.villageId, opts.role or kind, S.day, opts.surname or rng:pick(t.surnames), opts.sex)
 	local o = { tribe = tribeIdx, radius = opts.radius, role = opts.role or person.role, sprite = opts.sprite,
 		name = Families.fullName(person), label = opts.label or Families.fullName(person), facing = opts.facing }
 	local e = newEntity(kind, pos.x, pos.y, o)
@@ -349,7 +348,8 @@ local ROSTER = {
 local function initTribes()
 	for i, v in ipairs(world.villages) do
 		local t = {
-			village = v, tribeType = v.tribeType, stock = Trade.newStock(v.tribeType),
+			villageId = i, -- never the village table itself: Map.village(t.villageId)
+			tribeType = v.tribeType, stock = Trade.newStock(v.tribeType),
 			population = 30 + rng:int(0, 20), walled = #v.gates > 0,
 			surnames = { Names.last(rng), Names.last(rng), Names.last(rng) },
 			guard = nil, merchant = nil, survivor = nil, news = nil,
@@ -408,16 +408,23 @@ local function forestTarget(): WorldGen.Pos
 	return best or world.villages[2].spawn
 end
 
+--- The TRANSIENT half of a group: who is materialised, who they are chasing. Never saved; reset on creation and
+--- again when a saved group is restored.
+local function groupScratch(g)
+	g.entities, g.leader, g.trail, g.materialised = {}, nil, {}, false
+	g.target, g.aggroUntil, g.lastSeen = nil, 0, nil
+end
+
 local function makeGroup(id: string, kind: string, tribeIdx: number, from: WorldGen.Pos, to: WorldGen.Pos, members, pauses)
-	local route = WorldGen.route(world, from.x, from.y, to.x, to.y, true) or {}
-	table.insert(route, 1, { x = from.x, y = from.y })
+	-- `route` is derived from `from` and `to` (Tick.rebuildRoute), so `to` is what a save keeps
 	local g = {
-		id = id, kind = kind, tribe = tribeIdx, route = route, pos = 1, dir = 1, from = { x = from.x, y = from.y },
-		pauseUntil = os.clock() + rng:int(20, 60), pauses = pauses, speed = 1.5, acc = 0,
-		members = members, fullSize = #members, entities = {}, leader = nil, trail = {}, materialised = false,
-		target = nil, aggroUntil = 0, lastSeen = nil,
+		id = id, kind = kind, tribe = tribeIdx, pos = 1, dir = 1, from = { x = from.x, y = from.y }, to = { x = to.x, y = to.y },
+		pauseUntil = Calendar.now() + rng:int(20, 60), pauses = pauses, speed = 1.5, acc = 0,
+		members = members, fullSize = #members,
 		carry = {}, retreatUntil = 0,   -- what they are bringing home, and whether they have had enough
 	}
+	groupScratch(g)
+	Tick.rebuildRoute(g, world)
 	S.groups[id] = g
 	return g
 end
@@ -460,32 +467,24 @@ local function carryTotal(g): number
 	return n
 end
 
---- Home with the kill: the hides and meat go into the village's stock. This is the point of a hunt, and until
---- now an NPC kill produced nothing at all (Danzo, 2026-09-18: "they dont seem like they hunt and return back
---- with theyre materials").
-local function depositCarry(g)
-	if carryTotal(g) == 0 then return end
-	local t = S.tribes[g.tribe]
-	local parts = {}
-	for item, n in pairs(g.carry) do
-		if n > 0 and t.stock[item] ~= nil then
-			t.stock[item] += n
-			table.insert(parts, ("%d %s"):format(n, item))
+--- What the pure group tick reports, for the server log.
+local function logGroupEvents(events)
+	for _, ev in ipairs(events) do
+		if ev.kind == "deposit" then
+			print(("[Sim] the %s %s came home with %s"):format(Map.village(S.tribes[ev.tribe].villageId).name, ev.group, ev.text))
+		elseif ev.kind == "retarget" then
+			print("[Sim] the " .. ev.group .. " has moved down the road")
 		end
 	end
-	g.carry = {}
-	if #parts > 0 then print(("[Sim] the %s squad came home with %s"):format(t.village.name, table.concat(parts, ", "))) end
 end
 
-local function groupAtEnd(g): boolean
-	return (g.dir == 1 and g.pos >= #g.route) or (g.dir == -1 and g.pos <= 1)
-end
-
+--- Turn around at the end of the route; home with the kill, the hides and meat go into the village's stock
+--- (Danzo, 2026-09-18: "they dont seem like they hunt and return back with theyre materials"). The rule itself is
+--- Tick.groupTurn, shared with the abstract tick and catch-up.
 local function groupTurn(g)
-	-- dir -1 is the walk home, so turning while heading home means they have arrived
-	if g.dir == -1 then depositCarry(g) end
-	g.dir = -g.dir
-	g.pauseUntil = os.clock() + (if g.dir == 1 then g.pauses[1] else g.pauses[2])
+	local events = {}
+	Tick.groupTurn(S, g, Calendar.now(), events)
+	logGroupEvents(events)
 end
 
 local function materialise(g)
@@ -539,38 +538,18 @@ local function tickGoals()
 	end
 end
 
---- Abstract movement for collapsed groups and materialise/collapse decisions. 1 Hz.
+--- Materialise/collapse decisions, then one second of abstract movement for every group without bodies (the
+--- movement is Tick.groups: pure, shared with catch-up). 1 Hz.
 local function tickGroups(now: number)
-	local floodOn = S.calamity.active and S.calamity.kind == "flood"
 	for _, g in pairs(S.groups) do
 		local p = Sim.groupPos(g)
-		local near = anyPlayerWithin(p.x, p.y, Config.MATERIALISE_RANGE)
 		if g.materialised then
 			if not anyPlayerWithin(p.x, p.y, Config.COLLAPSE_RANGE) then collapse(g) end
-		elseif near and #g.members > 0 then
+		elseif #g.members > 0 and anyPlayerWithin(p.x, p.y, Config.MATERIALISE_RANGE) then
 			materialise(g)
 		end
-		if g.lateTarget and S.day > Config.GRACE_DAYS and not g.materialised then
-			-- grace is over: the band takes up its real ambush, part way down the road to the farmers
-			local from, to = g.from, g.lateTarget
-			local route = WorldGen.route(world, from.x, from.y, to.x, to.y, true)
-			if route then
-				table.insert(route, 1, { x = from.x, y = from.y })
-				g.route, g.pos, g.dir, g.acc = route, 1, 1, 0
-				g.pauseUntil = now + 5
-				print("[Sim] the band has moved down the road")
-			end
-			g.lateTarget = nil
-		end
-		if not g.materialised and now >= g.pauseUntil and not (floodOn and g.kind == "caravan") then
-			-- whole tiles only: `pos` indexes the route
-			g.acc += g.speed
-			local steps = math.floor(g.acc)
-			g.acc -= steps
-			g.pos = math.clamp(g.pos + g.dir * steps, 1, #g.route)
-			if groupAtEnd(g) then groupTurn(g) end
-		end
 	end
+	logGroupEvents(Tick.groups(S, world, now))
 end
 
 -- ---------- wildlife ----------
@@ -664,7 +643,7 @@ local function killEntity(e, killer, ctx, byEntity)
 	-- An NPC kill used to produce nothing. Now it goes into the killer's group to be carried home, and the
 	-- killer stops being hungry for a while, which is what stops a hunt being a slaughter.
 	if byEntity and e.species then
-		local now = os.clock()
+		local now = Calendar.now()
 		byEntity.fedUntil = now + (if byEntity.species then Config.FED_SECONDS else Config.FED_HUNTER)
 		local g = byEntity.group and S.groups[byEntity.group]
 		if g then
@@ -711,7 +690,7 @@ local function killEntity(e, killer, ctx, byEntity)
 		if g then
 			-- the record loses a member; the tribe replaces them at home after a while
 			table.remove(g.members, #g.members)
-			local now = os.clock()
+			local now = Calendar.now()
 			g.replenishAt = now + Config.DAY_SECONDS
 			-- A pack breaks when it has lost more than half, not the moment it loses one (Danzo, 2026-09-18:
 			-- "if u encounter a bandit group and kill more than half the rest run away like with wolf packs but
@@ -756,7 +735,7 @@ Sim.markAggression = markAggression
 
 --- Damage to an entity from (ax, ay). Flash, knockback, death. Fighters break and run at their break point.
 local function hitEntity(e, dmg: number, ax: number, ay: number, attacker, byEntity)
-	local now = os.clock()
+	local now = Calendar.now()
 	if now < e.invulnUntil then return end
 	-- everyone near enough to see it takes a view (docs/RUNG3.md part 1)
 	local striker = if attacker then { ps = attacker } elseif byEntity then { e = byEntity } else nil
@@ -836,9 +815,10 @@ local function dropBag(ps)
 	if #slots == 0 then return end
 	local pos = nearestFree(ps.x, ps.y, 2) or { x = ps.x, y = ps.y }
 	if WorldGen.object(world, pos.x, pos.y) ~= 0 then return end
-	nextId += 1
-	local id = "b" .. nextId
-	S.bags[id] = { id = id, x = pos.x, y = pos.y, owner = ps.player.UserId, slots = slots, droppedAt = os.clock() }
+	-- bags are saved, so their counter is too (meta); entity ids are never saved, so theirs is a file local
+	S.meta.nextBagId += 1
+	local id = "b" .. S.meta.nextBagId
+	S.bags[id] = { id = id, x = pos.x, y = pos.y, owner = ps.player.UserId, slots = slots, droppedAt = Calendar.now() }
 	world.object[tidx(pos.x, pos.y)] = O.bag.id
 	sendState(ps, "object", pos.x, pos.y, O.bag.id)
 end
@@ -881,7 +861,7 @@ end
 
 --- An NPC's swing lands on a player.
 local function hitPlayer(ps, e)
-	local now = os.clock()
+	local now = Calendar.now()
 	if ps.dead or now < ps.invulnUntil then return end
 	Sides.witnessed({ e = e }, { ps = ps }, ps.x, ps.y)
 	local dmg = Combat.damage(e.atk, 0)
@@ -908,7 +888,7 @@ end
 
 --- The player swings at the tile they face.
 function Sim.attack(ps, facing: string)
-	local now = os.clock()
+	local now = Calendar.now()
 	if ps.dead or now < ps.lastAttack + Config.ATTACK_COOLDOWN then return end
 	ps.lastAttack = now
 	ps.facing = facing
@@ -929,7 +909,7 @@ local function wanderStep(e, now: number)
 	if rng:chance(0.5) then return end
 	local tx, ty = e.home.x + rng:int(-e.radius, e.radius), e.home.y + rng:int(-e.radius, e.radius)
 	if e.tribe and not e.group and not e.species then
-		local v = S.tribes[e.tribe].village
+		local v = Map.village(S.tribes[e.tribe].villageId)
 		-- Scattered by a fight: walk home, with a budget that can actually reach it. Wandering inside the village
 		-- bounds from twenty tiles away just fails, and the village stays empty.
 		if cheb(e.x, e.y, v.cx, v.cy) > 8 then
@@ -949,7 +929,7 @@ local function homeTile(e): WorldGen.Pos?
 		if leader and leader ~= e then return { x = leader.x, y = leader.y } end
 		if g then return Sim.groupPos(g) end
 	end
-	if e.tribe and not e.species then return S.tribes[e.tribe].village.spawn end
+	if e.tribe and not e.species then return Map.village(S.tribes[e.tribe].villageId).spawn end
 	return nil
 end
 
@@ -1283,7 +1263,7 @@ function Sim.placeCamp(ps, x: number, y: number)
 		world.object[tidx(old.x, old.y)] = 0
 		Sim.broadcastObject(old.x, old.y, 0)
 	end
-	S.camps[uid] = { x = x, y = y, litUntil = os.clock() + Config.CAMPFIRE_HOURS * HOUR, out = false, owner = uid }
+	S.camps[uid] = { x = x, y = y, litUntil = Calendar.now() + Config.CAMPFIRE_HOURS * HOUR, out = false, owner = uid }
 	world.object[tidx(x, y)] = O.camp_lit.id
 	Sim.broadcastObject(x, y, O.camp_lit.id)
 	ps.rest = { kind = "camp" }
@@ -1371,13 +1351,15 @@ function Sim.takeBag(ps, b)
 end
 
 -- ---------- calamities ----------
+--- A calamity BEGINS: once per calamity, from tickCalamity (or Debug). Everything here is a one-time consequence -
+--- the end date, the food lost, the wolves arriving, bodies shoved, camps destroyed, the notices. The part a load
+--- has to put back (the water, the tide flag) is Calamity.applyOverlay, and a load calls ONLY that: run this twice
+--- and the tribes lose their food twice and the calamity never ends.
 local function startCalamity(kind: string)
 	local c = S.calamity
 	c.kind, c.active, c.day = kind, true, S.day
+	c.flood = Calamity.applyOverlay(world, S.regions, kind) -- transient: sent to clients, never saved
 	if kind == "flood" then
-		local tiles = WorldGen.floodTiles(world)
-		WorldGen.setFlood(world, tiles)
-		c.flood = tiles
 		-- everything standing in the water gets shoved to dry ground
 		for _, e in pairs(S.entities) do
 			if not WorldGen.walkable(world, e.x, e.y) then
@@ -1401,9 +1383,10 @@ local function startCalamity(kind: string)
 		end
 		for _, t in ipairs(S.tribes) do t.stock.food = math.floor(t.stock.food * 0.7) end
 	else
-		Ecology.beastTide(S.regions)
+		Ecology.wolfSurge(S.regions)
 		for _, t in ipairs(S.tribes) do
-			local r = Ecology.at(S.regions, world, t.village.cx, t.village.cy)
+			local v = Map.village(t.villageId)
+			local r = Ecology.at(S.regions, world, v.cx, v.cy)
 			if r.tide and not t.walled then t.population = math.max(5, t.population - rng:int(1, 3)) end
 		end
 	end
@@ -1447,26 +1430,19 @@ local function tickCalamity()
 end
 
 -- ---------- daily ----------
---- Births, growing up, couples. Runs on the daily tick and on the Debug "birth" command.
-local function tickFamilies()
-	for i, t in ipairs(S.tribes) do
-		Families.formCouples(S.people, i, S.day)
-		if S.day % Config.WEEK_DAYS == 1 then
-			for _, mother in ipairs(Families.weeklyConceive(S.people, rng, i, S.day)) do
-				local me = mother.entity and S.entities[mother.entity]
-				if me then morph(me, "pregnant", { role = "pregnant", radius = 2 }) end
-			end
-		end
+--- Give bodies to what Tick.families did to the records: a mother who is on the map changes sprite, a baby appears
+--- beside her. The records are already complete whether or not any of these bodies exist.
+local function applyFamilyEvents(ev)
+	for _, mother in ipairs(ev.conceived) do
+		local me = mother.entity and S.entities[mother.entity]
+		if me then morph(me, "pregnant", { role = "pregnant", radius = 2 }) end
 	end
-	local r = Families.daily(S.people, rng, S.day)
-	for _, baby in ipairs(r.born) do
+	for _, baby in ipairs(ev.born) do
 		local mother = S.people.people[baby.mother]
 		local me = mother and mother.entity and S.entities[mother.entity]
 		if me then
-			local t = S.tribes[baby.tribe]
-			local sprite = VILLAGE_SPRITE[t.tribeType]
 			local mx, my = me.x, me.y
-			local ne = morph(me, "villager", { role = "villager", radius = 3, sprite = sprite })
+			local ne = morph(me, "villager", { role = "villager", radius = 3, sprite = VILLAGE_SPRITE[S.tribes[baby.tribe].tribeType] })
 			ne.home = { x = mx, y = my }
 			local pos = nearestFree(mx, my, 3)
 			if pos then
@@ -1474,46 +1450,34 @@ local function tickFamilies()
 				be.first, be.last, be.person = baby.first, baby.last, baby.id
 				baby.entity = be.id
 			end
-			t.news = Families.describeBirth(baby, mother)
-			t.population += 1
 		end
 	end
-	for _, grown in ipairs(r.grown) do
+	for _, grown in ipairs(ev.grown) do
 		local be = grown.entity and S.entities[grown.entity]
 		if be then morph(be, "villager", { role = "villager", radius = 3, sprite = VILLAGE_SPRITE[S.tribes[grown.tribe].tribeType] }) end
 	end
 end
 
+--- Births, growing up, couples, on demand (the Debug "birth" command).
+local function tickFamilies()
+	applyFamilyEvents(Tick.families(S, rng, S.day))
+end
+
 local function dailyTick()
-	Ecology.dailyTick(S.regions, rng)
-	tickFamilies()
-	for _, t in ipairs(S.tribes) do
-		Trade.dailyRestock(t.stock, t.tribeType)
-		t.population = math.min(60, t.population + 1)
-	end
+	local ev = Tick.daily(S, rng, S.day, Calendar.now())
+	applyFamilyEvents(ev)
 	for _, ps in pairs(S.players) do
 		for tribe, v in pairs(ps.rep) do ps.rep[tribe] = Reputation.fade(v, 1) end
 	end
-	local now = os.clock()
-	for _, g in pairs(S.groups) do
-		if g.replenishAt and now >= g.replenishAt and not g.materialised then
-			local full = if g.kind == "caravan" then 3 else 4
-			while #g.members < full do
-				table.insert(g.members, { kind = if g.kind == "caravan" then "caravan_guard" elseif g.kind == "squad" then "hunter" else "bandit" })
-			end
-			g.replenishAt = nil
-		end
-	end
-	local t = Ecology.totals(S.regions)
-	print(("[Sim] day %d: deer %d boar %d wolf %d"):format(S.day, t.deer, t.boar, t.wolf))
+	print(("[Sim] day %d: deer %d boar %d wolf %d"):format(S.day, ev.totals.deer, ev.totals.boar, ev.totals.wolf))
 end
 
 -- ---------- players ----------
-function Sim.addPlayer(player: Player, x: number, y: number, snapFn)
+--- `saved` is the player's own key, or nil for somebody new: Restore.player lays it over the fresh record.
+function Sim.addPlayer(player: Player, x: number, y: number, snapFn, saved)
 	local uid = player.UserId
-	local free = nearestFree(x, y, 3) or { x = x, y = y }
 	local ps = {
-		player = player, x = free.x, y = free.y, facing = "down", epoch = 0, budget = Movement.newBudget(os.clock()), lastWorldInit = -math.huge,
+		player = player, x = x, y = y, facing = "down", epoch = 0, budget = Movement.newBudget(os.clock()), lastWorldInit = -math.huge,
 		hp = Stats.get("player").hp, maxHp = Stats.get("player").hp, inv = Items.dayOneKit(), rep = Reputation.newTable(),
 		rest = { kind = "village", village = 1 }, restText = "", dead = false, lastAttack = -math.huge, invulnUntil = 0,
 		known = {}, dialogue = nil, snap = snapFn,
@@ -1521,6 +1485,12 @@ function Sim.addPlayer(player: Player, x: number, y: number, snapFn)
 		-- inventory slot is in hand (all on the record, so rung 3 saves them with everything else)
 		goalStage = 0, goal = nil, goalDone = false, metSurvivor = false, selected = nil,
 	}
+	if saved then
+		x, y = Restore.player(ps, saved, x, y)
+		if not ps.goalDone and ps.goalStage > 0 then ps.goal = Talk.goal(ps.goalStage, goalContext()) end
+	end
+	local free = nearestFree(x, y, 3) or WorldGen.nearestWalkable(world, x, y, 6) or world.spawn
+	ps.x, ps.y = free.x, free.y
 	ps.restText = Sim.restText(ps)
 	S.players[uid] = ps
 	Sim.occupied[tidx(ps.x, ps.y)] = uid
@@ -1542,10 +1512,11 @@ function Sim.playerMoved(ps, fromX: number, fromY: number)
 end
 
 -- ---------- init and loops ----------
-function Sim.init()
-	world = World.get()
+--- ONE of two constructors: generate, or restore `saved` after `slept` real seconds. false, why = it would not go in.
+function Sim.init(saved, slept: number?): (boolean, string?)
+	world = Map.get()
 	rng = Rng.new(world.seed * 31 + 7)
-	S.dayStart = os.clock()
+	Calendar.bind(S.meta)
 	S.people = Families.new()
 	S.regions = Ecology.init(world, rng:fork(1))
 	for _, r in ipairs(S.regions.list) do r.live = { deer = 0, boar = 0, wolf = 0 } end
@@ -1554,11 +1525,22 @@ function Sim.init()
 	Debug.bind({ Sim = Sim, S = S, world = world, cheb = cheb, collapse = collapse, endCalamity = endCalamity,
 		hitEntity = hitEntity, killPlayer = killPlayer, morph = morph, nearestFree = nearestFree, newEntity = newEntity,
 		startCalamity = startCalamity, tickFamilies = tickFamilies, tidx = tidx })
+	Restore.bind({ playerRestPoint = Sim.playerRestPoint, notice = notice, S = S, world = world, spawnPerson = spawnPerson, removeEntity = removeEntity,
+		groupScratch = groupScratch, getRng = function() return rng end })
+	if saved then
+		local ok, why = Restore.apply(saved, slept)
+		if ok then return true, nil end
+		warn("[Sim] the save would not restore (" .. tostring(why) .. "): generating a new world instead")
+		initTribes()
+		initGroups()
+		return false, why
+	end
 	initTribes()
 	initGroups()
 	local n = 0
 	for _ in pairs(S.entities) do n += 1 end
 	print(("[Sim] %d villagers, %d groups, %d regions"):format(n, 3, #S.regions.list))
+	return true, nil
 end
 
 function Sim.start()
@@ -1567,7 +1549,7 @@ function Sim.start()
 		local lastInterest, lastWild = 0, 0
 		while true do
 			task.wait(0.1)
-			local now = os.clock()
+			local now = Calendar.now()
 			for _, e in pairs(S.entities) do
 				if Sim.frozen then break end
 				if now >= e.nextThink then
@@ -1589,14 +1571,14 @@ function Sim.start()
 	task.spawn(function()
 		while true do
 			task.wait(1)
-			local now = os.clock()
+			local now = Calendar.now()
 			local day = Sim.clock()
 			for _, f in ipairs({ tickGroups, tickCamps, tickCalamity, tickGoals }) do
 				local ok, err = pcall(f, now)
 				if not ok then warn("[Sim] tick: " .. tostring(err)) end
 			end
-			if day > S.lastDailyTick then
-				S.lastDailyTick = day
+			if day > S.meta.lastDailyTick then
+				S.meta.lastDailyTick = day
 				local ok, err = pcall(dailyTick)
 				if not ok then warn("[Sim] daily: " .. tostring(err)) end
 			end

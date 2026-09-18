@@ -16,6 +16,7 @@ local Calamity = require(Shared:WaitForChild("Calamity"))
 local Talk = require(Shared:WaitForChild("Talk"))
 local Rng = require(Shared:WaitForChild("Rng"))
 local Sim = require(script.Parent:WaitForChild("Sim"))
+local Map = require(script.Parent:WaitForChild("Map"))
 
 local Interact = {}
 local S = Sim.state
@@ -35,7 +36,7 @@ end
 function Interact.context(ps, tribeIdx: number): Talk.Context
 	local world = Sim.world()
 	local t = S.tribes[tribeIdx]
-	local v = t.village
+	local v = Map.village(t.villageId)
 	local band = S.groups.band
 	local bp = Sim.groupPos(band)
 	local bandHint
@@ -77,7 +78,7 @@ local function tribeAt(x: number, y: number): number?
 	local v = WorldGen.villageAt(Sim.world(), x, y, 1)
 	if not v then return nil end
 	for i, t in ipairs(S.tribes) do
-		if t.village == v then return i end
+		if Map.village(t.villageId) == v then return i end
 	end
 	return nil
 end
@@ -91,7 +92,7 @@ local function openTrade(ps, tribeIdx: number, line: string?)
 	end
 	ps.trading = tribeIdx
 	Sim.notice(ps, "trade", {
-		village = t.village.name, tribeType = t.tribeType, quotes = Trade.quotes(t.stock, t.tribeType, mult),
+		village = Map.village(t.villageId).name, tribeType = t.tribeType, quotes = Trade.quotes(t.stock, t.tribeType, mult),
 		camper = Trade.camperPrice(t.tribeType, mult), camperOwned = Items.count(ps.inv, "camper_set"),
 		coin = ps.inv.coin, inv = Items.snapshot(ps.inv), line = line, standing = Reputation.word(ps.rep[t.tribeType]),
 	})
@@ -141,7 +142,7 @@ local function restAt(ps, tribeIdx: number)
 	ps.restText = Sim.restText(ps)
 	ps.hp = ps.maxHp
 	Reputation.apply(ps.rep, Reputation.deltas("rest", nil, t.tribeType))
-	Sim.text(ps, ("You rest. If the worst happens you will wake in %s."):format(t.village.name), "good")
+	Sim.text(ps, ("You rest. If the worst happens you will wake in %s."):format(Map.village(t.villageId).name), "good")
 	Sim.hud(ps)
 end
 

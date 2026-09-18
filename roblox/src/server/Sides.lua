@@ -11,6 +11,8 @@ local Config = require(Shared:WaitForChild("Config"))
 local WorldGen = require(Shared:WaitForChild("WorldGen"))
 local Witness = require(Shared:WaitForChild("Witness"))
 local Combat = require(Shared:WaitForChild("Combat"))
+local Calendar = require(script.Parent:WaitForChild("Calendar"))
+local Map = require(script.Parent:WaitForChild("Map"))
 
 local Sides = {}
 
@@ -60,7 +62,7 @@ local function seerOf(e)
 	local t = e.tribe and S.tribes[e.tribe]
 	return {
 		tribe = e.tribe, tribeType = t and t.tribeType, canFight = Sides.canFight(e),
-		home = if t then WorldGen.villageAt(world, e.x, e.y, 4) == t.village else false,
+		home = if t then WorldGen.villageAt(world, e.x, e.y, 4) == Map.village(t.villageId) else false,
 	}
 end
 
@@ -176,14 +178,14 @@ end
 --- An armed local has set about somebody who was coming for this player. Worth saying even though no blow has
 --- landed on them: a village that protects you well enough that you are never hit would otherwise say nothing.
 function Sides.tellHelp(ps, e)
-	local now = os.clock()
-	tellPlayer(ps, "victim", 1, 0, 0, 0, e.tribe and S.tribes[e.tribe].village.name, now)
+	local now = Calendar.now()
+	tellPlayer(ps, "victim", 1, 0, 0, 0, e.tribe and Map.village(S.tribes[e.tribe].villageId).name, now)
 end
 
 --- Everybody who can see a fight decides what to do about it (docs/RUNG3.md part 1). Called on every blow that
 --- lands, which is also how a fight that moves through a village gets re-read by the people it passes.
 function Sides.witnessed(att, vic, x: number, y: number)
-	local now = os.clock()
+	local now = Calendar.now()
 	local joined = 0
 	local ps, role = playerIn(att, vic)
 	local forYou, againstYou, watched, alarmed, where = 0, 0, 0, 0, nil
@@ -203,7 +205,7 @@ function Sides.witnessed(att, vic, x: number, y: number)
 			if ps then
 				if helped then
 					if helped == role then forYou += 1 else againstYou += 1 end
-					where = where or (e.tribe and S.tribes[e.tribe].village.name)
+					where = where or (e.tribe and Map.village(S.tribes[e.tribe].villageId).name)
 				elseif verdict == "alarm" then alarmed += 1
 				elseif verdict == "watch" or verdict == "shout" then watched += 1 end
 			end
@@ -232,7 +234,7 @@ end
 function Sides.preysOn(e, o): boolean
 	-- A full belly is a reason to stop. Without it a predator kills everything it can reach for as long as it
 	-- can reach it, which is what "too bloodthirsty" means (Danzo, 2026-09-18).
-	if o.species and os.clock() < (e.fedUntil or 0) then return false end
+	if o.species and Calendar.now() < (e.fedUntil or 0) then return false end
 	if e.species == "wolf" then return o.species == "deer" or o.species == "boar" end
 	if e.species then return false end
 	if e.kind == "hunter" and o.species then return true end       -- hunters hunt: that is the job

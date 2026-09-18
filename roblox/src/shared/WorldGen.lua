@@ -9,6 +9,8 @@ local Names = require(script.Parent.Names)
 local TileTypes = require(script.Parent.TileTypes)
 
 local WorldGen = {}
+-- Bump when generate() would grow a DIFFERENT map from the same seed: Save.decode refuses saves from another one.
+WorldGen.GEN_VERSION = 1
 
 export type Pos = { x: number, y: number }
 export type Gate = { x: number, y: number, exit: Pos }

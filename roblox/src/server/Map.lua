@@ -1,0 +1,49 @@
+--!strict
+-- The generated MAP (ground, objects, villages), one per server, and the encoded copy every joining client is sent.
+-- Owns: the WorldGen.World table and `Map.encoded`. Does NOT own the World Record (tribes, people, groups...): that is
+-- Sim.state, and docs/ARCHITECTURE.md §2. It was called World.lua until the record needed the word.
+--   local world = Map.get()   -- everywhere else on the server
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+local WorldGen = require(Shared:WaitForChild("WorldGen"))
+
+local Map = {}
+
+Map.seed = 0
+Map.world = nil :: WorldGen.World?
+Map.encoded = nil :: WorldGen.Encoded?
+
+--- `savedSeed`: a loaded world grows its map from the seed IN THE SAVE, whatever Config says today.
+function Map.init(savedSeed: number?)
+	local seed = savedSeed or Config.WORLD_SEED
+	if seed == 0 then seed = math.random(1, 2 ^ 30) end
+	local t0 = os.clock()
+	local world = WorldGen.generate(seed, Config.WORLD_WIDTH, Config.WORLD_HEIGHT)
+	Map.seed = seed
+	Map.world = world
+	Map.encoded = WorldGen.encode(world)
+	local names = {}
+	for _, v in ipairs(world.villages) do table.insert(names, ("%s (%s)"):format(v.name, v.tribeType)) end
+	local ms = math.floor((os.clock() - t0) * 1000)
+	print(("[Map] seed %d, %dx%d, villages: "):format(seed, world.width, world.height) .. table.concat(names, ", ") .. " (" .. ms .. " ms)")
+end
+
+function Map.get(): WorldGen.World
+	assert(Map.world, "Map.init() not called")
+	return Map.world :: WorldGen.World
+end
+
+--- Rebuild what joining clients are sent. The map changes after generation (a load stamps camps and bags back on
+--- and re-lays a flood), and a client sent the old copy would draw grass where the server has a campfire.
+function Map.reencode()
+	Map.encoded = WorldGen.encode(Map.get())
+end
+
+--- A village by id (its index in world.villages). Tribes and people hold the ID, never the table: a reference
+--- cannot be saved, and two copies of one village stop being `==` (docs/ARCHITECTURE.md A3).
+function Map.village(id: number): WorldGen.Village
+	return Map.get().villages[id]
+end
+
+return Map

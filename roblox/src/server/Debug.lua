@@ -14,6 +14,13 @@ local Stats = require(Shared:WaitForChild("Stats"))
 local WorldGen = require(Shared:WaitForChild("WorldGen"))
 local Ecology = require(Shared:WaitForChild("Ecology"))
 local Families = require(Shared:WaitForChild("Families"))
+local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+local Save = require(Shared:WaitForChild("Save"))
+local Calendar = require(script.Parent:WaitForChild("Calendar"))
+local Restore = require(script.Parent:WaitForChild("Restore"))
+local Persistence = require(script.Parent:WaitForChild("Persistence"))
+local Map = require(script.Parent:WaitForChild("Map"))
 
 local Debug = {}
 
@@ -46,6 +53,7 @@ function Debug.run(cmd: string, ...): any
 		return out
 	elseif cmd == "calamity" then
 		endCalamity()
+		if args[1] == "none" then return "ended" end -- `calamity none`: just lift whatever is running
 		startCalamity(args[1] or "flood")
 		return "started " .. (args[1] or "flood")
 	elseif cmd == "teleport" and ps then
@@ -65,18 +73,57 @@ function Debug.run(cmd: string, ...): any
 		ps.rep[t.tribeType] = args[2] or 0
 		Sim.hud(ps)
 		return t.tribeType .. " = " .. tostring(ps.rep[t.tribeType])
+	elseif cmd == "reload" then
+		-- save the world and load it straight back, in place: everything a restart would do except the DataStore.
+		-- `reload 3600` also sleeps an hour first (catch-up), the way a server that was down for an hour would.
+		local data = Restore.snapshot()
+		local ok, why = Save.check(data)
+		if not ok then return "snapshot is not JSON-safe: " .. tostring(why) end
+		data = HttpService:JSONDecode(HttpService:JSONEncode(data)) -- the real thing, not just the shape check
+		local bytes = #HttpService:JSONEncode(data)
+		local applied, err = Restore.apply(data, args[1])
+		return if applied then ("reloaded (%d bytes of JSON)"):format(bytes) else "refused: " .. tostring(err)
+	elseif cmd == "savetest" then
+		-- the whole Persistence path against a store in memory: save (taking the lease), read it back as a NEW
+		-- server would, restore, and the player key. STUDIO ONLY, and everything it touches is put back afterwards:
+		-- a server left pointing at the fake would "save" into memory for ever while logging success.
+		if not RunService:IsStudio() then return "savetest only runs in Studio" end
+		local mem = {}
+		local wasMode, wasWhy, wasNoSave = Persistence.mode, Persistence.why, ps and ps.noSave
+		local wasStore = Persistence.useStore({
+			GetAsync = function(_, k) return mem[k] and HttpService:JSONDecode(mem[k]) end,
+			SetAsync = function(_, k, v) mem[k] = HttpService:JSONEncode(v) end,
+			UpdateAsync = function(self, k, fn) local v = fn(self:GetAsync(k)) if v ~= nil then self:SetAsync(k, v) end end,
+		})
+		local ok, result = pcall(function()
+			Persistence.mode = "new"
+			if not Persistence.saveWorld(Restore.snapshot) then return "save refused: " .. Persistence.why end
+			local blocked = not Save.mayWrite(HttpService:JSONDecode(mem.world), "somebody-else", os.time())
+			local boot = Persistence.loadWorld()
+			if not boot.data then return "load gave no data: " .. tostring(boot.why) end
+			local applied, why = Restore.apply(boot.data, args[1] or 0)
+			if ps then ps.noSave = false end
+			local psOk = ps and Persistence.savePlayer(ps, S.day)
+			local back = ps and Persistence.loadPlayer(ps.player.UserId)
+			return ("saved %d bytes; lease blocks a second server: %s; reloaded as '%s': %s; player key: %s, inv coin %s"):format(#mem.world,
+				tostring(blocked), boot.mode, tostring(applied or why), tostring(psOk), tostring(back and back.inv and back.inv.coin))
+		end)
+		Persistence.useStore(wasStore)
+		Persistence.mode, Persistence.why = wasMode, wasWhy
+		if ps then ps.noSave = wasNoSave end
+		return if ok then result .. "; persistence is back to '" .. wasMode .. "'" else "ERROR " .. tostring(result)
 	elseif cmd == "night" then
-		S.dayStart = os.clock() - Config.DAY_SECONDS * (1 - Config.NIGHT_FRACTION + 0.01)
+		Calendar.skipTo(1 - Config.NIGHT_FRACTION + 0.01)
 		return "dusk"
 	elseif cmd == "jump" then
 		-- set the calendar: `jump 6` = morning of day 6 (the warning), `jump 7 0.29` = a moment before the calamity
 		local day, frac = args[1] or 7, args[2] or 0.1
+		if not Calendar.setDay(day, frac) then return "the calendar only moves forward (it is day " .. S.day .. ")" end
 		S.day = day
-		S.dayStart = os.clock() - Config.DAY_SECONDS * frac
-		S.lastDailyTick = day -- one jump does not run six days of births and breeding
+		S.meta.lastDailyTick = day -- one jump does not run six days of births and breeding
 		return ("day %d, %.0f%% through it"):format(day, frac * 100)
 	elseif cmd == "day" then
-		S.dayStart = os.clock() - Config.DAY_SECONDS * (args[1] or 0.1)
+		Calendar.skipTo(args[1] or 0.1)
 		return "morning"
 	elseif cmd == "hurt" and ps then
 		ps.hp = math.max(1, ps.hp - (args[1] or 4))
@@ -94,7 +141,7 @@ function Debug.run(cmd: string, ...): any
 		table.sort(carry)
 		return ("%s at %d,%d dir %d pos %d/%d%s carrying[%s]%s"):format(g.id, p.x, p.y, g.dir, g.pos, #g.route,
 			if g.materialised then " visible" else "", table.concat(carry, ", "),
-			if os.clock() < (g.retreatUntil or 0) then " RETREATING" else "")
+			if Calendar.now() < (g.retreatUntil or 0) then " RETREATING" else "")
 	elseif cmd == "summon" and ps then
 		-- bring a group next to the player
 		local g = S.groups[args[1] or "band"]
@@ -125,7 +172,7 @@ function Debug.run(cmd: string, ...): any
 			local wantType = if kind == "bandit" then "plunderer" elseif kind == "hunter" then "hunter" else nil
 			local here = WorldGen.villageAt(world, p.x, p.y, 3)
 			for i, t in ipairs(S.tribes) do
-				if (wantType and t.tribeType == wantType) or (not wantType and t.village == here) then tribe = i break end
+				if (wantType and t.tribeType == wantType) or (not wantType and Map.village(t.villageId) == here) then tribe = i break end
 			end
 			tribe = tribe or 1
 		end
@@ -205,6 +252,8 @@ function Debug.run(cmd: string, ...): any
 		end
 		return { stage = ps.goalStage, goal = ps.goal, done = ps.goalDone, metSurvivor = ps.metSurvivor, held = ps.selected }
 	elseif cmd == "camp" and ps then
+		-- `camp 30 83` pitches the player's camp there (no kit needed); bare `camp` reports it
+		if args[1] and args[2] then Sim.placeCamp(ps, args[1], args[2]) end
 		return tostring(S.camps[ps.player.UserId] and (S.camps[ps.player.UserId].x .. "," .. S.camps[ps.player.UserId].y .. (if S.camps[ps.player.UserId].out then " out" else " lit")) or "none")
 	end
 	return "unknown command " .. tostring(cmd)

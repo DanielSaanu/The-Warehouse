@@ -17,7 +17,7 @@ Families.MAX_PEOPLE = 9          -- visible people per village (the abstract pop
 
 export type Person = {
 	id: number, first: string, last: string, sex: string, -- "m" | "f"
-	tribe: number, village: string,
+	tribe: number, village: number, -- the village ID (its index in world.villages), never its name: names are derived from the seed
 	role: string,                   -- villager | guard | merchant | survivor | pregnant | baby | (group kinds)
 	stage: string,                  -- adult | pregnant | baby
 	born: number, alive: boolean, died: number?, cause: string?, killer: string?,
@@ -34,7 +34,7 @@ function Families.new(): Registry
 end
 
 function Families.add(reg: Registry, p: {
-	first: string, last: string, sex: string, tribe: number, village: string, role: string, born: number,
+	first: string, last: string, sex: string, tribe: number, village: number, role: string, born: number,
 	father: number?, mother: number?, stage: string?,
 }): Person
 	reg.nextId += 1
@@ -54,7 +54,7 @@ function Families.fullName(p: Person): string
 end
 
 --- A fresh adult for a village: random first name, a surname from the village's pool (or a given one), random sex.
-function Families.newAdult(reg: Registry, rng: Rng.Rng, tribe: number, village: string, role: string, born: number, surname: string?, sex: string?): Person
+function Families.newAdult(reg: Registry, rng: Rng.Rng, tribe: number, village: number, role: string, born: number, surname: string?, sex: string?): Person
 	local first, last = Names.person(rng, surname)
 	return Families.add(reg, { first = first, last = last, sex = sex or (if rng:chance(0.5) then "m" else "f"), tribe = tribe, village = village, role = role, born = born })
 end
