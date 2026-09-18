@@ -28,16 +28,16 @@ local Debug = require(script.Parent:WaitForChild("Debug"))
 local Restore = require(script.Parent:WaitForChild("Restore"))
 local Goals = require(script.Parent:WaitForChild("Goals"))
 local Map = require(script.Parent:WaitForChild("Map"))
+local State = require(script.Parent:WaitForChild("State"))
+local Tiles = require(script.Parent:WaitForChild("Tiles"))
 local Calendar = require(script.Parent:WaitForChild("Calendar"))
 
 local Sim = {}
 
-local O = TileTypes.ObjectByName
 local G = TileTypes.GroundByName
 local HOUR = Config.DAY_SECONDS / 24
 
--- Wired by Server.server.lua before Sim.start().
-Sim.remotes = {} :: { EntityState: RemoteEvent, Notice: RemoteEvent }
+Sim.remotes = State.remotes -- wired by Server.server.lua before Sim.start()
 Sim.verbose = false -- Debug "verbose 1": log every hit on a player
 Sim.frozen = false  -- Debug "freeze 1": NPCs stop thinking and walking (for deterministic tests)
 
@@ -45,32 +45,11 @@ local world: WorldGen.World
 local rng: Rng.Rng
 local nextId = 0
 
--- ---------- state ----------
-Sim.state = {
-	meta = { gameSeconds = 0, lastDailyTick = 1, nextBagId = 0 }, -- the one clock (Calendar owns it); `day` below is derived, a cache
-	day = 1,
-	tribes = {},      -- [i] = { villageId, tribeType, stock, population, walled, surnames, news }
-	people = nil,     -- Families.Registry: everyone who was ever born in this world
-	regions = nil,    -- Ecology.Regions (+ live counts)
-	groups = {},      -- [id] = group record
-	entities = {},    -- [id] = entity
-	players = {},     -- [userId] = player state
-	camps = {},       -- [userId] = { x, y, litUntil, out }
-	bags = {},        -- [id] = { x, y, owner, slots, droppedAt }
-	calamity = { kind = nil, active = false, warnedDay = 0, day = 0, flood = nil },
-}
-local S = Sim.state
-
--- Tile occupancy: index -> entity id or player userId. People and animals never share a tile.
-Sim.occupied = {} :: { [number]: any }
-
-local function tidx(x: number, y: number): number
-	return WorldGen.index(world, x, y)
-end
-
-local function cheb(x1, y1, x2, y2): number
-	return math.max(math.abs(x1 - x2), math.abs(y1 - y2))
-end
+-- The record, occupancy and the client-facing helpers live in server/State.lua. These are the names the rest of
+-- this file, and Interact / Sides / Debug / Restore, already use.
+Sim.state, Sim.occupied = State.state, State.occupied
+local S = State.state
+local tidx, cheb = State.tidx, State.cheb
 
 -- ---------- clock ----------
 function Sim.clock(): (number, number)
@@ -84,40 +63,8 @@ function Sim.isNight(): boolean
 	return DayCycle.nightAlpha(frac) > 0.25
 end
 
--- ---------- replication ----------
-local function sendState(ps, ...)
-	Sim.remotes.EntityState:FireClient(ps.player, ...)
-end
-
-local function notice(ps, kind: string, data: any)
-	Sim.remotes.Notice:FireClient(ps.player, kind, data)
-end
-Sim.notice = notice
-
-function Sim.text(ps, msg: string, color: string?)
-	notice(ps, "text", { text = msg, color = color })
-end
-
---- Every player that currently knows entity `e`.
-local function broadcastEntity(e, ...)
-	for _, ps in pairs(S.players) do
-		if ps.known[e.id] then sendState(ps, ...) end
-	end
-end
-
-local function spawnPacket(e)
-	return "spawn", e.id, e.sprite, e.x, e.y, e.facing, e.label, e.hp / e.maxHp, e.kind
-end
-
-function Sim.hud(ps)
-	-- what was in hand may have been eaten, sold or dropped since it was picked up
-	if ps.selected and not ps.inv.slots[ps.selected] then ps.selected = nil end
-	notice(ps, "hud", {
-		hp = ps.hp, maxHp = ps.maxHp, inv = Items.snapshot(ps.inv), rep = ps.rep,
-		rest = ps.restText, dead = ps.dead,
-		goal = ps.goal, metSurvivor = ps.metSurvivor, selected = ps.selected,
-	})
-end
+local sendState, notice, broadcastEntity, spawnPacket = State.sendState, State.notice, State.broadcastEntity, State.spawnPacket
+Sim.notice, Sim.text, Sim.hud, Sim.restText, Sim.broadcastObject = State.notice, State.text, State.hud, State.restText, State.broadcastObject
 
 -- The goal line lives in server/Goals.lua; these names are what Interact, Debug and the rest of Sim already call.
 Sim.setGoal, Sim.clearGoal = Goals.set, Goals.clear
@@ -774,22 +721,8 @@ function Sim.playerRestPoint(ps): (WorldGen.Pos, string?)
 	return p, why
 end
 
-function Sim.restText(ps): string
-	if ps.rest.kind == "camp" then return "your camp" end
-	return world.villages[ps.rest.village or 1].name
-end
-
 local function dropBag(ps)
-	local slots = Items.dropAll(ps.inv)
-	if #slots == 0 then return end
-	local pos = nearestFree(ps.x, ps.y, 2) or { x = ps.x, y = ps.y }
-	if WorldGen.object(world, pos.x, pos.y) ~= 0 then return end
-	-- bags are saved, so their counter is too (meta); entity ids are never saved, so theirs is a file local
-	S.meta.nextBagId += 1
-	local id = "b" .. S.meta.nextBagId
-	S.bags[id] = { id = id, x = pos.x, y = pos.y, owner = ps.player.UserId, slots = slots, droppedAt = Calendar.now() }
-	world.object[tidx(pos.x, pos.y)] = O.bag.id
-	sendState(ps, "object", pos.x, pos.y, O.bag.id)
+	Tiles.dropBag(ps, nearestFree(ps.x, ps.y, 2) or { x = ps.x, y = ps.y })
 end
 
 local function killPlayer(ps, killer)
@@ -1224,100 +1157,9 @@ local function tickInterest()
 	end
 end
 
--- ---------- camps and bags ----------
-function Sim.placeCamp(ps, x: number, y: number)
-	local uid = ps.player.UserId
-	local old = S.camps[uid]
-	if old then
-		world.object[tidx(old.x, old.y)] = 0
-		Sim.broadcastObject(old.x, old.y, 0)
-	end
-	S.camps[uid] = { x = x, y = y, litUntil = Calendar.now() + Config.CAMPFIRE_HOURS * HOUR, out = false, owner = uid }
-	world.object[tidx(x, y)] = O.camp_lit.id
-	Sim.broadcastObject(x, y, O.camp_lit.id)
-	ps.rest = { kind = "camp" }
-	ps.restText = Sim.restText(ps)
-end
-
-function Sim.broadcastObject(x: number, y: number, objectId: number)
-	for _, ps in pairs(S.players) do sendState(ps, "object", x, y, objectId) end
-end
-
-local function destroyCamp(uid: number, why: string)
-	local c = S.camps[uid]
-	if not c then return end
-	S.camps[uid] = nil
-	if world.object[tidx(c.x, c.y)] == O.camp_lit.id or world.object[tidx(c.x, c.y)] == O.camp_out.id then
-		world.object[tidx(c.x, c.y)] = 0
-		Sim.broadcastObject(c.x, c.y, 0)
-	end
-	local ps = S.players[uid]
-	if ps then
-		if ps.rest.kind == "camp" then ps.rest = { kind = "village", village = 1 } ps.restText = Sim.restText(ps) end
-		Sim.text(ps, why, "warn")
-		Sim.hud(ps)
-	end
-end
-
-local function tickCamps(now: number)
-	for uid, c in pairs(S.camps) do
-		if not c.out and now >= c.litUntil then
-			c.out = true
-			world.object[tidx(c.x, c.y)] = O.camp_out.id
-			Sim.broadcastObject(c.x, c.y, O.camp_out.id)
-			local ps = S.players[uid]
-			if ps then Sim.text(ps, "Your fire has gone out.") end
-		end
-		-- wolves at an unlit camp trample it
-		if c.out then
-			for _, e in pairs(S.entities) do
-				if e.species == "wolf" and cheb(e.x, e.y, c.x, c.y) <= 1 then destroyCamp(uid, "Wolves have torn up your camp.") break end
-			end
-		end
-	end
-	-- bags go public after a while and vanish after an hour
-	for id, b in pairs(S.bags) do
-		local age = now - b.droppedAt
-		if age > Config.BAG_PRIVATE_SECONDS and not b.public then
-			b.public = true
-			for _, ps in pairs(S.players) do
-				if ps.player.UserId ~= b.owner then sendState(ps, "object", b.x, b.y, O.bag.id) end
-			end
-		end
-		if age > 3600 then
-			S.bags[id] = nil
-			world.object[tidx(b.x, b.y)] = 0
-			Sim.broadcastObject(b.x, b.y, 0)
-		end
-	end
-end
-
-function Sim.bagAt(x: number, y: number)
-	for _, b in pairs(S.bags) do
-		if b.x == x and b.y == y then return b end
-	end
-	return nil
-end
-
-function Sim.takeBag(ps, b)
-	local got = {}
-	local left = {}
-	for _, s in ipairs(b.slots) do
-		local added = Items.add(ps.inv, s.item, s.n)
-		if added > 0 then table.insert(got, added .. " " .. Items.def(s.item).label) end
-		if added < s.n then table.insert(left, { item = s.item, n = s.n - added }) end
-	end
-	if #left > 0 then
-		b.slots = left
-		Sim.text(ps, "You take " .. table.concat(got, ", ") .. ". The rest will not fit.", "warn")
-	else
-		S.bags[b.id] = nil
-		world.object[tidx(b.x, b.y)] = 0
-		Sim.broadcastObject(b.x, b.y, 0)
-		Sim.text(ps, if #got > 0 then "You take " .. table.concat(got, ", ") .. "." else "The bag is empty.")
-	end
-	Sim.hud(ps)
-end
+-- Camps and bags live in server/Tiles.lua; these are the names Interact, Debug and the rest of this file use.
+Sim.placeCamp, Sim.bagAt, Sim.takeBag = Tiles.placeCamp, Tiles.bagAt, Tiles.takeBag
+local destroyCamp, tickCamps = Tiles.destroyCamp, Tiles.tick
 
 -- ---------- calamities ----------
 --- A calamity BEGINS: once per calamity, from tickCalamity (or Debug). Everything here is a one-time consequence -

@@ -345,6 +345,11 @@ were, the same named people, the calendar later than you left it, a caravan some
 
 ### Track B — for the reader (optional, any order after A3, one module per commit)
 
+**Status 2026-09-18: started and parked.** `State.lua` (the record, occupancy, the client-facing helpers) and
+`Tiles.lua` (camps, bags, the map's object layer) are carved; `Sim.lua` is 1,410 lines. `State.lua` matters beyond
+its own size: it is what lets the remaining carves `require` their shared ground instead of taking a `bind(ctx)`
+(H4), and it cannot form a cycle. The rest of Track B is untouched and needs a QA loop of its own.
+
 **B1 — carve the small three:** `Tiles`, `Bands`, the calamity half of `Calendar`. `Bands` also gives groups
 **stable members** — `g.members` is anonymous specs (`{kind="hunter"}`) re-rolled into different named people on
 every materialise; they become person ids, plus `{ player = userId }`. *Part 3 and part 4 need this; part 2 does

@@ -14,8 +14,14 @@
   The whole world is ~9.3 KB of JSON. Summary and Danzo's test checklist: `docs/qa/track-a-summary.md`.
 - **Confirmed by Danzo on 2026-09-18 against the real DataStore** (Studio API access on): stop, start, and the
   world and the player were still there. `track-a` is merged into `main`.
-- **Next:** the "you were gone eleven days" line (`meta.headlines` is in the format, nothing writes it), then
-  Track B (carving `Sim.lua`) or rung 3 part 3 (gossip).
+- **Done since:** the "you were gone eleven days" line (QA 8/10, merged), and the first two carves of Track B
+  (`State.lua`, `Tiles.lua`; `Sim.lua` 1617 → 1410). **Track B is parked at Danzo's word** — see
+  `roblox/src/server/README.md` for exactly where it stops.
+- **Next, Danzo's call:** (a) a QA loop on the two carves before anything builds on them, (b) the rest of Track B,
+  or (c) **rung 3 part 3, gossip** — which is the next thing a player would actually feel.
+- **One decision waiting on Danzo:** `Families.MAX_PEOPLE = 9` against 11-14 living per tribe means **nobody is
+  ever born** until a village is thinned, so the family system idles and catch-up has little to report. Raising it
+  above the starting rosters (16 fits DESIGN §4's 60-NPC cap) makes villages grow. One constant.
 
 This file is the shared scratchpad. Type here in the UI (bottom pane) or in any editor. Claude reads it 
 the start of a session and works through it. Cross things out or delete them when done.
