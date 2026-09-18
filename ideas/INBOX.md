@@ -62,6 +62,13 @@ instead of it just being a rain cycle every 60 seconds we could first off make i
   hang it on, so §4 now has a **data budget**: free per tribe/village/region/role, careful per person.
 - "We have to go into that third dimension a little bit." Open question at the bottom of DESIGN.md: fake height
   is cheap and could land any week, real elevation is rung 4.
+- **The main story should be the guidance, not the game.** You should be able to go start to finish just messing
+  with whatever interests you; the main story is what you fall back on when you actually need direction. That is
+  what Palworld does. This is the answer to the little brother's playtest above ("I don't know what to do") —
+  the problem was never too little freedom, it was no compass. -> **pillar 6** in `docs/DESIGN.md`, and the
+  portable version is **principle 1 in `docs/PRINCIPLES.md`**, which is the box: design principles that are not
+  about Lowlands and are meant to be carried to the next project. Concrete here: the elder answers "what now"
+  (§12), because the first job retires at the first calamity and nothing replaces it.
 - The other game he likes (unreleased): everything procedurally generated, characters are just parts you bolt
   together — thrusters, attractors, magnets — and the movement is procedural too, so whatever you build moves.
   He said it can't be done in Roblox. It can, actually: Roblox is a physics engine, and constraints + Motor6D +

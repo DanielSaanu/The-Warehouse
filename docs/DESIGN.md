@@ -22,6 +22,13 @@ Source of truth for gameplay decisions. `ideas/INBOX.md` is the scratchpad; thin
    back. **When a builder has to choose between blocking an action and letting it through with a consequence,
    let it through.** The exceptions are few and they are all technical, not design: no PvP damage (§14), and the
    caps in §4 stay caps.
+6. **The main story is the compass, not the spine.** (Danzo, 2026-09-18.) You can get from the start of
+   Lowlands to the end of it by only ever doing what interests you — hunt, trade, feud, build, take a tribe.
+   The main story exists for the minutes when nothing does: the first one, and the one at hour twenty when you
+   have just finished a thing and are standing still. So it never gates a system, never expires, never scolds,
+   points rather than choreographs, and everything it leads to is reachable without it. **In Lowlands the
+   compass is a person, not a log** — see §12. The general form of this, kept portable for whatever gets built
+   after Lowlands, is principle 1 in `docs/PRINCIPLES.md`.
 
 ## 2. Decisions made (do not relitigate without a reason)
 
@@ -286,6 +293,24 @@ bandits came from the north, and point you down the road to the hunter village f
 straightforward; one encounter happens on it (a deer to hunt, or a wounded caravan guard to talk to, picked so
 the player learns one more thing). No quest log. Just a person who told you where to go.
 
+### After the first job: the elder is the compass (2026-09-18)
+
+Rung 2 part 4 added a visible first job — one line under the clock, five steps, retired for good at the first
+calamity. That line is pillar 6 in miniature, and retiring it was right: it is scaffolding for the first minute.
+But nothing replaces it, and **the lost minute at hour twenty is the one that loses players**. What replaces it:
+
+- **Ask the elder "what now".** A topic on the elder's multiple-choice window (§8) that answers with the next
+  step of the long arc, chosen from where the player actually stands: what they own, who trusts them, what they
+  have not seen. "You have coin and no roof. Kenstow would sell you a hut if you were worth more to them."
+- It reads the village's knowledge bank like every other topic, so **a far elder gives worse advice than a near
+  one**, an elder who dislikes you gives grudging advice, and an elder who is dead gives none until the role is
+  taken up again. The compass is a person and can be wrong, biased or absent. That is the feature.
+- It never opens a quest log, never adds a marker, never blocks anything, and it is happy to tell you that you
+  have already done the thing it was going to suggest (principle 1.5 in `docs/PRINCIPLES.md`: a step completed
+  by accident is the proof it is guidance).
+- Cheap: it is one more topic on a role that already exists, reading a bank that already exists. Lands naturally
+  with the chief role and the full talk system in rung 3.
+
 ## 13. The long arc: becoming a power
 
 Everything a tribe can do, the player can eventually **initiate and take part in**, from a chosen **true home**:
@@ -456,6 +481,10 @@ roblox/src/client/     Viewport (scrolling window over the map, entity sprites),
 - Portrait on a narrow phone. A 44 px d-pad needs about 140 px however you draw it, so on a 390 px-wide play area
   the two thumb clusters leave only a quarter of the width clear. Landscape is the intended orientation.
 - Exact cap numbers (section 4 has first guesses; tune on a real phone).
+- **Does the "what now" elder topic (§12) go in rung 3 part 3 with the chief, or earlier?** It is the only
+  answer to the hour-twenty lost minute and it is maybe half a day of work, so it could ride along with almost
+  anything. Argument for earlier: the first public players (rung 2 part 5) will hit the lost minute and quit
+  before rung 3 exists.
 - **When does the chief role appear?** §13's succession needs one, and rung 3 part 3 (tribute and tax) needs a
   face to make the demand. Recommendation: add `chief` in part 3 rather than waiting for the full talk system in
   part 5 — it is one more role reading the village bank, and it makes "who do I pay" answerable.
