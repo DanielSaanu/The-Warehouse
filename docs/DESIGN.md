@@ -277,15 +277,20 @@ This is rungs 4 and 5; the data model in section 4 is shaped for it from the sta
 
 ## 14. Persistence and multiplayer
 
-- One shared world per server. Reputation, grudge and memory are per player. Gossip carries player names.
+- **One world, shared by every server** (Danzo, 2026-09-18). Every server of the place reads and writes the same
+  DataStore save, so Glenworth is the same Glenworth for everyone. Reputation, grudge and memory are per player.
+  Gossip carries player names.
 - No PvP damage for now. Tribes judge players individually: one player's massacre is that player's problem.
 - The world state (tribes, groups, villages, regions, calamity clock) is saved to DataStore every 2 minutes and
   on server shutdown. Player state is saved separately on leave.
 - **Catch-up**: on load, the server runs the simulation for the missed time at coarse steps (one step per
   in-game hour, capped at 4 weeks), so caravans arrive, tribes breed, the ecosystem drifts. Players are not
   simulated while offline.
-- If two servers run the same world (Roblox can start a second server when the first is full), the second loads
-  the last save and diverges. v1 accepts this. Later: one world per server slot.
+- **Session lock**: one live server owns the world at a time. The claim lives in MemoryStore and is renewed on a
+  heartbeat; it expires on its own if a server dies without releasing it. A second server (Roblox starts one when
+  the first fills) loads the save and plays on, but never writes the world back, and says so. This replaces the
+  earlier "the second server diverges, v1 accepts this": a world that silently rolls back your standing is worse
+  than one that admits the second server is a guest.
 
 ## 15. Names
 
@@ -334,8 +339,8 @@ Rung 1 is done (grid, movement, one room, rain timer, upload pipeline).
 - Blizzard and drought. Knights and adventurers. Hiring. Full talk system with all roles and replacement.
 - Dash and shield block. Bows. Settlement healing and ruins.
 - Order: save + catch-up first (it gates everything and nothing a player does survives a shutdown without it),
-  then gossip and grudges, then tribute and tax, then hunger, then the rest. One open decision before part 1
-  starts: one world per server, or one world shared by everyone.
+  then gossip and grudges, then tribute and tax, then hunger, then the rest. Decided before part 1 started
+  (Danzo, 2026-09-18): one world shared by every server, with a session lock. See §14.
 
 **Rung 4: the map grows**
 - More villages, expansion, large tribes, hunting parties, raids on villages, walls and gates that matter.

@@ -37,11 +37,13 @@ from records when a player is near, and rebuilt on load.
   breeding and migration, trade restock, births and coming of age, reputation fade — capped so a month away does
   not take a minute to load. The player is told what changed: "You were gone eleven days. Kenstow has a new
   guard."
-- **The hard question, to settle before writing code**: one world per server, or one world shared by everyone?
-  Per-server is trivially easy and means your friend's Glenworth is not your Glenworth. Shared is what "a world
-  that persists and is shared by everyone on the server" in `ideas/INBOX.md` actually asks for, and it needs
-  MemoryStore or a single authoritative place. **Recommendation: one shared world, because the whole pitch is
-  that the world remembers, and a world that only remembers you alone is a save file, not a place.**
+- **The hard question, settled (Danzo, 2026-09-18): one shared world.** Every server reads and writes the same
+  save, because the whole pitch is that the world remembers, and a world that only remembers you alone is a save
+  file, not a place. It needs a **session lock**: one live server owns the world, claimed in MemoryStore and
+  renewed on a heartbeat, expiring on its own if a server dies without releasing it. A server that cannot get the
+  lock loads the save, plays on locally and never writes the world back — a guest in someone else's world, and it
+  says so rather than silently rolling anyone's standing back. Player saves are keyed by UserId and are not
+  locked, so a guest server still saves your own coin and standing.
 
 **Risks:** DataStore request budgets, 4 MB per key, writes on shutdown that do not finish. The family registry is
 the thing most likely to outgrow a key; it may need pruning of the long dead.
