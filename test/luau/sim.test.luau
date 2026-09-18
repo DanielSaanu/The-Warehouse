@@ -7,6 +7,7 @@ local Combat = __require("Combat")
 local Reputation = __require("Reputation")
 local Trade = __require("Trade")
 local Ecology = __require("Ecology")
+local Aggression = __require("Aggression")
 local Calamity = __require("Calamity")
 local Talk = __require("Talk")
 local Stats = __require("Stats")
@@ -148,6 +149,54 @@ do
 	Ecology.noteKill(r2, "deer")
 	assert(r2.eaten == 1, "prey counts")
 	print(("watched kill: tick leaves %d deer, without one it leaves %d"):format(fed, hungry))
+end
+
+-- Who starts on whom (DESIGN.md §5 and §20). The rule that used to run for hunters and guards only.
+do
+	local function actor(kind: string, o): Aggression.Actor
+		o = o or {}
+		return { kind = kind, species = o.species, tribeType = o.tribeType, inVillage = o.inVillage or false,
+			flees = o.flees or false }
+	end
+	local wolf = actor("wolf", { species = "wolf" })
+	local deer = actor("deer", { species = "deer" })
+	local boar = actor("boar", { species = "boar" })
+	local bandit = actor("bandit", { tribeType = "plunderer" })
+	local hunter = actor("hunter", { tribeType = "hunter" })
+	local guard = actor("guard", { tribeType = "farmer" })
+	local villager = actor("villager", { tribeType = "farmer", flees = true })
+	local housed = actor("villager", { tribeType = "farmer", flees = true, inVillage = true })
+	local caravanGuard = actor("caravan_guard", { tribeType = "farmer" })
+	local plundererVillager = actor("villager", { tribeType = "plunderer", flees = true })
+
+	-- the whole point: a wolf has prey that is not the player
+	assert(Aggression.wants(wolf, deer, false), "wolves take deer")
+	assert(Aggression.wants(wolf, boar, false), "wolves take boar")
+	assert(not Aggression.wants(wolf, villager, false), "a wolf does not hunt people on an ordinary night")
+	assert(Aggression.wants(wolf, villager, true), "during a beast tide it does")
+	assert(not Aggression.wants(wolf, housed, true), "but not inside the walls")
+	assert(not Aggression.wants(wolf, guard, true), "and not someone who will fight back")
+
+	-- bandits live off the road, not off their own people, and not inside a village
+	assert(Aggression.wants(bandit, caravanGuard, false), "bandits go for caravans")
+	assert(Aggression.wants(bandit, villager, false), "and anyone caught outside")
+	assert(not Aggression.wants(bandit, housed, false), "but never inside a village")
+	assert(not Aggression.wants(bandit, plundererVillager, false), "and never their own")
+	assert(not Aggression.wants(bandit, bandit, false), "or each other")
+	assert(not Aggression.wants(bandit, deer, false), "bandits are not hunters")
+
+	-- hunters and guards keep what they always had
+	assert(Aggression.wants(hunter, deer, false) and Aggression.wants(hunter, bandit, false), "hunters hunt and clear")
+	assert(not Aggression.wants(hunter, villager, false), "hunters do not start on people")
+	assert(Aggression.wants(guard, wolf, false) and Aggression.wants(guard, bandit, false), "guards deal with both")
+	assert(not Aggression.wants(guard, deer, false), "a guard is not a hunter")
+
+	-- and the kinds that start nothing start nothing
+	for _, a in ipairs({ deer, boar, villager }) do
+		assert(Aggression.RANGE[a.kind] == nil, a.kind .. " starts no fights")
+		assert(not Aggression.wants(a, villager, true), a.kind .. " picks no target")
+	end
+	print("aggression: every hostile kind has prey that is not the player")
 end
 
 -- Calamity clock: warning on day 6, calamity on day 7, starts once, deterministic pick, has text.

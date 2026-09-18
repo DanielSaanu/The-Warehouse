@@ -22,6 +22,7 @@ local Calamity = require(Shared:WaitForChild("Calamity"))
 local DayCycle = require(Shared:WaitForChild("DayCycle"))
 local Families = require(Shared:WaitForChild("Families"))
 local Talk = require(Shared:WaitForChild("Talk"))
+local Aggression = require(Shared:WaitForChild("Aggression"))
 local World = require(script.Parent:WaitForChild("World"))
 
 local Sim = {}
@@ -581,14 +582,22 @@ end
 
 local function tickWildlife()
 	local night = Sim.isNight()
+	-- DESIGN.md §4 caps the sprites, and nothing enforced it: a beast tide would happily materialise the whole
+	-- north around one player. Over the cap, the rest of the region stays a number, which is what §4 says to do.
+	local animals = 0
+	for _, e in pairs(S.entities) do
+		if e.species then animals += 1 end
+	end
 	for _, ps in pairs(S.players) do
-		if not ps.dead then
+		if not ps.dead and animals < Config.MAX_ANIMALS then
 			for _, rid in ipairs(regionCenterNear(ps)) do
 				local r = S.regions.list[rid]
 				for _, sp in ipairs(Ecology.SPECIES) do
 					local want = math.min(r[sp], 3)
 					if sp == "wolf" and not (night or r.tide) then want = 0 end
-					if r.live[sp] < want then spawnAnimal(sp, r, ps) end
+					if r.live[sp] < want and animals < Config.MAX_ANIMALS then
+						if spawnAnimal(sp, r, ps) then animals += 1 end
+					end
 				end
 			end
 		end
@@ -1028,47 +1037,24 @@ local function pickTarget(e, now: number, npcD: number?)
 	end
 end
 
--- How far each kind looks for something to fight that is not a player (DESIGN.md §20).
-local NPC_RANGE = { hunter = 6, guard = 5, caravan_guard = 5, wolf = 8, bandit = 7 }
-
---- What this creature will start a fight with. Nil means it starts none of its own.
---- This used to exist only for hunters, guards and caravan guards, which is why a wolf would cross a field of
---- deer to reach the player and then stand next to a villager all night: the player was its only route to a
---- target at all.
-local function preyTest(e): ((any) -> boolean)?
-	if e.kind == "hunter" then
-		-- hunters bring meat home and clear what preys on their squads; they do not start on other people
-		return function(o) return o.species ~= nil or o.kind == "bandit" end
-	elseif e.kind == "guard" or e.kind == "caravan_guard" then
-		return function(o) return o.species == "wolf" or o.kind == "bandit" end
-	elseif e.species == "wolf" then
-		return function(o)
-			if o.species == "deer" or o.species == "boar" then return true end
-			-- during a beast tide the wolves come off the hill and take whoever is outside the walls
-			local r = e.region and S.regions.list[e.region]
-			return (r ~= nil and r.tide and Stats.get(o.kind).flees and not o.species and not inVillage(o.x, o.y)) == true
-		end
-	elseif e.kind == "bandit" then
-		-- DESIGN.md §5: plunderers live off caravans and off anyone caught outside the walls
-		return function(o)
-			if o.species or o.kind == "bandit" then return false end
-			if o.tribe and S.tribes[o.tribe].tribeType == "plunderer" then return false end
-			return not inVillage(o.x, o.y)
-		end
-	end
-	return nil
+--- Describe an entity the way Aggression sees it.
+local function actorOf(e): Aggression.Actor
+	return { kind = e.kind, species = e.species, tribeType = Sim.tribeOf(e),
+		inVillage = inVillage(e.x, e.y), flees = Stats.get(e.kind).flees }
 end
 
---- Look for something to fight that is not a player.
+--- Look for something to fight that is not a player. The rule itself lives in shared/Aggression.lua.
 local function pickNpcTarget(e, now: number)
-	if e.broken then return end
-	local wants = preyTest(e)
-	if not wants then return end
-	local best, bestD = nil, (NPC_RANGE[e.kind] or 5) + 1
+	local range = Aggression.RANGE[e.kind]
+	if e.broken or not range then return end
+	local me = actorOf(e)
+	local tide = (e.region ~= nil and S.regions.list[e.region].tide) or false
+	local best, bestD = nil, range + 1
 	for _, o in pairs(S.entities) do
+		-- the distance test comes first on purpose: it is cheap, and it keeps actorOf off the hot path
 		if o ~= e and now >= o.invulnUntil and not o.broken then
 			local d = cheb(e.x, e.y, o.x, o.y)
-			if d < bestD and wants(o) then best, bestD = o, d end
+			if d < bestD and Aggression.wants(me, actorOf(o), tide) then best, bestD = o, d end
 		end
 	end
 	if best then e.npcTarget, e.state = best.id, "hunt" end
@@ -1433,7 +1419,18 @@ local function startCalamity(kind: string)
 		for uid, camp in pairs(S.camps) do
 			if WorldGen.ground(world, camp.x, camp.y) == G.flood.id then destroyCamp(uid, "The flood took your camp.") end
 		end
-		for _, t in ipairs(S.tribes) do t.stock.food = math.floor(t.stock.food * 0.7) end
+		for _, t in ipairs(S.tribes) do
+			t.stock.food = math.floor(t.stock.food * 0.7)
+			-- a plot under water loses the season on it, which is the part of a flood a farmer actually feels
+			local drowned = 0
+			for _, f in ipairs(t.farms) do
+				if WorldGen.ground(world, f.x, f.y) == G.flood.id and f.growth > 0 then
+					f.growth, f.tended = 0, 0
+					drowned += 1
+				end
+			end
+			if drowned > 0 then t.news = ("The water took %d of our plots."):format(drowned) end
+		end
 	else
 		Ecology.beastTide(S.regions)
 		for _, t in ipairs(S.tribes) do

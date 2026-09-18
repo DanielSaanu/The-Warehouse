@@ -39,6 +39,11 @@ Config.VIEW_DX = 13
 Config.VIEW_DY = 10
 Config.MATERIALISE_RANGE = 22  -- groups and wildlife become sprites when a player is this close (tiles)
 Config.COLLAPSE_RANGE = 30     -- and fold back into records when every player is this far
+-- DESIGN.md §4 caps, so a beast tide cannot put the whole north on one screen. Measured before this existed:
+-- night + beast tide on the road came to 84 entities with 26 wolves visible at once.
+-- Only the animals need a gate: people are bounded by village and group sizes already (26 at that same peak,
+-- against §4's 60), and animals are the ones a calamity multiplies.
+Config.MAX_ANIMALS = 40        -- animal sprites materialised across all players at once
 
 -- Camp
 Config.CAMPFIRE_HOURS = 4      -- in-game hours the fire burns
