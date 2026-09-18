@@ -27,6 +27,12 @@ Source of truth for gameplay decisions. `ideas/INBOX.md` is the scratchpad; thin
    back. **When a builder has to choose between blocking an action and letting it through with a consequence,
    let it through.** The exceptions are few and they are all technical, not design: no PvP damage (§14), and the
    caps in §4 stay caps.
+   **The same rule governs belonging, not just violence** (Danzo, 2026-09-18): every system the world runs, the
+   player can *join*, not merely interact with. Ride with a caravan, hunt with a squad, ride with a band, and
+   later hire and build — all under the rules NPCs already follow, because a group is a record with members and
+   the player can be one of them. No player-only systems and no NPC-only ones; no permission checks, only
+   standing; and never a menu that spends coin where a person should be asked. The test for any feature:
+   **could an NPC do this, with the same data, under the same rules?** Built in `docs/RUNG3.md` part 4.
 6. **The main story is the compass, not the spine.** (Danzo, 2026-09-18.) You can get from the start of
    Lowlands to the end of it by only ever doing what interests you — hunt, trade, feud, build, take a tribe.
    The main story exists for the minutes when nothing does: the first one, and the one at hour twenty when you
@@ -387,6 +393,8 @@ This is rungs 4 and 5; the data model in section 4 is shaped for it from the sta
 ## 14. Persistence and multiplayer
 
 - One shared world per server. Reputation, grudge and memory are per player. Gossip carries player names.
+  Confirmed by Danzo 2026-09-18 and no longer an open question: a private copy per player would make "everything
+  remembers" hollow, and the caravan you joined has to be the caravan somebody else robbed.
 - No PvP damage for now. Tribes judge players individually: one player's massacre is that player's problem.
 - The world state (tribes, groups, villages, regions, calamity clock) is saved to DataStore every 2 minutes and
   on server shutdown. Player state is saved separately on leave.
