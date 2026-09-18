@@ -17,7 +17,7 @@ const rel = f => path.relative(SRC, f).split(path.sep).join('/');
 const CEILING = 400;
 const GENERATED = new Set(['shared/Sprites.lua', 'shared/SheetData.lua']);
 const ALLOWED = {
-  'server/Sim.lua': 1600,          // Track B1-B3 carve it into Bodies / Brains / Fighting / Bands / Tiles
+  'server/Sim.lua': 1580,          // Track B1-B3 carve it into Bodies / Brains / Fighting / Bands / Tiles
   'shared/WorldGen.lua': 880,      // Track B4: generate / query / encode
   'client/Hud.lua': 1025,          // rung 3 part 5, the client split
   'client/Client.client.lua': 660, // rung 3 part 5

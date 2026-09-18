@@ -350,7 +350,12 @@ local function applyFlood(tiles)
 	v:repaintAll()
 end
 
-WorldInit.OnClientEvent:Connect(function(encoded, meState, others, clock, sheetIds, calamity)
+local function showWelcome(data) -- back after days away (shared/Headlines.lua); one line at a time: they fade in 4 s
+	hud:banner(data.title, data.text)
+	for i, line in ipairs(data.lines) do task.delay(1 + (i - 1) * 3, function() hud:notice(line.text, line.color) end) end
+end
+
+WorldInit.OnClientEvent:Connect(function(encoded, meState, others, clock, sheetIds, calamity, welcome)
 	if vp then return end
 	Sprites.ApplySheetIds(sheetIds)
 	loading:Destroy()
@@ -384,11 +389,11 @@ WorldInit.OnClientEvent:Connect(function(encoded, meState, others, clock, sheetI
 		if calamity.active and calamity.flood then applyFlood(calamity.flood) end
 		if calamity.warning then hud:setWarning(calamity.warning) end
 	end
-	-- The opening beat: you wake in your own burnt village, and somebody is waiting to talk to you.
-	local start = w.villages[1]
 	currentVillage = WorldGen.villageAt(w, me.x, me.y, 1)
-	hud:banner(start.name, "Someone is calling you")
 	hud:setLegend(if TOUCH then TOUCH_LEGEND else KEY_LEGEND)
+	if welcome then if welcome.title then showWelcome(welcome) end return end -- returning players skip the day-one beat
+	-- The opening beat: you wake in your own burnt village, and somebody is waiting to talk to you.
+	hud:banner(w.villages[1].name, "Someone is calling you")
 	hud:setHint("Read the signs.")
 end)
 
@@ -509,6 +514,7 @@ Notice.OnClientEvent:Connect(function(kind, data)
 			if data.kind == "flood" then applyFlood(nil) end
 			hud:notice(data.text, "good")
 		end
+	elseif kind == "welcome" then showWelcome(data) -- Debug `welcome`; a real one arrives inside WorldInit
 	elseif kind == "died" then
 		me.dead = true
 		table.clear(held)

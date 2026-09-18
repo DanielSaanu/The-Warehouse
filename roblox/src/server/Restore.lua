@@ -18,6 +18,7 @@ local Calamity = require(Shared:WaitForChild("Calamity"))
 local Tick = require(Shared:WaitForChild("Tick"))
 local Save = require(Shared:WaitForChild("Save"))
 local Reputation = require(Shared:WaitForChild("Reputation"))
+local Headlines = require(Shared:WaitForChild("Headlines"))
 local Map = require(script.Parent:WaitForChild("Map"))
 local Calendar = require(script.Parent:WaitForChild("Calendar"))
 
@@ -55,10 +56,20 @@ function Restore.player(ps, saved, x: number, y: number): (number, number)
 		local p = playerRestPoint(ps)
 		x, y = p.x, p.y
 	end
-	local away = math.max(0, S.day - (saved.lastSeenDay or S.day))
+	local lastSeen = saved.lastSeenDay or S.day
+	ps.lastSeenDay = lastSeen -- kept so a player who leaves before seeing the welcome is still 'away since then'
+	local away = math.max(0, S.day - lastSeen)
 	if away > 0 then
 		for tribe, v in pairs(ps.rep) do ps.rep[tribe] = Reputation.fade(v, away) end
 	end
+	-- "You were gone eleven days": the world's headlines since they left, from the tribes that would tell them -
+	-- the village they sleep in, and anyone who is not wary of them. The server sends it once the client can show it.
+	local names = {}
+	for i, t in ipairs(S.tribes) do names[i] = Map.village(t.villageId).name end
+	ps.welcome = Headlines.welcome(S.meta, S.people, lastSeen, S.day, function(tribe: number): boolean
+		if ps.rest.kind == "village" and ps.rest.village == tribe then return true end
+		return Reputation.allowsRest(ps.rep[S.tribes[tribe].tribeType] or 0)
+	end, names)
 	return x, y
 end
 

@@ -13,6 +13,7 @@ local DayCycle = require(script.Parent.DayCycle)
 local Ecology = require(script.Parent.Ecology)
 local Families = require(script.Parent.Families)
 local Trade = require(script.Parent.Trade)
+local Headlines = require(script.Parent.Headlines)
 
 local Tick = {}
 
@@ -37,6 +38,7 @@ function Tick.families(w, rng, day: number)
 		if t then
 			t.population += 1
 			if mother then t.news = Families.describeBirth(baby, mother) end
+			Headlines.push(w.meta, { day = day, kind = "born", tribe = baby.tribe, id = baby.id }) -- catch-up writes these too
 		end
 	end
 	return { conceived = conceived, born = r.born, grown = r.grown }
