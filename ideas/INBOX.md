@@ -9,7 +9,10 @@
   stops; a band breaks once it has lost more than half; villages have real per-tribe garrisons).
 - **Not started, and blocked on purpose:** rung 3 **part 2** (save and catch-up) and the refactor, both waiting
   on `docs/ARCHITECTURE.md`, whose review loop is **still open** — see CLAUDE.md step 0.
-- **Next action:** round 3 of the architecture plan review. Bar 9.5, at most 5 rounds.
+- **Next action:** round 4 of the architecture plan review. Bar 9.5, at most 5 rounds. Round 3 scored 8.5 and
+  found two more save blockers (the flood cannot be lifted after a load — caused by round 2's own fix — and
+  numeric table keys come back from JSON as strings, silently detaching the family tree). All 8 FIX and all 8
+  CONSIDER items are in the plan; see `docs/qa/architecture-round3.md`.
 
 
 This file is the shared scratchpad. Type here in the UI (bottom pane) or in any editor. Claude reads it 

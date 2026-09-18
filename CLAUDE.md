@@ -7,11 +7,12 @@ the UI is hidden state: every action writes a file under `scenes/`, `sprites/`, 
 ## Start of every session
 
 0. **Read `docs/ARCHITECTURE.md` before writing any server code.** It is the plan for where the data lives, and
-   it is what rung 3 part 2 (save and catch-up) is waiting on. **Status, 2026-09-18: round 3 of its review loop
-   is about to start. Danzo raised the bar to 9.5 (from 8.0) and capped it at 5 rounds, because he wants the
-   plan right before any of it is coded.** Rounds 1 and 2 scored 7 and 8.5; their verbatim reports are in
-   `docs/qa/architecture-round1.md` and `-round2.md`, and between them they found three save blockers that were
-   invisible from the code. **Do not start the refactor, and do not start part 2, until the loop closes.**
+   it is what rung 3 part 2 (save and catch-up) is waiting on. **Status, 2026-09-18: rounds 1, 2 and 3 scored
+   7, 8.5 and 8.5. Round 4 is next. Danzo raised the bar to 9.5 (from 8.0) and capped it at 5 rounds, because he
+   wants the plan right before any of it is coded.** Verbatim reports are in `docs/qa/architecture-round1.md`,
+   `-round2.md` and `-round3.md`; between them they found **five save blockers** invisible from the code, one of
+   which round 2's own fix introduced and round 3 caught. **Do not start the refactor, and do not start part 2,
+   until the loop closes.**
 1. Read `ideas/INBOX.md`. That is the to-do list the human writes in the UI. Work through it.
 2. `node bin/warehouse.js scenes` to see what exists. Open the scene JSONs you will touch.
 3. When you change art, render it and LOOK at it: `node bin/warehouse.js render <scene> --scale 8` then Read
