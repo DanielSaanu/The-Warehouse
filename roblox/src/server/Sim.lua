@@ -24,7 +24,8 @@ local Families = require(Shared:WaitForChild("Families"))
 local Talk = require(Shared:WaitForChild("Talk"))
 local Sides = require(script.Parent:WaitForChild("Sides"))
 local Debug = require(script.Parent:WaitForChild("Debug"))
-local World = require(script.Parent:WaitForChild("World"))
+local Map = require(script.Parent:WaitForChild("Map"))
+local Calendar = require(script.Parent:WaitForChild("Calendar"))
 
 local Sim = {}
 
@@ -43,7 +44,8 @@ local nextId = 0
 
 -- ---------- state ----------
 Sim.state = {
-	day = 1, dayStart = 0,
+	meta = { gameSeconds = 0 }, -- the one clock (Calendar owns it); `day` below is derived from it, a cache
+	day = 1,
 	tribes = {},      -- [i] = { village, tribeType, stock, population, walled, surnames, news }
 	people = nil,     -- Families.Registry: everyone who was ever born in this world
 	regions = nil,    -- Ecology.Regions (+ live counts)
@@ -70,13 +72,9 @@ end
 
 -- ---------- clock ----------
 function Sim.clock(): (number, number)
-	local elapsed = os.clock() - S.dayStart
-	while elapsed >= Config.DAY_SECONDS do
-		elapsed -= Config.DAY_SECONDS
-		S.dayStart += Config.DAY_SECONDS
-		S.day += 1
-	end
-	return S.day, elapsed / Config.DAY_SECONDS
+	local day, frac = Calendar.clock()
+	S.day = day
+	return day, frac
 end
 
 function Sim.isNight(): boolean
@@ -155,7 +153,7 @@ local function newEntity(kind: string, x: number, y: number, opts): any
 		x = x, y = y, facing = opts.facing or "down", hp = k.hp, maxHp = k.hp, atk = k.atk, def = k.def, speed = k.speed,
 		name = opts.name, tribe = opts.tribe, group = opts.group, role = opts.role or kind,
 		home = { x = x, y = y }, radius = opts.radius or 3,
-		state = "idle", nextThink = os.clock() + rng:float(), nextStepAt = 0, path = nil, pathI = 1,
+		state = "idle", nextThink = Calendar.now() + rng:float(), nextStepAt = 0, path = nil, pathI = 1,
 		target = nil, windupAt = nil, cooldownUntil = 0, invulnUntil = 0, fleeUntil = 0,
 		region = opts.region, species = opts.species,
 		lastPathAt = 0,
@@ -231,7 +229,7 @@ local BREAK = { bandit = 0.4, boar = 0.3, wolf = 0.3, guard = 0.25, caravan_guar
 
 local function pathTo(e, tx: number, ty: number, maxNodes: number?, roads: boolean?): boolean
 	if e.x == tx and e.y == ty then e.path = nil return true end
-	local now = os.clock()
+	local now = Calendar.now()
 	e.lastPathAt = now
 	local p = WorldGen.route(world, e.x, e.y, tx, ty, roads, maxNodes or 400)
 	if not p then e.path = nil return false end
@@ -413,7 +411,7 @@ local function makeGroup(id: string, kind: string, tribeIdx: number, from: World
 	table.insert(route, 1, { x = from.x, y = from.y })
 	local g = {
 		id = id, kind = kind, tribe = tribeIdx, route = route, pos = 1, dir = 1, from = { x = from.x, y = from.y },
-		pauseUntil = os.clock() + rng:int(20, 60), pauses = pauses, speed = 1.5, acc = 0,
+		pauseUntil = Calendar.now() + rng:int(20, 60), pauses = pauses, speed = 1.5, acc = 0,
 		members = members, fullSize = #members, entities = {}, leader = nil, trail = {}, materialised = false,
 		target = nil, aggroUntil = 0, lastSeen = nil,
 		carry = {}, retreatUntil = 0,   -- what they are bringing home, and whether they have had enough
@@ -485,7 +483,7 @@ local function groupTurn(g)
 	-- dir -1 is the walk home, so turning while heading home means they have arrived
 	if g.dir == -1 then depositCarry(g) end
 	g.dir = -g.dir
-	g.pauseUntil = os.clock() + (if g.dir == 1 then g.pauses[1] else g.pauses[2])
+	g.pauseUntil = Calendar.now() + (if g.dir == 1 then g.pauses[1] else g.pauses[2])
 end
 
 local function materialise(g)
@@ -664,7 +662,7 @@ local function killEntity(e, killer, ctx, byEntity)
 	-- An NPC kill used to produce nothing. Now it goes into the killer's group to be carried home, and the
 	-- killer stops being hungry for a while, which is what stops a hunt being a slaughter.
 	if byEntity and e.species then
-		local now = os.clock()
+		local now = Calendar.now()
 		byEntity.fedUntil = now + (if byEntity.species then Config.FED_SECONDS else Config.FED_HUNTER)
 		local g = byEntity.group and S.groups[byEntity.group]
 		if g then
@@ -711,7 +709,7 @@ local function killEntity(e, killer, ctx, byEntity)
 		if g then
 			-- the record loses a member; the tribe replaces them at home after a while
 			table.remove(g.members, #g.members)
-			local now = os.clock()
+			local now = Calendar.now()
 			g.replenishAt = now + Config.DAY_SECONDS
 			-- A pack breaks when it has lost more than half, not the moment it loses one (Danzo, 2026-09-18:
 			-- "if u encounter a bandit group and kill more than half the rest run away like with wolf packs but
@@ -756,7 +754,7 @@ Sim.markAggression = markAggression
 
 --- Damage to an entity from (ax, ay). Flash, knockback, death. Fighters break and run at their break point.
 local function hitEntity(e, dmg: number, ax: number, ay: number, attacker, byEntity)
-	local now = os.clock()
+	local now = Calendar.now()
 	if now < e.invulnUntil then return end
 	-- everyone near enough to see it takes a view (docs/RUNG3.md part 1)
 	local striker = if attacker then { ps = attacker } elseif byEntity then { e = byEntity } else nil
@@ -838,7 +836,7 @@ local function dropBag(ps)
 	if WorldGen.object(world, pos.x, pos.y) ~= 0 then return end
 	nextId += 1
 	local id = "b" .. nextId
-	S.bags[id] = { id = id, x = pos.x, y = pos.y, owner = ps.player.UserId, slots = slots, droppedAt = os.clock() }
+	S.bags[id] = { id = id, x = pos.x, y = pos.y, owner = ps.player.UserId, slots = slots, droppedAt = Calendar.now() }
 	world.object[tidx(pos.x, pos.y)] = O.bag.id
 	sendState(ps, "object", pos.x, pos.y, O.bag.id)
 end
@@ -881,7 +879,7 @@ end
 
 --- An NPC's swing lands on a player.
 local function hitPlayer(ps, e)
-	local now = os.clock()
+	local now = Calendar.now()
 	if ps.dead or now < ps.invulnUntil then return end
 	Sides.witnessed({ e = e }, { ps = ps }, ps.x, ps.y)
 	local dmg = Combat.damage(e.atk, 0)
@@ -908,7 +906,7 @@ end
 
 --- The player swings at the tile they face.
 function Sim.attack(ps, facing: string)
-	local now = os.clock()
+	local now = Calendar.now()
 	if ps.dead or now < ps.lastAttack + Config.ATTACK_COOLDOWN then return end
 	ps.lastAttack = now
 	ps.facing = facing
@@ -1283,7 +1281,7 @@ function Sim.placeCamp(ps, x: number, y: number)
 		world.object[tidx(old.x, old.y)] = 0
 		Sim.broadcastObject(old.x, old.y, 0)
 	end
-	S.camps[uid] = { x = x, y = y, litUntil = os.clock() + Config.CAMPFIRE_HOURS * HOUR, out = false, owner = uid }
+	S.camps[uid] = { x = x, y = y, litUntil = Calendar.now() + Config.CAMPFIRE_HOURS * HOUR, out = false, owner = uid }
 	world.object[tidx(x, y)] = O.camp_lit.id
 	Sim.broadcastObject(x, y, O.camp_lit.id)
 	ps.rest = { kind = "camp" }
@@ -1494,7 +1492,7 @@ local function dailyTick()
 	for _, ps in pairs(S.players) do
 		for tribe, v in pairs(ps.rep) do ps.rep[tribe] = Reputation.fade(v, 1) end
 	end
-	local now = os.clock()
+	local now = Calendar.now()
 	for _, g in pairs(S.groups) do
 		if g.replenishAt and now >= g.replenishAt and not g.materialised then
 			local full = if g.kind == "caravan" then 3 else 4
@@ -1543,9 +1541,9 @@ end
 
 -- ---------- init and loops ----------
 function Sim.init()
-	world = World.get()
+	world = Map.get()
 	rng = Rng.new(world.seed * 31 + 7)
-	S.dayStart = os.clock()
+	Calendar.bind(S.meta)
 	S.people = Families.new()
 	S.regions = Ecology.init(world, rng:fork(1))
 	for _, r in ipairs(S.regions.list) do r.live = { deer = 0, boar = 0, wolf = 0 } end
@@ -1567,7 +1565,7 @@ function Sim.start()
 		local lastInterest, lastWild = 0, 0
 		while true do
 			task.wait(0.1)
-			local now = os.clock()
+			local now = Calendar.now()
 			for _, e in pairs(S.entities) do
 				if Sim.frozen then break end
 				if now >= e.nextThink then
@@ -1589,7 +1587,7 @@ function Sim.start()
 	task.spawn(function()
 		while true do
 			task.wait(1)
-			local now = os.clock()
+			local now = Calendar.now()
 			local day = Sim.clock()
 			for _, f in ipairs({ tickGroups, tickCamps, tickCalamity, tickGoals }) do
 				local ok, err = pcall(f, now)

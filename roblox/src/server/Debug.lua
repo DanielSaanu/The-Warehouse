@@ -14,6 +14,7 @@ local Stats = require(Shared:WaitForChild("Stats"))
 local WorldGen = require(Shared:WaitForChild("WorldGen"))
 local Ecology = require(Shared:WaitForChild("Ecology"))
 local Families = require(Shared:WaitForChild("Families"))
+local Calendar = require(script.Parent:WaitForChild("Calendar"))
 
 local Debug = {}
 
@@ -66,17 +67,17 @@ function Debug.run(cmd: string, ...): any
 		Sim.hud(ps)
 		return t.tribeType .. " = " .. tostring(ps.rep[t.tribeType])
 	elseif cmd == "night" then
-		S.dayStart = os.clock() - Config.DAY_SECONDS * (1 - Config.NIGHT_FRACTION + 0.01)
+		Calendar.skipTo(1 - Config.NIGHT_FRACTION + 0.01)
 		return "dusk"
 	elseif cmd == "jump" then
 		-- set the calendar: `jump 6` = morning of day 6 (the warning), `jump 7 0.29` = a moment before the calamity
 		local day, frac = args[1] or 7, args[2] or 0.1
+		if not Calendar.setDay(day, frac) then return "the calendar only moves forward (it is day " .. S.day .. ")" end
 		S.day = day
-		S.dayStart = os.clock() - Config.DAY_SECONDS * frac
 		S.lastDailyTick = day -- one jump does not run six days of births and breeding
 		return ("day %d, %.0f%% through it"):format(day, frac * 100)
 	elseif cmd == "day" then
-		S.dayStart = os.clock() - Config.DAY_SECONDS * (args[1] or 0.1)
+		Calendar.skipTo(args[1] or 0.1)
 		return "morning"
 	elseif cmd == "hurt" and ps then
 		ps.hp = math.max(1, ps.hp - (args[1] or 4))
@@ -94,7 +95,7 @@ function Debug.run(cmd: string, ...): any
 		table.sort(carry)
 		return ("%s at %d,%d dir %d pos %d/%d%s carrying[%s]%s"):format(g.id, p.x, p.y, g.dir, g.pos, #g.route,
 			if g.materialised then " visible" else "", table.concat(carry, ", "),
-			if os.clock() < (g.retreatUntil or 0) then " RETREATING" else "")
+			if Calendar.now() < (g.retreatUntil or 0) then " RETREATING" else "")
 	elseif cmd == "summon" and ps then
 		-- bring a group next to the player
 		local g = S.groups[args[1] or "band"]

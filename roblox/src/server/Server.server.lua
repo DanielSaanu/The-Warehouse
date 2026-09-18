@@ -8,7 +8,7 @@ local ServerStorage = game:GetService("ServerStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Movement = require(Shared:WaitForChild("Movement"))
 local Sprites = require(Shared:WaitForChild("Sprites"))
-local World = require(script.Parent:WaitForChild("World"))
+local Map = require(script.Parent:WaitForChild("Map"))
 local Sim = require(script.Parent:WaitForChild("Sim"))
 local Interact = require(script.Parent:WaitForChild("Interact"))
 
@@ -28,8 +28,8 @@ local function noCharacter(player: Player)
 	player.CharacterAdded:Connect(function(character) task.defer(function() character:Destroy() end) end)
 end
 
-World.init()
-local world = World.get()
+Map.init()
+local world = Map.get()
 -- Decal id -> image id, once, so nobody has to do the Studio trick by hand.
 local sheetIds = Sprites.ResolveOnServer()
 
@@ -75,7 +75,7 @@ local function sendWorld(st)
 	end
 	local d, frac = Sim.clock()
 	local c = Sim.state.calamity
-	WorldInit:FireClient(player, World.encoded, { x = st.x, y = st.y, facing = st.facing, epoch = st.epoch }, others, { day = d, frac = frac }, sheetIds,
+	WorldInit:FireClient(player, Map.encoded, { x = st.x, y = st.y, facing = st.facing, epoch = st.epoch }, others, { day = d, frac = frac }, sheetIds,
 		{ kind = c.kind, active = c.active, flood = c.flood, warning = Sim.calamityWarning() })
 	-- interest management re-sends the entities it can see
 	st.known = {}

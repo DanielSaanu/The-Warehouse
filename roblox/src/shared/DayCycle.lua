@@ -5,6 +5,18 @@ local Config = require(script.Parent.Config)
 
 local DayCycle = {}
 
+--- The calendar from the world's one clock (docs/ARCHITECTURE.md R5): game seconds since the world began ->
+--- (day, fraction through it). Day 1 starts at second 0. The day is DERIVED, so it is never saved.
+function DayCycle.fromSeconds(gameSeconds: number): (number, number)
+	local day = math.floor(gameSeconds / Config.DAY_SECONDS)
+	return day + 1, (gameSeconds - day * Config.DAY_SECONDS) / Config.DAY_SECONDS
+end
+
+--- The inverse: the game second at which `day` is `frac` of the way through.
+function DayCycle.toSeconds(day: number, frac: number): number
+	return ((day - 1) + frac) * Config.DAY_SECONDS
+end
+
 --- Name of the part of the day, for the HUD.
 function DayCycle.phase(frac: number): string
 	local dayPart = 1 - Config.NIGHT_FRACTION
