@@ -329,10 +329,13 @@ Rung 1 is done (grid, movement, one room, rain timer, upload pipeline).
   conduct-based reputation (who drew first, mercy, escape), families (records with parents and children, births
   on the weekly clock, children come of age, villages refill by birth only).
 
-**Rung 3: memory and money**
+**Rung 3: memory and money** — build plan in `docs/RUNG3.md`
 - Gossip propagation, grudges and amends. Tribute, tax, extortion. Size tiers. Hunger. Save + catch-up.
 - Blizzard and drought. Knights and adventurers. Hiring. Full talk system with all roles and replacement.
 - Dash and shield block. Bows. Settlement healing and ruins.
+- Order: save + catch-up first (it gates everything and nothing a player does survives a shutdown without it),
+  then gossip and grudges, then tribute and tax, then hunger, then the rest. One open decision before part 1
+  starts: one world per server, or one world shared by everyone.
 
 **Rung 4: the map grows**
 - More villages, expansion, large tribes, hunting parties, raids on villages, walls and gates that matter.
