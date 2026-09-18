@@ -22,7 +22,7 @@ local function newRecord(seed: number)
 	}
 	for i, v in ipairs(world.villages) do
 		w.tribes[i] = { tribeType = v.tribeType, stock = Trade.newStock(v.tribeType), population = 10, surnames = { "Ash", "Birch" } }
-		for n = 1, 6 do Families.newAdult(w.people, rng, i, v.name, "villager", 1, nil, if n % 2 == 0 then "f" else "m") end
+		for n = 1, 6 do Families.newAdult(w.people, rng, i, i, "villager", 1, nil, if n % 2 == 0 then "f" else "m") end
 	end
 	local farmer, hunter = world.villages[1], world.villages[2]
 	local g = { id = "caravan", kind = "caravan", tribe = 1, pos = 1, dir = 1, acc = 0, speed = 1.5, pauses = { 120, 120 },

@@ -3,6 +3,8 @@
 -- day before. Rung 2 has two: flood and beast tide. Pure Luau.
 local Config = require(script.Parent.Config)
 local Rng = require(script.Parent.Rng)
+local WorldGen = require(script.Parent.WorldGen)
+local Ecology = require(script.Parent.Ecology)
 
 local Calamity = {}
 
@@ -34,6 +36,23 @@ end
 --- Should the calamity start now? Once per calamity day, at CALAMITY_START into it.
 function Calamity.shouldStart(day: number, frac: number, started: boolean): boolean
 	return not started and Calamity.isCalamityDay(day) and frac >= Config.CALAMITY_START
+end
+
+--- Lay a calamity's OVERLAY on the map and the regions: flood water, or the tide flag. Nothing else, ever - this
+--- is what a load calls to put back a calamity that was running when the world was saved, and it may run any
+--- number of times. It is idempotent (setFlood lifts a flood that is already down before laying it again) and it
+--- changes nothing that is saved. The one-time half - the food lost, the wolves arriving, the camps destroyed, the
+--- end date - belongs to whoever BEGINS the calamity (server Sim: beginCalamity). Returns the flood tiles (the
+--- client is sent them), or nil for a tide.
+function Calamity.applyOverlay(world: WorldGen.World, regions: Ecology.Regions, kind: string): { number }?
+	if kind == "flood" then
+		if world.floodBackup then WorldGen.clearFlood(world) end -- so floodTiles sees the dry map, not its own water
+		local tiles = WorldGen.floodTiles(world)
+		WorldGen.setFlood(world, tiles)
+		return tiles
+	end
+	Ecology.setTide(regions)
+	return nil
 end
 
 function Calamity.label(kind: string): string

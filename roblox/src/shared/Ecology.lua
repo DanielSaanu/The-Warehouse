@@ -127,9 +127,13 @@ function Ecology.dailyTick(rg: Regions, rng: Rng.Rng)
 	end
 end
 
---- Beast tide: wolves pour in from the north and roam by day everywhere for the rest of the day. The north is
---- hit hardest; every region gets at least a few, so a player anywhere on the map meets the tide.
-function Ecology.beastTide(rg: Regions)
+-- A beast tide is two things, and they are separate functions on purpose (docs/ARCHITECTURE.md A3). The wolves
+-- arriving happens ONCE, when the tide begins, and `wolf` is saved. The flag is an OVERLAY: it is not saved, so a
+-- load during a tide sets it again - and if that also re-ran the surge, every restart would double the wolves.
+
+--- The one-time half of a beast tide: wolves pour in from the north. The north is hit hardest; every region gets
+--- at least a few, so a player anywhere on the map meets the tide. Call once, when the tide BEGINS.
+function Ecology.wolfSurge(rg: Regions)
 	for _, r in ipairs(rg.list) do
 		if r.row <= 2 then
 			r.wolf = math.min(Ecology.CAP.wolf * 2, r.wolf * 2 + 3)
@@ -138,8 +142,12 @@ function Ecology.beastTide(rg: Regions)
 		else
 			r.wolf = math.max(r.wolf + 1, 3)
 		end
-		r.tide = true
 	end
+end
+
+--- The overlay half: wolves roam by day everywhere while the tide lasts. Idempotent; changes no counts.
+function Ecology.setTide(rg: Regions)
+	for _, r in ipairs(rg.list) do r.tide = true end
 end
 
 function Ecology.endTide(rg: Regions)

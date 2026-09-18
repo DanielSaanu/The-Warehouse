@@ -15,6 +15,7 @@ local WorldGen = require(Shared:WaitForChild("WorldGen"))
 local Ecology = require(Shared:WaitForChild("Ecology"))
 local Families = require(Shared:WaitForChild("Families"))
 local Calendar = require(script.Parent:WaitForChild("Calendar"))
+local Map = require(script.Parent:WaitForChild("Map"))
 
 local Debug = {}
 
@@ -47,6 +48,7 @@ function Debug.run(cmd: string, ...): any
 		return out
 	elseif cmd == "calamity" then
 		endCalamity()
+		if args[1] == "none" then return "ended" end -- `calamity none`: just lift whatever is running
 		startCalamity(args[1] or "flood")
 		return "started " .. (args[1] or "flood")
 	elseif cmd == "teleport" and ps then
@@ -126,7 +128,7 @@ function Debug.run(cmd: string, ...): any
 			local wantType = if kind == "bandit" then "plunderer" elseif kind == "hunter" then "hunter" else nil
 			local here = WorldGen.villageAt(world, p.x, p.y, 3)
 			for i, t in ipairs(S.tribes) do
-				if (wantType and t.tribeType == wantType) or (not wantType and t.village == here) then tribe = i break end
+				if (wantType and t.tribeType == wantType) or (not wantType and Map.village(t.villageId) == here) then tribe = i break end
 			end
 			tribe = tribe or 1
 		end

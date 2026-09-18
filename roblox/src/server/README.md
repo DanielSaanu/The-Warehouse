@@ -17,6 +17,8 @@ Read this first. Update it in the same commit as any move. Sizes are line counts
 - [x] **A0** guard rails: `test/structure.test.js` (400-line ceiling, `os.clock` allow-list), this file, `World`→`Map`
 - [x] **A1** one clock: every sim timer is `Calendar.now()` game seconds; Debug `night`/`day`/`jump` only move forward
 - [x] **A2** pure ticks: `shared/Tick.lua` (`daily`, `families`, `groups`, `catchUp`); Sim turns their events into bodies and prints
-- [ ] **A3** records and references (`villageId`, `ps.save`, calamity overlay split)
+- [x] **A3** records and references: `t.villageId` + `Map.village(id)` (no live village tables), `Person.village` is an id,
+      `Calamity.applyOverlay` (what a load re-lays) split from `startCalamity` (the one-time half), `Ecology.wolfSurge` /
+      `setTide`, bags have their own saved counter (`meta.nextBagId`)
 - [ ] **A4** `shared/Save.lua` + generate/restore
 - [ ] **A5** `Persistence.lua` (rung 3 part 2)

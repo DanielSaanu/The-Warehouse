@@ -101,9 +101,14 @@ do
 		if r.village then assert(r.wolf <= 1, "villages keep wolves out") end
 	end
 	local before = Ecology.totals(rg).wolf
-	Ecology.beastTide(rg)
+	-- a beast tide is a one-time surge plus an overlay flag, and only the surge changes what is saved
+	Ecology.wolfSurge(rg)
 	assert(Ecology.totals(rg).wolf > before, "beast tide adds wolves")
+	assert(not rg.list[1].tide, "the surge alone does not set the overlay")
+	local surged = Ecology.totals(rg).wolf
+	for _ = 1, 3 do assert(Calamity.applyOverlay(world, rg, "beast_tide") == nil, "a tide has no tiles") end
 	assert(rg.list[1].tide and rg.list[36].tide, "the tide is felt everywhere")
+	assert(Ecology.totals(rg).wolf == surged, "re-applying the overlay (what a load does) never adds wolves")
 	assert(rg.list[36].wolf >= 2, "even the far corner has wolves during a tide")
 	Ecology.endTide(rg)
 	assert(not rg.list[1].tide, "tide ends")
@@ -220,6 +225,19 @@ do
 	assert(Talk.goal(0, ctx) == nil, "nothing is asked before the first goal")
 end
 
+-- The flood overlay is idempotent: a load re-lays it over a fresh map, maybe more than once, and lifting it after
+-- any number of applications gives back exactly the dry map (docs/ARCHITECTURE.md A3, save blockers 4 and 6).
+do
+	local w2 = WorldGen.generate(1)
+	local dry = table.clone(w2.ground)
+	local rg2 = Ecology.init(w2, Rng.new(4))
+	local first = Calamity.applyOverlay(w2, rg2, "flood")
+	local again = Calamity.applyOverlay(w2, rg2, "flood")
+	assert(first and again and #first > 100 and #first == #again, "re-applying finds the same tiles, not the ones still dry")
+	WorldGen.clearFlood(w2)
+	for i, g in ipairs(dry) do assert(w2.ground[i] == g, "the flood lifts completely after being applied twice") end
+end
+
 print("sim modules ok")
 
 -- Conduct-based reputation: who drew first, mercy, murder of a runner, dying costs nothing.
@@ -244,8 +262,8 @@ do
 	local rng = Rng.new(21)
 	local reg = Families.new()
 	local surnames = { "Ashford", "Oakley" }
-	for i = 1, 6 do Families.newAdult(reg, rng, 1, "Testham", "villager", 1, surnames[(i % 2) + 1], if i <= 3 then "m" else "f") end
-	local guard = Families.newAdult(reg, rng, 1, "Testham", "guard", 1, "Ashford", "m")
+	for i = 1, 6 do Families.newAdult(reg, rng, 1, 1, "villager", 1, surnames[(i % 2) + 1], if i <= 3 then "m" else "f") end
+	local guard = Families.newAdult(reg, rng, 1, 1, "guard", 1, "Ashford", "m")
 	assert(Families.formCouples(reg, 1, 1) >= 2, "couples form between unrelated adults")
 	for _, p in pairs(reg.people) do
 		if p.spouse then

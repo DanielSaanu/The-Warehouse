@@ -33,6 +33,12 @@ function Map.get(): WorldGen.World
 	return Map.world :: WorldGen.World
 end
 
+--- A village by id (its index in world.villages). Tribes and people hold the ID, never the table: a reference
+--- cannot be saved, and two copies of one village stop being `==` (docs/ARCHITECTURE.md A3).
+function Map.village(id: number): WorldGen.Village
+	return Map.get().villages[id]
+end
+
 function Map.walkable(x: number, y: number): boolean
 	return MapGen.walkable(Map.get(), x, y)
 end
