@@ -130,9 +130,12 @@ everything from part 3 on is worth less until this lands.
 - A caravan you are three days into is not a thing you can be three days into.
 - DESIGN.md §16 is explicit: **do not charge for anything before save + catch-up lands.**
 
-`Sim.state` was structured for this from the start: `day`, `tribes`, `people`, `regions`, `groups`, `players`,
-`camps`, `bags`, `calamity` are already plain tables. Entities are deliberately not saved — they are materialised
-from records when a player is near, and rebuilt on load.
+`Sim.state` is *shaped* for this — `day`, `tribes`, `people`, `regions`, `groups`, `players`, `camps`, `bags`,
+`calamity` are all top-level tables, and entities are deliberately transient. But it is **not serialisable
+today**, and saying so was wrong: `tribes[i].village` is a live reference to a `WorldGen` table, `regions` carry
+derived fields, `calamity.flood` is a computed tile list, and a player record holds a `Player` Instance and a
+function. `docs/ARCHITECTURE.md` is the plan that fixes it, and its step 1 is a prerequisite for this part
+rather than a nice-to-have.
 
 - **World save**: seed, day, tribe stock and population, the family registry, region ecology counts, group route
   positions, camps and bags. Versioned, written on a timer and on `BindToClose` (§14 says every 2 minutes).
