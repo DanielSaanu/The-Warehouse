@@ -69,6 +69,18 @@ instead of it just being a rain cycle every 60 seconds we could first off make i
   portable version is **principle 1 in `docs/PRINCIPLES.md`**, which is the box: design principles that are not
   about Lowlands and are meant to be carried to the next project. Concrete here: the elder answers "what now"
   (§12), because the first job retires at the first calamity and nothing replaces it.
+- **"It hands you systems and asks you what you want to do with it."** Systems related to systems, so many that
+  he can't tell you which to use. Danzo called this the big one and said explicitly: that is the box. A Pal is
+  not a monster, it has combat abilities and passive traits and work suitability and a partner skill and it
+  breeds, so one creature is a new value on five axes at once and nobody authored the combinations. -> **principle
+  2 in `docs/PRINCIPLES.md`**, and pillar 3 in DESIGN.md now carries the sharper wording. The Lowlands version:
+  the composable entity here is a **named person**, not gear (§13), and goods being pure sell-value is the
+  flattest part of the game (open question at the bottom of DESIGN.md).
+- Also from the same riff, folded into principle 1: the quest system "works for both the people that need
+  direction while at the same time being completely invisible to the people that don't" — and the half people
+  skip is that every new area handed him a reason to keep going (a creature, a boss, a material, a dungeon, or
+  just somewhere that looked different). Build the reasons first, the compass second. A compass in an empty
+  world is a to-do list.
 - The other game he likes (unreleased): everything procedurally generated, characters are just parts you bolt
   together — thrusters, attractors, magnets — and the movement is procedural too, so whatever you build moves.
   He said it can't be done in Roblox. It can, actually: Roblox is a physics engine, and constraints + Motor6D +

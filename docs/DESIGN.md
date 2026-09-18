@@ -10,7 +10,12 @@ Source of truth for gameplay decisions. `ideas/INBOX.md` is the scratchpad; thin
 
 1. **The world does not need you.** Tribes and animals follow their own rules whether or not a player is nearby.
 2. **Everything remembers.** Every tribe, group and creature keeps a relationship with each player, and they tell each other.
-3. **Simple to touch, deep underneath.** Move, attack, interact. That's the whole controller. The depth is in who you did it to.
+3. **Simple to touch, deep underneath.** Move, attack, interact. That's the whole controller. The depth is in who
+   you did it to. The sharper form of this (Danzo, 2026-09-18): **hand the player systems, not content, and ask
+   them what they want to do with it** — systems related to systems, enough of them that nobody can tell you
+   which one you are supposed to be using. A person here is in the family tree *and* the gossip network *and* a
+   role *and* a tribe's headcount, so killing one moves four systems at once. That, not the quantity of things,
+   is where the game is supposed to get deep. The portable version is principle 2 in `docs/PRINCIPLES.md`.
 4. **You get better, your numbers don't.** No levels. Skill, gear, standing and knowledge are the progression.
 5. **The world says yes; the consequences say no.** (Danzo, 2026-09-18, off a Palworld video.) Freedom is the
    draw. Palworld is fun because it hands the player an absurd amount of rope and never takes it back, and that
@@ -324,6 +329,34 @@ the plundered starting village or any village that comes to trust you.
 - Multiplayer: several players can build the same home village up together, or build rivals.
 - The endgame is a world superpower that you built, in a world that will still push back.
 
+### Hirelings, not gear, are the composable thing (2026-09-18)
+
+Measured against principle 2 in `docs/PRINCIPLES.md`, Lowlands is already systems-shaped in the world and
+content-shaped in the player's hands, and it is worth being honest about which is which before rung 4:
+
+- **Already multiplying.** A person sits in the family tree, the gossip network, a role, and a tribe's
+  population at once — harm one and four systems answer. Wildlife counts feed ecology, which feeds tribe food,
+  which feeds caravans, which feeds prices, which feeds what a raid is worth stealing. These are real edges and
+  they were free, because everything is a record in §4.
+- **Not multiplying.** Goods are sell-value and nothing else. The 10-slot inventory is things you carry to a
+  merchant. No levels is right (pillar 4), but nothing in the player's own kit *composes* with anything —
+  it is the flattest part of the game.
+
+The fix is not to bolt a crafting tree on. It is to notice that **the game's Pal-shaped entity is a named
+person**, and the data for it already exists:
+
+- A hireling is in the family tree (their relatives have an opinion about how you use them), the gossip network
+  (they tell people what they saw you do, which makes betraying your own hires expensive), their birth tribe
+  (hiring shifts standing on both sides), combat (strength, and who they will not fight), and labour (build,
+  carry, guard, farm, hunt). **One entity, five systems, no new subsystems required.**
+- That makes §13's "hire villagers to build" and "fund a caravan" the same mechanic wearing two hats, and it
+  makes a roster of people the progression that replaces levels and gear.
+- Orthogonal axes to give a person, added slowly (principle 2's cost note): what they are **good at**, what
+  they **will not do**, who they are **related to**, and who they have **told about you**. Four axes, all of
+  which already have data behind them.
+
+Rung 4 work. Written down now so hiring is not built as a menu that spends coin.
+
 ### Chiefs, heirs, and taking a tribe (Danzo, 2026-09-18)
 
 The kingdom end of the arc runs on the family registry from §15, so most of it is a lookup rather than a system.
@@ -481,6 +514,10 @@ roblox/src/client/     Viewport (scrolling window over the map, entity sprites),
 - Portrait on a narrow phone. A 44 px d-pad needs about 140 px however you draw it, so on a 390 px-wide play area
   the two thumb clusters leave only a quarter of the width clear. Landscape is the intended orientation.
 - Exact cap numbers (section 4 has first guesses; tune on a real phone).
+- **Do goods get a second axis?** They are pure sell-value today, which makes the inventory the least systemic
+  part of the game (§13). Cheapest candidates that plug into systems already built: goods that are *food* (feeds
+  a village, matters in a drought), goods that are *tribute* (a plunderer wants specific things), goods that
+  **spoil**, and goods a tribe type cannot make itself. Do not add a crafting tree to fix this.
 - **Does the "what now" elder topic (§12) go in rung 3 part 3 with the chief, or earlier?** It is the only
   answer to the hour-twenty lost minute and it is maybe half a day of work, so it could ride along with almost
   anything. Argument for earlier: the first public players (rung 2 part 5) will hit the lost minute and quit
