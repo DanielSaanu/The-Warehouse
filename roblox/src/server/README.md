@@ -7,9 +7,10 @@ Read this first. Update it in the same commit as any move. Sizes are line counts
 | `Server.server.lua` | remotes, player join/leave, the movement handler | 190 |
 | `Map.lua` | the generated map and `Map.encoded` (what joining clients are sent). Was `World.lua` | 40 |
 | `Persistence.lua` | the ONLY DataStore code: `loadWorld`, `saveWorld`, player keys, autosave, the policy (never write a key you failed to read; one server holds the lease) | 170 |
+| `Goals.lua` | the goal line under the clock: `set`, `clear`, `rebuild`, `tick` (carved verbatim out of Sim when it hit its ceiling) | 65 |
 | `Calendar.lua` | `meta.gameSeconds`, the ONE clock: `now()`, `clock()`, `setDay()`, `skipTo()` (catch-up adds its lump to `meta.gameSeconds` directly, in `Tick.catchUp`) | 60 |
 | `Restore.lua` | `Sim.state` <-> a save: `snapshot()`, and `apply(data, slept)` = the RESTORE constructor (bodies, routes, stamped tiles, overlay, `Map.reencode`) | 150 |
-| `Sim.lua` | everything else, for now: entities, AI, fighting, groups, camps, calamities, the tick loops | 1600 |
+| `Sim.lua` | everything else, for now: entities, AI, fighting, groups, camps, calamities, the tick loops | 1570 |
 | `Sides.lua` | who takes whose side in a fight | 280 |
 | `Interact.lua` | the F key: talk, trade, rest, gifts | 340 |
 | `Debug.lua` | the test console (Workspace attribute `Debug`) | 215 |
@@ -27,3 +28,9 @@ Read this first. Update it in the same commit as any move. Sizes are line counts
 - [x] **A5** `Persistence.lua` + the boot order in `Server.server.lua`. Debug `savetest [seconds]` runs save -> lease ->
       load -> restore against a store in memory. **The real DataStore needs Studio's Game Settings -> Security ->
       "Enable Studio Access to API Services"**; without it the server says so and runs NO-SAVE, by design
+
+## After Track A
+
+- [x] **Headlines**: `shared/Headlines.lua`, a 64-entry ring in `meta.headlines` (births from `Tick.families` - so catch-up writes
+      them - deaths and calamities from Sim). A returning player gets "Welcome back / You were gone N days" plus up to three
+      lines, from tribes that would tell them. Debug `welcome <days>` shows it on demand.

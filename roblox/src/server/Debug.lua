@@ -17,6 +17,7 @@ local Families = require(Shared:WaitForChild("Families"))
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local Save = require(Shared:WaitForChild("Save"))
+local Headlines = require(Shared:WaitForChild("Headlines"))
 local Calendar = require(script.Parent:WaitForChild("Calendar"))
 local Restore = require(script.Parent:WaitForChild("Restore"))
 local Persistence = require(script.Parent:WaitForChild("Persistence"))
@@ -112,6 +113,14 @@ function Debug.run(cmd: string, ...): any
 		Persistence.mode, Persistence.why = wasMode, wasWhy
 		if ps then ps.noSave = wasNoSave end
 		return if ok then result .. "; persistence is back to '" .. wasMode .. "'" else "ERROR " .. tostring(result)
+	elseif cmd == "welcome" and ps then
+		-- `welcome 11`: show this player what they would see coming back after 11 days (every tribe tells them)
+		local names = {}
+		for i, t in ipairs(S.tribes) do names[i] = Map.village(t.villageId).name end
+		local w = Headlines.welcome(S.meta, S.people, S.day - (args[1] or 1), S.day, function() return true end, names)
+		if not w then return "not gone a day" end
+		Sim.notice(ps, "welcome", w)
+		return w.text .. " " .. table.concat(w.lines, " ") .. (if w.more > 0 then (" (+%d more)"):format(w.more) else "")
 	elseif cmd == "night" then
 		Calendar.skipTo(1 - Config.NIGHT_FRACTION + 0.01)
 		return "dusk"

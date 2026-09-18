@@ -453,5 +453,5 @@ Written after building it, because a plan that is not corrected by its own imple
    would have left a quick-restarted server NO-SAVE for its whole life.
 7. **`children[]` is not saved** (derived from `father`/`mother`, R4) and is rebuilt by `decode`.
 8. **Catch-up at the cap costs 3 ms**, measured in `tick.test.luau`. No slicing needed.
-9. **`headlines[]` is carried by the format but nothing writes it yet** — the "you were gone eleven days" line is
-   the visible half of part 2 and is the next thing to build.
+9. **`headlines[]` was carried by the format with no writer; it has one now** (`shared/Headlines.lua`, branch
+   `headlines`): births from the pure tick, deaths and calamities from Sim, read once on join.

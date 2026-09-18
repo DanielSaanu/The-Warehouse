@@ -92,6 +92,10 @@ local function sendWorld(st)
 	-- interest management re-sends the entities it can see
 	st.known = {}
 	Sim.hud(st)
+	if st.welcome then -- a returning player: once, now that the client has a HUD to show it on
+		Sim.notice(st, "welcome", st.welcome)
+		st.welcome = nil
+	end
 end
 
 local joining = {} :: { [number]: boolean }

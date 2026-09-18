@@ -22,10 +22,11 @@ local Calamity = require(Shared:WaitForChild("Calamity"))
 local DayCycle = require(Shared:WaitForChild("DayCycle"))
 local Families = require(Shared:WaitForChild("Families"))
 local Tick = require(Shared:WaitForChild("Tick"))
-local Talk = require(Shared:WaitForChild("Talk"))
+local Headlines = require(Shared:WaitForChild("Headlines"))
 local Sides = require(script.Parent:WaitForChild("Sides"))
 local Debug = require(script.Parent:WaitForChild("Debug"))
 local Restore = require(script.Parent:WaitForChild("Restore"))
+local Goals = require(script.Parent:WaitForChild("Goals"))
 local Map = require(script.Parent:WaitForChild("Map"))
 local Calendar = require(script.Parent:WaitForChild("Calendar"))
 
@@ -118,32 +119,8 @@ function Sim.hud(ps)
 	})
 end
 
--- ---------- the goal line (docs/qa/rung2-part4.md) ----------
--- One sentence under the clock, set here and changed by what the player does. It is stored on the player record
--- so rung 3 saves it, and it stops for good at the first calamity: a tutorial, not a quest system.
-local function goalContext(): Talk.Context
-	local hunter, farmer = world.villages[2], world.villages[1]
-	return {
-		hunterVillage = hunter.name,
-		hunterDir = WorldGen.compass(hunter.cx - farmer.cx, hunter.cy - farmer.cy),
-	} :: any
-end
-
---- Move the goal line to `stage` (see Talk.GOAL_STAGES), but never backwards and never after it is done.
-function Sim.setGoal(ps, stage: number)
-	if ps.goalDone or stage <= ps.goalStage then return end
-	ps.goalStage = stage
-	ps.goal = Talk.goal(stage, goalContext())
-	if not ps.goal then ps.goalDone = true end
-	Sim.hud(ps)
-end
-
---- Retire the goal line for good (the first calamity: the world has bigger news than the tutorial).
-function Sim.clearGoal(ps)
-	if ps.goalDone then return end
-	ps.goalDone, ps.goal = true, nil
-	Sim.hud(ps)
-end
+-- The goal line lives in server/Goals.lua; these names are what Interact, Debug and the rest of Sim already call.
+Sim.setGoal, Sim.clearGoal = Goals.set, Goals.clear
 
 -- ---------- entities ----------
 local function newEntity(kind: string, x: number, y: number, opts): any
@@ -524,18 +501,8 @@ local function collapse(g)
 	g.materialised = false
 end
 
---- The goal line follows the player around: walking into the hunter village is what finishes the road goal, and
---- from day 6 the only thing being asked is that they are somewhere safe when the week turns.
 local function tickGoals()
-	local day = Sim.clock()
-	for _, ps in pairs(S.players) do
-		if not ps.goalDone and not ps.dead then
-			if ps.goalStage == 2 and WorldGen.villageAt(world, ps.x, ps.y, 1) == world.villages[2] then
-				Sim.setGoal(ps, 3)
-			end
-			if day >= Config.WEEK_DAYS - 1 then Sim.setGoal(ps, 5) end
-		end
-	end
+	Goals.tick(S.players, (Sim.clock()))
 end
 
 --- Materialise/collapse decisions, then one second of abstract movement for every group without bodies (the
@@ -667,7 +634,9 @@ local function killEntity(e, killer, ctx, byEntity)
 	-- the family tree keeps the dead, and a role passes to a relative
 	if e.person then
 		local p = S.people.people[e.person]
-		Families.die(S.people, e.person, S.day, "killed", if killer then killer.player.Name else "the wild")
+		local by = if killer then killer.player.Name else "the wild"
+		Families.die(S.people, e.person, S.day, "killed", by)
+		if p and e.tribe then Headlines.push(S.meta, { day = S.day, kind = "died", tribe = e.tribe, id = p.id, by = by }) end
 		local t = e.tribe and S.tribes[e.tribe]
 		if p and t and (e.role == "guard" or e.role == "merchant") then
 			local heir = Families.successor(S.people, p)
@@ -1359,6 +1328,7 @@ local function startCalamity(kind: string)
 	local c = S.calamity
 	c.kind, c.active, c.day = kind, true, S.day
 	c.flood = Calamity.applyOverlay(world, S.regions, kind) -- transient: sent to clients, never saved
+	Headlines.push(S.meta, { day = S.day, kind = "calamity", what = kind })
 	if kind == "flood" then
 		-- everything standing in the water gets shoved to dry ground
 		for _, e in pairs(S.entities) do
@@ -1487,7 +1457,7 @@ function Sim.addPlayer(player: Player, x: number, y: number, snapFn, saved)
 	}
 	if saved then
 		x, y = Restore.player(ps, saved, x, y)
-		if not ps.goalDone and ps.goalStage > 0 then ps.goal = Talk.goal(ps.goalStage, goalContext()) end
+		Goals.rebuild(ps)
 	end
 	local free = nearestFree(x, y, 3) or WorldGen.nearestWalkable(world, x, y, 6) or world.spawn
 	ps.x, ps.y = free.x, free.y
@@ -1517,6 +1487,7 @@ function Sim.init(saved, slept: number?): (boolean, string?)
 	world = Map.get()
 	rng = Rng.new(world.seed * 31 + 7)
 	Calendar.bind(S.meta)
+	Goals.bind(Sim.hud)
 	S.people = Families.new()
 	S.regions = Ecology.init(world, rng:fork(1))
 	for _, r in ipairs(S.regions.list) do r.live = { deer = 0, boar = 0, wolf = 0 } end

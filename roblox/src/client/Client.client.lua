@@ -509,6 +509,9 @@ Notice.OnClientEvent:Connect(function(kind, data)
 			if data.kind == "flood" then applyFlood(nil) end
 			hud:notice(data.text, "good")
 		end
+	elseif kind == "welcome" then -- back after days away: what the world did meanwhile (shared/Headlines.lua)
+		hud:banner(data.title, data.text)
+		for i, line in ipairs(data.lines) do task.delay(1 + (i - 1) * 3, function() hud:notice(line) end) end -- one at a time: they fade in 4 s
 	elseif kind == "died" then
 		me.dead = true
 		table.clear(held)
