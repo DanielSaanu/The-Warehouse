@@ -1,4 +1,4 @@
-# Design: the tribes game (working title: Lowlands)
+# Design: Lowlands
 
 A 2D top-down pixel-art Roblox game about surviving in a living overworld. Tribes trade, raid and remember you.
 Wildlife breeds and starves without you. The world is shared by everyone on the server and keeps living while
@@ -329,10 +329,13 @@ Rung 1 is done (grid, movement, one room, rain timer, upload pipeline).
   conduct-based reputation (who drew first, mercy, escape), families (records with parents and children, births
   on the weekly clock, children come of age, villages refill by birth only).
 
-**Rung 3: memory and money**
+**Rung 3: memory and money** — build plan in `docs/RUNG3.md`
 - Gossip propagation, grudges and amends. Tribute, tax, extortion. Size tiers. Hunger. Save + catch-up.
 - Blizzard and drought. Knights and adventurers. Hiring. Full talk system with all roles and replacement.
 - Dash and shield block. Bows. Settlement healing and ruins.
+- Order: save + catch-up first (it gates everything and nothing a player does survives a shutdown without it),
+  then gossip and grudges, then tribute and tax, then hunger, then the rest. One open decision before part 1
+  starts: one world per server, or one world shared by everyone.
 
 **Rung 4: the map grows**
 - More villages, expansion, large tribes, hunting parties, raids on villages, walls and gates that matter.
@@ -391,6 +394,14 @@ roblox/src/client/     Viewport (scrolling window over the map, entity sprites),
 
 ## 19. Open questions
 
-- Name. Working title Lowlands until something better shows up.
-- Touch controls layout for phones.
+- ~~Name~~ **Lowlands** (Danzo, 2026-09-18). The Rojo project is named for it, so Studio is too.
+- ~~Touch controls layout for phones~~ **decided (rung 2 part 5)**: a d-pad in the bottom-left corner and the four
+  verbs (bag, standing, act, swing) in the bottom-right, both thumbs where they already rest. Tap-to-move stays,
+  because travel wants it even when a doorway does not. DESIGN.md §11 offered swipe instead; the d-pad won because
+  a tile game wants discrete steps and a d-pad is the one a new player can see.
+  Known limit, not worth fixing yet: the layout is chosen once, from `UserInputService.TouchEnabled` at load, so
+  pairing a Bluetooth keyboard mid-session leaves the d-pad up and a tablet with a keyboard attached never gets
+  one. Every verb is on a key in that case, so nobody is stuck.
+- Portrait on a narrow phone. A 44 px d-pad needs about 140 px however you draw it, so on a 390 px-wide play area
+  the two thumb clusters leave only a quarter of the width clear. Landscape is the intended orientation.
 - Exact cap numbers (section 4 has first guesses; tune on a real phone).

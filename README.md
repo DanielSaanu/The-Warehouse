@@ -1,9 +1,14 @@
-# The Warehouse
+# The Warehouse — and Lowlands, the game it builds
 
-A place to quickly piece together game assets, and the pipeline that ships them into a Roblox game.
+**Lowlands** is a 2D top-down pixel-art Roblox game: a living world of farmers, hunters and raiders who remember
+what you do. Design: **[docs/DESIGN.md](docs/DESIGN.md)**. What is being built next:
+**[docs/RUNG3.md](docs/RUNG3.md)**. Getting it in front of people: **[docs/PUBLISH.md](docs/PUBLISH.md)**.
+
+**The Warehouse** is the asset pipeline underneath it: a place to quickly piece together game assets and ship them
+into that game.
 
 This repo is for Claude and a human to work on art together. The human works in a browser UI, Claude works
-from the terminal, and both edit the same small files. First target: a 2D, top-down, pixel-art Roblox game.
+from the terminal, and both edit the same small files.
 
 ```
  free asset sources ──┐
@@ -24,6 +29,7 @@ npx warehouse help             # every CLI command
 ```
 
 Roblox side (Rojo, API key, upload): see **[docs/ROBLOX_SETUP.md](docs/ROBLOX_SETUP.md)**.
+Publishing Lowlands and the credits it owes: see **[docs/PUBLISH.md](docs/PUBLISH.md)**.
 
 ## What is in the box
 

@@ -130,7 +130,8 @@ local SIDE_ONLY = { deer = true, boar = true, wolf = true }
 -- Who takes a gift: mirrors GIFTABLE in server/Interact.lua.
 local GIFTABLE = { villager = true, guard = true, merchant = true, caravan_master = true, survivor = true, pregnant = true }
 local KEY_LEGEND = "WASD move  ·  click swing  ·  F act  ·  E bag  ·  Tab standing  ·  X close"
-local TOUCH_LEGEND = "tap to walk  ·  tap the prompt to act"
+local TOUCH_LEGEND = "tap the map to travel"
+local TOUCH = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
 --- The item in the selected hot bar slot, mirroring Interact.held on the server.
 local function heldItem(): string?
@@ -305,12 +306,32 @@ local function interact()
 	Action:FireServer("interact", me.facing)
 end
 
+--- Start walking a direction. The d-pad and the keyboard both come through here, so prediction, the pace budget
+--- and tap-to-move need no idea which one it was.
+local function pressDir(dir: string)
+	for i = #held, 1, -1 do if held[i] == dir then table.remove(held, i) end end
+	table.insert(held, dir)
+	touchTarget, touchPath = nil, nil
+	if vp then vp:setMarker(nil) end
+end
+
+local function releaseDir(dir: string)
+	for i = #held, 1, -1 do if held[i] == dir then table.remove(held, i) end end
+end
+
 local function closePanels()
 	if not hud then return end
 	if hud:anyOpen() then
 		hud:closeAll()
 		Action:FireServer("close")
 	end
+end
+
+local function toggleBag()
+	if not hud then return end
+	-- opening the bag over a conversation ends the conversation on the server too
+	if hud:anyOpen() and not hud:bagOpen() then Action:FireServer("close") end
+	hud:toggleBag()
 end
 
 --- Take a hot bar slot in hand, or put it away if it was already in hand. The server decides what F then does
@@ -343,7 +364,13 @@ WorldInit.OnClientEvent:Connect(function(encoded, meState, others, clock, sheetI
 		onTopic = function(topic) Action:FireServer("topic", topic) end,
 		onTrade = function(op, good) Action:FireServer("trade", op, good, 1) end,
 		onClose = function() Action:FireServer("close") end,
-	})
+		onSelect = selectSlot,
+		onMoveStart = function(dir) if not hud:anyOpen() then pressDir(dir) end end,
+		onMoveEnd = releaseDir,
+		onAttack = attack,
+		onBag = toggleBag,
+		onStanding = function() hud:toggleStanding(rep, tribeNames) end,
+	}, TOUCH)
 	me.x, me.y, me.facing, me.sentFacing = meState.x, meState.y, meState.facing, meState.facing
 	me.epoch = meState.epoch or 0
 	v:addEntity(myId, spriteFor("player", me.facing, 0), me.x, me.y)
@@ -359,10 +386,9 @@ WorldInit.OnClientEvent:Connect(function(encoded, meState, others, clock, sheetI
 	end
 	-- The opening beat: you wake in your own burnt village, and somebody is waiting to talk to you.
 	local start = w.villages[1]
-	local touch = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 	currentVillage = WorldGen.villageAt(w, me.x, me.y, 1)
 	hud:banner(start.name, "Someone is calling you")
-	hud:setLegend(if touch then TOUCH_LEGEND else KEY_LEGEND)
+	hud:setLegend(if TOUCH then TOUCH_LEGEND else KEY_LEGEND)
 	hud:setHint("Read the signs.")
 end)
 
@@ -529,25 +555,13 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		-- only a focused text box (chat) should swallow our keys.
 		if UserInputService:GetFocusedTextBox() then return end
 		if key == Enum.KeyCode.F or key == Enum.KeyCode.Return then interact() return end
-		if key == Enum.KeyCode.E then
-			if hud then
-				-- opening the bag over a conversation ends the conversation on the server too
-				if hud:anyOpen() and not hud:bagOpen() then Action:FireServer("close") end
-				hud:toggleBag()
-			end
-			return
-		end
+		if key == Enum.KeyCode.E then toggleBag() return end
 		if key == Enum.KeyCode.Tab then if hud then hud:toggleStanding(rep, tribeNames) end return end
 		if key == Enum.KeyCode.Space then attack() return end
 		local slot = SLOT_KEYS[key]
 		if slot then selectSlot(slot) return end
 		local dir = KEYS[key]
-		if dir and not (hud and hud:anyOpen()) then
-			for i = #held, 1, -1 do if held[i] == dir then table.remove(held, i) end end
-			table.insert(held, dir)
-			touchTarget, touchPath = nil, nil
-			if vp then vp:setMarker(nil) end
-		end
+		if dir and not (hud and hud:anyOpen()) then pressDir(dir) end
 	elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
 		if processed then return end
 		if hud and hud:dialogueOpen() then interact() return end
@@ -566,7 +580,7 @@ end)
 UserInputService.InputEnded:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.Keyboard then
 		local dir = KEYS[input.KeyCode]
-		if dir then for i = #held, 1, -1 do if held[i] == dir then table.remove(held, i) end end end
+		if dir then releaseDir(dir) end
 	elseif input == activeTouch then
 		activeTouch = nil -- keep walking to the tile under the finger when it lifted
 	end
@@ -617,7 +631,7 @@ RunService.RenderStepped:Connect(function()
 	-- prompt and hint
 	local p = if blocked then nil else promptFor()
 	if p ~= lastPrompt then lastPrompt = p hud:setPrompt(p) end
-	hud:refreshLegend()
+	hud:refreshChrome()
 	if not hintShown and me.stepped then
 		hintShown = true
 		task.delay(12, function() if hud then hud:setHint(nil) end end)

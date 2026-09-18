@@ -1,7 +1,7 @@
 {
   "name": "preview_tiles",
   "width": 216,
-  "height": 136,
+  "height": 152,
   "background": "#101018",
   "pixelated": true,
   "export": false,
@@ -72,7 +72,7 @@
     {
       "id": "s4",
       "type": "scene",
-      "src": "scenes/water.json",
+      "src": "scenes/water_0.json",
       "x": 72,
       "y": 0
     },
@@ -345,21 +345,21 @@
     {
       "id": "v0_0",
       "type": "scene",
-      "src": "scenes/water.json",
+      "src": "scenes/water_0.json",
       "x": 0,
       "y": 40
     },
     {
       "id": "v1_0",
       "type": "scene",
-      "src": "scenes/water.json",
+      "src": "scenes/water_0.json",
       "x": 16,
       "y": 40
     },
     {
       "id": "v2_0",
       "type": "scene",
-      "src": "scenes/water.json",
+      "src": "scenes/water_0.json",
       "x": 32,
       "y": 40
     },
@@ -422,14 +422,14 @@
     {
       "id": "v0_1",
       "type": "scene",
-      "src": "scenes/water.json",
+      "src": "scenes/water_0.json",
       "x": 0,
       "y": 56
     },
     {
       "id": "v1_1",
       "type": "scene",
-      "src": "scenes/water.json",
+      "src": "scenes/water_0.json",
       "x": 16,
       "y": 56
     },
@@ -915,6 +915,76 @@
       "src": "scenes/player_down_0.json",
       "x": 48,
       "y": 72
+    },
+    {
+      "id": "bg131",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 176,
+      "y": 120
+    },
+    {
+      "id": "s132",
+      "type": "scene",
+      "src": "scenes/river_0.json",
+      "x": 176,
+      "y": 120
+    },
+    {
+      "id": "bg133",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 192,
+      "y": 120
+    },
+    {
+      "id": "s134",
+      "type": "scene",
+      "src": "scenes/sign.json",
+      "x": 192,
+      "y": 120
+    },
+    {
+      "id": "bg135",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 0,
+      "y": 136
+    },
+    {
+      "id": "s136",
+      "type": "scene",
+      "src": "scenes/marker_arrow.json",
+      "x": 0,
+      "y": 136
+    },
+    {
+      "id": "bg137",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 16,
+      "y": 136
+    },
+    {
+      "id": "s138",
+      "type": "scene",
+      "src": "scenes/ui_arrow.json",
+      "x": 16,
+      "y": 136
+    },
+    {
+      "id": "bg139",
+      "type": "scene",
+      "src": "scenes/grass.json",
+      "x": 32,
+      "y": 136
+    },
+    {
+      "id": "s140",
+      "type": "scene",
+      "src": "scenes/water_1.json",
+      "x": 32,
+      "y": 136
     }
   ]
 }
