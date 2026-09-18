@@ -3,16 +3,19 @@
 **Status: a plan, not the code, and the review is still running.** Written 2026-09-18, before rung 3 part 2
 (save and catch-up), because the shape of the data decides whether saving is a morning's work or a rewrite.
 
-> **Review loop: rounds 1-4 scored 7, 8.5, 8.5, 8.5. Round 5 is the last one.** Danzo raised the bar to **9.5**
-> (from 8.0) and capped the loop at **5 rounds**, on 2026-09-18: *"points shouldnt be given for free, i want to
-> make sure we have this right before we start coding."* Verbatim reports:
-> `docs/qa/architecture-round1.md`, `-round2.md`, `-round3.md`, `-round4.md`.
+> **Review loop: closed at the 5-round cap. Scores 7, 8.5, 8.5, 8.5, 9.0** — the bar was 9.5, so the loop ended
+> on the cap rather than on the target. Danzo raised the bar from 8.0 on 2026-09-18: *"points shouldnt be given
+> for free, i want to make sure we have this right before we start coding."* Verbatim reports and the builder's
+> decisions for each round: `docs/qa/architecture-round1.md` … `-round5.md`; the overview is
+> `docs/qa/architecture-summary.md`.
 >
-> **Nothing here is built yet, and nothing should be built until the loop closes** — including rung 3 part 2,
-> which depends on step 1. The four rounds have found **six save blockers** invisible from reading the code, and
-> **two of the six were introduced by a previous round's own fix** (round 2's map-diff rule caused the flood
-> blocker; round 3's "re-apply the calamity" wording caused the sixth). That is the whole argument for finishing
-> the review first — and the reason each round now audits the last round's repairs, not just the plan.
+> The five rounds found **seven save blockers** invisible from reading the code, and **three of the seven were
+> introduced by a previous round's own fix** (round 2's map-diff rule caused the flood blocker; round 3's
+> "re-apply the calamity" wording caused the sixth; round 4's calamity split left `beastTide` unassigned). That
+> is the argument both for having run the loop and for auditing each round's repairs rather than just the plan.
+> Everything all five rounds raised is now in this document. **Danzo decides whether the remaining 0.5 is worth
+> a sixth round or is better found by building step 1** — round 5's own verdict was that what is left is "four
+> short paragraphs, not a re-plan", and those four paragraphs are written.
 
 Danzo's brief: *"set it up in a way where the data flows instead of congesting… a village has x amount of people,
 those people are split into groups, those groups are split into individuals. Data that affects the group is
@@ -109,6 +112,14 @@ a **separate assertion that every id-typed field is a string after the round tri
 cannot see this class of bug. `Families.lua` is `--!strict`, so this is a type change across the module
 (`Families.lua:18-30, 40-48`), not a convention — which is why it belongs in step 1 and not in a later tidy.
 
+**Two things the id change would quietly break, and both are in the same module.** `Families.villagers`
+(`:68`) and `Families.relatives` (`:177`) sort `a.id < b.id`; on strings that is lexicographic, so `"p10"` sorts
+before `"p2"`. That order decides who `formCouples` pairs, who conceives before `MAX_PEOPLE` closes the village,
+and who `successor` hands a role to — a silent gameplay change, not a save bug, since live and catch-up share the
+comparator. **Sort on the numeric suffix, or keep a numeric `seq` alongside the id.** And the camp keys are
+`UserId`s read at `Sim.lua:805, 1281, 1298, 1300, 1315`; `Sim.lua` is `--!nonstrict`, so a missed one does not
+error — the campfire just never exists.
+
 **`regions[].live` is transient and must not be saved.** It is the count of currently materialised animals,
 zeroed on init (`Sim.lua:1551`), incremented on spawn (`:602`), decremented on removal (`:180`) and read as
 `r.live[sp] < want` to decide whether to spawn (`:619`). Persist it and every region loads believing its animals
@@ -184,7 +195,7 @@ tribe thinks of you" is `Witness.feel(...)` over stored numbers, not a cached ma
   based and all sit in tables the tree must persist. Loaded fresh they are garbage: every campfire out, every bag
   an hour old, every group paused forever. **Every persisted instant is an in-game day plus fraction; every
   persisted duration is remaining seconds, rehydrated on load.**
-- **The clock itself must stop reading wall time.** `Sim.clock()` (`Sim.lua:73`) *derives* the day from
+- **The clock itself must stop reading wall time.** `Sim.clock()` (`Sim.lua:72`) *derives* the day from
   `os.clock() - S.dayStart`, so catch-up cannot advance the calendar at all: there is no wall time to point at.
   It becomes an accumulator — `meta.gameSeconds += dt` each tick, and catch-up adds a lump.
 - **The tree holds ids, never references**, and every id read is nil-checked. `removeEntity` (`Sim.lua:168`) does
@@ -194,8 +205,12 @@ tribe thinks of you" is `Witness.feel(...)` over stored numbers, not a cached ma
   stores the `WorldGen.Village` table itself (`Sim.lua:352`); `Sides.lua:63` asks
   `WorldGen.villageAt(...) == t.village`, which is pointer equality. Serialise that and you get a duplicate copy
   of the village inside every tribe row — and on load the identity test is false forever, so **no NPC ever
-  recognises its own home**, which is the input to half of part 1's side-taking. It becomes `villageId`, and the
-  five read sites (`Sides.lua:63`, `Interact.lua:38`, `Sim.lua:312, 477, 1406`) resolve through `Map`.
+  recognises its own home**, which is the input to half of part 1's side-taking. It becomes `villageId`, resolved
+  through `Map`. There are **twelve read sites, not the five an earlier draft listed**: `Interact.lua:38, 80, 94,
+  144`, `Sides.lua:63, 180, 206`, `Sim.lua:312, 477, 932, 952, 1406`, `Debug.lua:128`. **Three of them are
+  pointer equality** and are the ones that fail silently rather than erroring: `Sides.lua:63`
+  (`villageAt(...) == t.village`, who counts as home), `Interact.lua:80` (`Interact.tribeAt` — what the F key
+  uses to know which village you are standing in, so trade and guard dialogue simply stop) and `Debug.lua:128`.
 - **Durable id counters live in `meta` and are restored.** `nextId` is a file local starting at 0
   (`Sim.lua:42`) and issues both entity ids (`"e"..n`) and bag ids (`"b"..n`). Bags are persisted, and durable
   records hold entity ids: `person.entity = e.id` (`:317`) sits on a saved registry row, and `g.leader` holds one
@@ -403,7 +418,11 @@ start without, and the review found every half of it is broken today.*
   breaking them silently costs a round; and `Debug` writing the clock at all violates R2, where `Calendar` owns
   `meta.gameSeconds`. They become `Calendar.setDay(day, frac)` calls.
 - **Both ticks land in `shared/` as pure functions over the tree** — the daily tick *and* the 1 Hz abstract group
-  advance (`tickGroups`, `Sim.lua:542`). Catch-up is specified as one step per in-game hour so that caravans
+  advance (`tickGroups`, `Sim.lua:543`). **The seam inside `tickGroups` is not the whole function:** the pure
+  half is the pause gate, `acc`/`speed`/`pos`, `groupTurn`, `depositCarry` and the `lateTarget` retarget; the
+  impure half — `materialise`, `collapse`, `anyPlayerWithin` — stays in `server/Bands`, because it spawns
+  entities. The pure half **returns events** rather than printing them (`depositCarry` prints a village name
+  today) and the adapter does the printing. Catch-up is specified as one step per in-game hour so that caravans
   arrive (DESIGN §14, RUNG3 part 2); if group movement stays in `server/`, step 6 can advance the calendar and
   still leave every caravan where it stood. So catch-up replays **hourly: groups; daily: ecology, families,
   economy**. This is also the only way the verification can run: `test/luau/run.js:12` bundles **only**
@@ -424,7 +443,7 @@ start without, and the review found every half of it is broken today.*
     `NaN`; **plus** the separate id-shape assertion from §2, which the deep-equal cannot make.
   - *In `npm test`:* a 28-day catch-up replay lands groups where a 28-day live run does, **replaying groups at
     1 Hz sim-steps, not in hourly lumps**. An hourly lump is `acc += 1.5` × 3600, clamped to a 55-62 tile route,
-    followed by a single `groupTurn` (`Sim.lua:570`) — so one lump traverses at most one leg where live ticking
+    followed by a single `groupTurn` (`Sim.lua:571`) — so one lump traverses at most one leg where live ticking
     does about eleven, and `depositCarry` fires once instead of eleven times. Caravans would arrive with a
     fraction of the goods. The cost of doing it properly is nothing: 4 in-game weeks is 16,800 steps of integer
     arithmetic.
@@ -448,7 +467,7 @@ pattern.
   belongs beside the existing `shared/Calamity.lua` and `shared/DayCycle.lua` (H9); `server/Calendar.lua` is the
   thin half that owns `meta.gameSeconds` and answers `Sim.clock()`.
 - **`Bands` gives the group row a `to`.** `makeGroup` (`Sim.lua:411`) takes `to` as an argument and stores only
-  `from`, and `tickGroups` (`:553-563`) *replaces* `g.route` wholesale when a band takes its real ambush, with no
+  `from`, and `tickGroups` (`:554-564`) *replaces* `g.route` wholesale when a band takes its real ambush, with no
   `to` to update. So "the route is derived from `from`/`to`" — §8 Q12 — is not true of the code yet: without this,
   a band recomputes its route from a generate-time destination and **teleports back to its day-one grace ambush
   on every load**. `to` is stored, and it is rewritten every time the route is retargeted.
@@ -496,6 +515,13 @@ So `gameSeconds += math.min(os.time() - meta.savedAt, 28 * Config.DAY_SECONDS)`,
   replays each missed day explicitly and leaves `lastDailyTick` equal to the day it finished on.
 - **The replay is hourly for the daily systems and 1 Hz for groups** (see step 1's verify), which is the only
   granularity that makes "so caravans arrive" true.
+- **A calamity the world slept through did not happen.** Calamities are not replayed: after catch-up,
+  `calamity.warnedDay` is reset to the post-catch-up day so the next warning fires normally, and an active
+  calamity older than the cap is ended rather than resumed.
+- **Reputation has to fade on join, not in the daily tick.** `Reputation.fade` runs inside `dailyTick` over
+  `S.players` (`Sim.lua:1495`), so a world that ticked with nobody online never fades anybody: stay away a month
+  and every village greets you exactly as you left them. The player key already stores `lastSeenDay` for the
+  headline ring (§8 Q8), so the fade is `day - lastSeenDay` applied once at join.
 
 **The load order is fixed, and it is not obvious.** Round 2's "`mapDiff` records EVERY runtime tile change"
 collides with the calamity system, which is the fifth save blocker: `setFlood` (`WorldGen.lua:778`) stashes the
@@ -509,9 +535,32 @@ on load and you get a *different* list, because `floodTiles` skips tiles that ar
    pickups, player-caused edits).
 3. Re-apply the active calamity's **tiles only**, from `calendar.calamity.kind`, **last** — over the restored
    map, rebuilding `floodBackup` as the layer directly under the overlay.
+4. **Re-encode the map, and only now.** `Map.encoded = WorldGen.encode(world)` runs *after* the diff and the
+   overlay; `Map.init` must never encode a map it has not finished loading.
 
 The overlay is derived (R4) and costs nothing to recompute; the backup never needs persisting because it is
 always the layer directly under the overlay.
+
+### What a load hands the client
+
+Everything above describes the server's tables. **The seventh blocker is that two pieces of state leave the
+server for the client, and a load as described would leave both stale** — silently, because nothing errors.
+
+- **`Map.encoded` is computed once and shipped forever.** `World.encoded = WorldGen.encode(world)` sits inside
+  `World.init` (`World.lua:21`), immediately after `generate`, and `Server.server.lua:78` sends that same buffer
+  to every player who joins, for the life of the server. Regenerate-then-apply-the-diff touches `World.world`
+  and not the buffer, so every persisted campfire, bag and pickup would exist on the server's map and on nobody's
+  screen: the client paints grass where the server has an obstacle, and the player's moves are rejected with no
+  visible cause. Hence load step 4 above.
+- **`calamity.flood` is transient state the join payload reads.** `Server.server.lua:79` sends
+  `flood = c.flood`, and the client applies the flood only `if calamity.active and calamity.flood`
+  (`Client.client.lua:384`). §2 correctly refuses to *save* the tile list — but `applyOverlay` has to put it back
+  in memory, or a player joining a restored flooded world sees dry land over water. So **`applyOverlay` returns
+  the tile list and the caller assigns `c.flood`**: not saved, always rebuilt.
+
+The rule this generalises to, and the one to apply to anything added later: **if a field crosses to the client,
+a load has to rebuild it as deliberately as it rebuilds the tree.** The tree is what the server remembers; these
+are what the player is shown.
 
 **And "re-apply the calamity" must not mean "call `startCalamity`" — that is the sixth blocker, and round 3's
 own wording caused it.** `startCalamity` (`Sim.lua:1374`) lays tiles, but it also sets `c.day = S.day` (the end
@@ -521,8 +570,17 @@ destroys camps (`:1399`) and sends every player a notice. Run that on load and e
 another 30% of the world's food and pushes the end date forward — **the calamity never ends**, and with a
 two-minute autosave it happens again and again. So the function splits, as part of step 2's `Calendar` carve:
 
-- **`Calamity.applyOverlay(kind)`** — idempotent, pure over the map: the flood tiles and `setFlood`, or the
-  region `tide` flags. Load calls this and nothing else, and never writes `c.day`.
+- **`Calamity.applyOverlay(kind)`** — idempotent, pure over the map: the flood tiles and `setFlood` (which
+  self-clears first, `WorldGen.lua:779`, so it is safe to run twice), or, for a tide, `r.tide = true` **and
+  nothing else**. It returns the flood tile list, which the caller assigns to the transient `c.flood`. Load calls
+  this and nothing else, and it never writes `c.day`.
+  **`Ecology.beastTide` has to split for this to be true** (`Ecology.lua:131-142`): it is the only function that
+  sets the tide flags, and in the same loop it does `r.wolf = math.min(CAP*2, r.wolf*2+3)` across all 36 regions.
+  `wolf` is durable. An implementer who reaches for the existing function to satisfy "the tide flags" doubles
+  every region's wolves on **every load during a tide** — at a two-minute autosave, saturated at twice the cap
+  within the hour. The surge is one-time and belongs in `beginCalamity`; the flags are the overlay. This is the
+  third time a repair has left a one-time effect sitting inside something a load re-runs, which is the pattern to
+  watch for in step 2 generally: **before load calls anything, ask what else that function does.**
 - **`beginCalamity(kind)`** — the one-time half: `c.day`, the food cut, the population hit, the shoves, the camps,
   the notices. Only `tickCalamity` calls it, only when a calamity actually begins.
 

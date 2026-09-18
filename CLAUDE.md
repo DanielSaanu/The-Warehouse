@@ -7,12 +7,13 @@ the UI is hidden state: every action writes a file under `scenes/`, `sprites/`, 
 ## Start of every session
 
 0. **Read `docs/ARCHITECTURE.md` before writing any server code.** It is the plan for where the data lives, and
-   it is what rung 3 part 2 (save and catch-up) is waiting on. **Status, 2026-09-18: rounds 1, 2 and 3 scored
-   7, 8.5, 8.5 and 8.5. Round 5 is the last one. Danzo raised the bar to 9.5 (from 8.0) and capped it at 5 rounds, because he
-   wants the plan right before any of it is coded.** Verbatim reports are in `docs/qa/architecture-round1.md`,
-   `-round2.md`, `-round3.md` and `-round4.md`; between them they found **six save blockers** invisible from the
-   code, **two of which a previous round's own fix introduced** and the next round caught. **Do not start the refactor, and do not start part 2,
-   until the loop closes.**
+   it is what rung 3 part 2 (save and catch-up) is waiting on. **Status, 2026-09-18: the review loop is closed.**
+   Five rounds scored 7, 8.5, 8.5, 8.5, 9.0 against a bar of 9.5, so it ended on Danzo's 5-round cap rather than
+   on the target. Everything all five rounds raised is in the plan. The overview is
+   `docs/qa/architecture-summary.md`; the verbatim reports are in `docs/qa/archive/architecture-round*.md` (stale
+   once summarised — do not read them unless asked). Between them the rounds found **seven save blockers**
+   invisible from the code, **three of which a previous round's own fix introduced**. **Danzo decides whether the
+   last 0.5 is worth a sixth round or is better found by building step 1** — ask him before starting either.
 1. Read `ideas/INBOX.md`. That is the to-do list the human writes in the UI. Work through it.
 2. `node bin/warehouse.js scenes` to see what exists. Open the scene JSONs you will touch.
 3. When you change art, render it and LOOK at it: `node bin/warehouse.js render <scene> --scale 8` then Read
