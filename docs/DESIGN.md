@@ -518,6 +518,7 @@ roblox/src/client/     Viewport (scrolling window over the map, entity sprites),
   part of the game (§13). Cheapest candidates that plug into systems already built: goods that are *food* (feeds
   a village, matters in a drought), goods that are *tribute* (a plunderer wants specific things), goods that
   **spoil**, and goods a tribe type cannot make itself. Do not add a crafting tree to fix this.
+- ~~Do we commit to a shared world?~~ **Yes** (Danzo, 2026-09-18). §14 above; `docs/RUNG3.md` part 1.
 - **Does the "what now" elder topic (§12) go in rung 3 part 3 with the chief, or earlier?** It is the only
   answer to the hour-twenty lost minute and it is maybe half a day of work, so it could ride along with almost
   anything. Argument for earlier: the first public players (rung 2 part 5) will hit the lost minute and quit
