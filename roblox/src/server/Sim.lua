@@ -25,6 +25,7 @@ local Tick = require(Shared:WaitForChild("Tick"))
 local Talk = require(Shared:WaitForChild("Talk"))
 local Sides = require(script.Parent:WaitForChild("Sides"))
 local Debug = require(script.Parent:WaitForChild("Debug"))
+local Restore = require(script.Parent:WaitForChild("Restore"))
 local Map = require(script.Parent:WaitForChild("Map"))
 local Calendar = require(script.Parent:WaitForChild("Calendar"))
 
@@ -407,15 +408,22 @@ local function forestTarget(): WorldGen.Pos
 	return best or world.villages[2].spawn
 end
 
+--- The TRANSIENT half of a group: who is materialised, who they are chasing. Never saved; reset on creation and
+--- again when a saved group is restored.
+local function groupScratch(g)
+	g.entities, g.leader, g.trail, g.materialised = {}, nil, {}, false
+	g.target, g.aggroUntil, g.lastSeen = nil, 0, nil
+end
+
 local function makeGroup(id: string, kind: string, tribeIdx: number, from: WorldGen.Pos, to: WorldGen.Pos, members, pauses)
 	-- `route` is derived from `from` and `to` (Tick.rebuildRoute), so `to` is what a save keeps
 	local g = {
 		id = id, kind = kind, tribe = tribeIdx, pos = 1, dir = 1, from = { x = from.x, y = from.y }, to = { x = to.x, y = to.y },
 		pauseUntil = Calendar.now() + rng:int(20, 60), pauses = pauses, speed = 1.5, acc = 0,
-		members = members, fullSize = #members, entities = {}, leader = nil, trail = {}, materialised = false,
-		target = nil, aggroUntil = 0, lastSeen = nil,
+		members = members, fullSize = #members,
 		carry = {}, retreatUntil = 0,   -- what they are bringing home, and whether they have had enough
 	}
+	groupScratch(g)
 	Tick.rebuildRoute(g, world)
 	S.groups[id] = g
 	return g
@@ -1510,6 +1518,8 @@ function Sim.init()
 	Debug.bind({ Sim = Sim, S = S, world = world, cheb = cheb, collapse = collapse, endCalamity = endCalamity,
 		hitEntity = hitEntity, killPlayer = killPlayer, morph = morph, nearestFree = nearestFree, newEntity = newEntity,
 		startCalamity = startCalamity, tickFamilies = tickFamilies, tidx = tidx })
+	Restore.bind({ Sim = Sim, S = S, world = world, spawnPerson = spawnPerson, removeEntity = removeEntity,
+		groupScratch = groupScratch, getRng = function() return rng end })
 	initTribes()
 	initGroups()
 	local n = 0

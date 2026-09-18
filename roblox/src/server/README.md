@@ -7,7 +7,8 @@ Read this first. Update it in the same commit as any move. Sizes are line counts
 | `Server.server.lua` | remotes, player join/leave, the movement handler | 190 |
 | `Map.lua` | the generated map and `Map.encoded` (what joining clients are sent). Was `World.lua` | 40 |
 | `Calendar.lua` | `meta.gameSeconds`, the ONE clock: `now()`, `clock()`, `setDay()`, `skipTo()`, `advance()` | 60 |
-| `Sim.lua` | everything else, for now: entities, AI, fighting, groups, camps, calamities, the tick loops | 1570 |
+| `Restore.lua` | `Sim.state` <-> a save: `snapshot()`, and `apply(data, slept)` = the RESTORE constructor (bodies, routes, stamped tiles, overlay, `Map.reencode`) | 150 |
+| `Sim.lua` | everything else, for now: entities, AI, fighting, groups, camps, calamities, the tick loops | 1585 |
 | `Sides.lua` | who takes whose side in a fight | 280 |
 | `Interact.lua` | the F key: talk, trade, rest, gifts | 340 |
 | `Debug.lua` | the test console (Workspace attribute `Debug`) | 215 |
@@ -20,5 +21,6 @@ Read this first. Update it in the same commit as any move. Sizes are line counts
 - [x] **A3** records and references: `t.villageId` + `Map.village(id)` (no live village tables), `Person.village` is an id,
       `Calamity.applyOverlay` (what a load re-lays) split from `startCalamity` (the one-time half), `Ecology.wolfSurge` /
       `setTide`, bags have their own saved counter (`meta.nextBagId`)
-- [ ] **A4** `shared/Save.lua` + generate/restore
+- [x] **A4** `shared/Save.lua` (encode / decode / check / gravestones / players) + `Restore.lua` (snapshot, apply).
+      Debug `reload [seconds]` saves through real JSON and restores in place, sleeping that long first
 - [ ] **A5** `Persistence.lua` (rung 3 part 2)

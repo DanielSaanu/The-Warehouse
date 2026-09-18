@@ -33,6 +33,12 @@ function Map.get(): WorldGen.World
 	return Map.world :: WorldGen.World
 end
 
+--- Rebuild what joining clients are sent. The map changes after generation (a load stamps camps and bags back on
+--- and re-lays a flood), and a client sent the old copy would draw grass where the server has a campfire.
+function Map.reencode()
+	Map.encoded = WorldGen.encode(Map.get())
+end
+
 --- A village by id (its index in world.villages). Tribes and people hold the ID, never the table: a reference
 --- cannot be saved, and two copies of one village stop being `==` (docs/ARCHITECTURE.md A3).
 function Map.village(id: number): WorldGen.Village

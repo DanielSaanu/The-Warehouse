@@ -14,7 +14,10 @@ local Stats = require(Shared:WaitForChild("Stats"))
 local WorldGen = require(Shared:WaitForChild("WorldGen"))
 local Ecology = require(Shared:WaitForChild("Ecology"))
 local Families = require(Shared:WaitForChild("Families"))
+local HttpService = game:GetService("HttpService")
+local Save = require(Shared:WaitForChild("Save"))
 local Calendar = require(script.Parent:WaitForChild("Calendar"))
+local Restore = require(script.Parent:WaitForChild("Restore"))
 local Map = require(script.Parent:WaitForChild("Map"))
 
 local Debug = {}
@@ -68,6 +71,16 @@ function Debug.run(cmd: string, ...): any
 		ps.rep[t.tribeType] = args[2] or 0
 		Sim.hud(ps)
 		return t.tribeType .. " = " .. tostring(ps.rep[t.tribeType])
+	elseif cmd == "reload" then
+		-- save the world and load it straight back, in place: everything a restart would do except the DataStore.
+		-- `reload 3600` also sleeps an hour first (catch-up), the way a server that was down for an hour would.
+		local data = Restore.snapshot()
+		local ok, why = Save.check(data)
+		if not ok then return "snapshot is not JSON-safe: " .. tostring(why) end
+		data = HttpService:JSONDecode(HttpService:JSONEncode(data)) -- the real thing, not just the shape check
+		local bytes = #HttpService:JSONEncode(data)
+		local applied, err = Restore.apply(data, args[1])
+		return if applied then ("reloaded (%d bytes of JSON)"):format(bytes) else "refused: " .. tostring(err)
 	elseif cmd == "night" then
 		Calendar.skipTo(1 - Config.NIGHT_FRACTION + 0.01)
 		return "dusk"
@@ -208,6 +221,8 @@ function Debug.run(cmd: string, ...): any
 		end
 		return { stage = ps.goalStage, goal = ps.goal, done = ps.goalDone, metSurvivor = ps.metSurvivor, held = ps.selected }
 	elseif cmd == "camp" and ps then
+		-- `camp 30 83` pitches the player's camp there (no kit needed); bare `camp` reports it
+		if args[1] and args[2] then Sim.placeCamp(ps, args[1], args[2]) end
 		return tostring(S.camps[ps.player.UserId] and (S.camps[ps.player.UserId].x .. "," .. S.camps[ps.player.UserId].y .. (if S.camps[ps.player.UserId].out then " out" else " lit")) or "none")
 	end
 	return "unknown command " .. tostring(cmd)
