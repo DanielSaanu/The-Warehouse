@@ -1,8 +1,9 @@
 # Architecture: where the data lives
 
 **Status: Track A is built (2026-09-18, branch `track-a`); Track B is not.** `roblox/src/server/README.md` has the
-check-list, and §10 lists where the build departed from this plan and why. Written 2026-09-18 before rung 3 part 2 (save and catch-up), because the shape
-of the data decides whether saving is a morning's work or a rewrite. Reviewed for five rounds (7 → 9.0, summary in
+check-list, and §10 lists where the build departed from this plan and why.
+
+Written 2026-09-18 before rung 3 part 2 (save and catch-up), because the shape of the data decides whether saving is a morning's work or a rewrite. Reviewed for five rounds (7 → 9.0, summary in
 `docs/qa/architecture-summary.md`), then re-read end to end and revised by a different model, which changed six
 decisions — listed in §9 so nobody re-litigates them by accident. This document states decisions; the history of
 how they were reached lives in the summary, not here.
