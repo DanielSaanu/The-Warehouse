@@ -1,343 +1,320 @@
 # Architecture: where the data lives
 
-**Status: a plan, not the code.** Written 2026-09-18, before rung 3 part 2 (save and catch-up), because the
-shape of the data decides whether saving is a morning's work or a rewrite.
+**Status: a plan, not the code.** Written 2026-09-18, before rung 3 part 2 (save and catch-up), because the shape
+of the data decides whether saving is a morning's work or a rewrite. Revised after review; the verbatim report is
+`docs/qa/archive/architecture-round1.md`.
 
 Danzo's brief: *"set it up in a way where the data flows instead of congesting… a village has x amount of people,
 those people are split into groups, those groups are split into individuals. Data that affects the group is
 applied at the top level, data that applies to a family is at the group level, and so on… the data is in one
 place, or several, whatever works, and the systems that rely on it are not directly moving it."*
 
-That is the right instinct and this document turns it into something buildable.
-
 ---
 
 ## 1. What is actually wrong today
 
-Not opinion — measured on the current tree.
+Measured, not asserted.
 
-**The creature record is a bag of forty fields.** One flat table per entity carries identity (`id, kind, sprite,
-label, name, first, last, person, tribe, group, role, species`), a body (`hp, maxHp, atk, def, speed`), a
-position (`x, y, facing, home, radius`), pathfinding scratch (`path, pathI, nextStepAt, lastPathAt,
-blockedCount`), an AI mind (`state, target, npcTarget, threat, nextThink, windupAt, cooldownUntil, aggroUntil,
-fleeUntil`) and a combat memory (`attacked, provokedBy, beatenBy, mercyGiven, escapeGiven, broken, invulnUntil,
-nextHeal`). Six unrelated concerns in one table that every system reaches into. **That is the congestion.**
+**The creature record is a bag of ~47 fields.** `newEntity` (`Sim.lua:140`) sets 31; another 16 are bolted on
+later (`npcTarget, threat, alarm, attacked, provokedBy, beatenBy, mercyGiven, escapeGiven, broken, nextHeal,
+blockedCount, nextWitnessAt, aggroUntil, person, first, last`). Six unrelated concerns — identity, body, position,
+pathfinding scratch, an AI mind, a combat memory — in one table that every system reaches into. **That is the
+congestion.**
 
-**Nothing owns anything.** `Sim.state.tribes` is written from four files (Sim, Interact, Sides, Debug);
-`Sim.state.entities` from four. There is no module you can point at and say "this is the only thing that changes
-a tribe's stock". So a change anywhere can break anything, and a reviewer cannot reason locally.
+**Nothing owns anything.** `S.tribes` is written from four files (Sim 18 sites, Interact 8, Sides 5, Debug 4).
+There is no module you can point at and say "this is the only thing that changes a tribe's stock", so no change
+can be reasoned about locally.
 
-**The big file already broke a tool.** `Sim.lua` grew past Luau's type-inference budget and `npm run lint:luau`
-failed outright; the only fix was splitting `Sides.lua` and `Debug.lua` out. It is 1,592 lines and eighteen
-sections. `Hud.lua` is 1,021 lines and one class with 32 methods. The compiler is telling us what a reviewer
-would.
+**Twelve full sweeps over every entity** on the server (eight in `Sim.lua`, two in `Sides.lua`, two in
+`Debug.lua`), plus twenty `pairs(S.players)` sweeps in `Sim.lua` alone.
 
-**Everything is a linear sweep.** Eight `for _ in pairs(S.entities)` full sweeps on the server, twenty
-`pairs(S.players)` sweeps in `Sim.lua` alone. `Sides.witnessed` sweeps every entity on **every blow that lands**.
-At 19 people that was free. At 38 it is fine. At the hundreds rung 4 wants, with several players, it is not.
+**`Sim.lua` is 1,617 lines.** It did break Luau's type inference once, at roughly 1,800 lines, and the fix was
+splitting out `Sides.lua` and `Debug.lua`. Today it lints clean — **but both it and `Hud.lua` are `--!nonstrict`,
+so the type checker is barely looking.** The inference budget is a tripwire we already hit, not a guard. The real
+reason to split is §4b: a person and a model both have to read this.
 
-**Nothing durable is separable from the transient.** Rung 3 part 2 has to write this to a DataStore key with a
-4 MB limit, and right now the thing to save and the thing to throw away are the same tables.
+**Nothing durable is separable from the transient** — and worse, per R5, the durable parts are timestamped with a
+clock that resets to zero on every new server.
 
 ---
 
 ## 2. The shape: one tree, by tier
 
-One serialisable **World Record**. No functions, no Roblox Instances, no back-references, no cycles. If it cannot
-be JSON, it does not belong. Everything that must survive a restart lives here; **nothing else does**.
+One serialisable **World Record**. No functions, no Roblox Instances, no cycles, and **no object references —
+ids only**. If it cannot be JSON, it does not belong.
 
 ```
 world
-├─ meta        seed, day, dayStart, version
-├─ map         ground[], object[], signs{}, villages[]        (from the seed; rarely changes)
+├─ meta        version, seed, day, dayFraction            (never os.clock; see R5)
+├─ mapDiff     sparse { tileIndex -> objectId } of player-caused changes only
+│              (the map is regenerated from the seed — it is derived, R4)
 ├─ calendar    calamity { kind, active, day, warnedDay }
-├─ regions[]   per 16x16: grass, deer, boar, wolf, forest, tide    ~36 rows
-├─ tribes[]    type, size tier, stock{}, population, walled, surnames, news, chief   3 rows
-│   └─ villages[]   name, bounds, spawn/bed/stall, roster, knowledge bank
+├─ regions[]   per 16x16: grass, deer, boar, wolf, forest, tide          36 rows, fixed
+├─ tribes[]    type, sizeTier, stock{}, population, walled, surnames, news, chiefId
+├─ villages[]  id, tribeId, name, bounds, spawn/bed/stall, roster, bank, memory{}
 ├─ groups{}    caravan / squad / band / (rung 4: hire, warband)
-│   │          route, pos, dir, members[], carry{}, morale, memory{}
-│   └─ families{}   couples, children — the family IS a group, see §3
-├─ people{}    id -> { first, last, sex, born, died, cause, killer, tribe, role, parents, children, spouse }
-├─ players{}   userId -> { pos, inv, coin, rep{}, rest, goalStage, flags }
-└─ world bits  camps{}, bags{}
+│              route, pos, dir, memberIds[], carry{}, morale, memory{}
+├─ people{}    id -> { first, last, sex, born, died, cause, killer, tribe, role,
+│                      father, mother, spouse, children[] }
+├─ camps{}, bags{}                                        (game-time timers, R5)
+└─ players{}   a SEPARATE DataStore key per player (DESIGN §14):
+               pos, inv, coin, rep{}, grudges{}, rest, goalStage, flags
 ```
 
 **The tier rule, which is Danzo's rule made precise:**
 
-> A fact lives at the **highest tier where it is still true of everything below it.**
+> A fact lives at the **highest tier where it is still true of everything below it** — and if it is *derived*
+> from a lower tier, it is not stored at all (R4).
 
-- True of a whole tribe → tribe row. Prices, stock, size tier, what the tribe thinks of a player.
-- True of a village → village row. Its roster, its knowledge bank, what happened *here*.
-- True of a party → group row. A caravan's route and load; a hunting squad's morale; **a family's couples and
-  children**. A family is a group that never leaves the village.
-- True of one person → person row, and **only small fixed fields** (DESIGN.md §4's data budget).
-- True of one player's relationship with a tribe → the player row, not the tribe's, and never per-person.
+- True of a tribe → tribe row: stock, size tier, surnames.
+- True of a village → village row: roster, knowledge bank, **what happened here**.
+- True of a party → group row: route, load, morale, what they saw.
+- True of one person → person row, small fixed fields only.
+- True of a player's relationship with a tribe → **that player's own key**, never the tribe's, never a villager's.
 
-That last line is the one that keeps this inside a DataStore key. See §5.
+**A family is not a group.** It is a derived index over `Person.father/mother/spouse/children`
+(`Population.familyOf(id)`). Storing it as a group row would be storing derived data (R4), and the entity model
+refuses it anyway: `newEntity` gives an entity exactly one `group` field, while a hunter in a squad is also
+somebody's son. **Groups are only things with a route, a position and morale.**
 
 ---
 
-## 3. The four rules
+## 3. The five rules
 
-**R1. Entities are a projection, not data.** A live entity is a *view* of a person record plus transient scratch
-(path, think timer, current intent). It is rebuilt from records when a player comes near and thrown away when
-they leave. **Nothing durable is ever stored on an entity.** This is already half-true and works; making it a
-rule is most of the win, because it is what makes the save boundary obvious: *save records, never entities.*
+**R1. Entities are a projection, not data.** A live entity is a view of a person record plus transient scratch,
+rebuilt when a player comes near and thrown away when they leave. **Nothing durable is ever stored on an entity.**
+This is what makes the save boundary obvious: *save records, never entities.*
 
-**R2. One writer per slice.** Every table in the tree has exactly one module allowed to mutate it. Everyone else
-reads, through that module's accessors.
+**R2. One writer per slice.**
 
 | Slice | Only writer |
 | --- | --- |
 | `regions` | `Ecology` |
 | `tribes[].stock`, prices | `Economy` |
-| `people`, families | `Population` |
-| `groups` (routes, carry, morale) | `Bands` |
-| `players[].rep` | `Standing` |
-| `players[].inv`, coin | `Inventory` |
+| `people`, roles, succession | `Population` |
+| `groups` | `Bands` |
+| player `rep`, grudges, village/group `memory` | `Standing` |
+| player `inv`, coin | `Inventory` |
 | entities, positions, occupancy | `Bodies` |
 | `calamity`, `day` | `Calendar` |
 
-**R3. Systems ask, they do not reach.** A system that wants something to change in a slice it does not own calls
-the owner's function — `Economy.deposit(tribe, goods)`, `Standing.witnessed(player, tribe, event)` — rather than
-touching the table. The call is the contract and the place to put a log line, a test, or a save-dirty flag.
+**R3. Systems ask, they do not reach.** `Economy.deposit(tribe, goods)`, not `t.stock.hide += n`. The call is the
+contract, and the place for a log line, a test, or a save-dirty flag. Deliberately **not** an ECS or a message
+bus: the failure mode here is unclear ownership, not too little indirection.
 
-This is the direct answer to *"the systems that rely on it are not directly moving it"*. It is deliberately
-**not** a full ECS or a message bus: those are a lot of machinery for a game this size, and the failure mode we
-have is unclear ownership, not lack of indirection. One writer plus named functions fixes that.
+**R4. Derived data is never stored.** The map comes from the seed. A family comes from person fields. "What this
+tribe thinks of you" is `Witness.feel(...)` over stored numbers, not a cached matrix.
 
-**R4. Derived data is never stored.** Anything computable from the tree is computed. A tribe's "how do you feel
-about this player" is `Witness.feel(...)` over stored numbers, not a cached matrix. Caches are where save bugs
-and desyncs live.
+**R5. Stored time is game time; stored links are ids.** Two save-blockers, both live in the code today:
+
+- **`os.clock()` restarts near zero on a new server.** `S.dayStart` (`Sim.lua:1548`), `camps.litUntil` (`:1286`),
+  `bags.droppedAt` (`:841`), `groups.pauseUntil` (`:416`), `replenishAt` and `retreatUntil` are all `os.clock`
+  based and all sit in tables the tree must persist. Loaded fresh they are garbage: every campfire out, every bag
+  an hour old, every group paused forever. **Every persisted instant is an in-game day plus fraction; every
+  persisted duration is remaining seconds, rehydrated on load.**
+- **The tree holds ids, never references**, and every id read is nil-checked. `removeEntity` (`Sim.lua:183`) does
+  not clear other entities' `npcTarget`, `threat` or `alarm.to` — survivable while entities are transient, fatal
+  the moment an id is durable.
 
 ---
 
 ## 4. The module map after
 
-Shared stays as it is — it is already clean (18 files, median 80 lines, mostly pure Luau, testable outside
-Studio). The server is what changes.
+Shared stays as it is — 18 files, median 80 lines, mostly pure Luau — **except `WorldGen.lua` at 877 lines**,
+which is split into generate / query / encode before part 2, because `encode` *is* the save format.
 
 ```
 server/
-  World.lua        the tree, load/save/migrate. Owns nothing else.
-  Calendar.lua     day, clock, calamities                              (~120, from Sim)
-  Bodies.lua       entities: spawn, move, occupancy, replication       (~260, from Sim)
-  Brains.lua       think/chase/hunt/flee/wander, the AI states         (~300, from Sim)
-  Fighting.lua     damage, death, loot, break points                   (~250, from Sim)
-  Bands.lua        groups: routes, materialise/collapse, carry         (~200, from Sim)
-  Wildlife.lua     spawning animals from region counts                 (~80,  from Sim)
-  Population.lua   people, families, roles, succession                 (~120, from Sim)
-  Economy.lua      stock, prices, deposits                             (~80,  from Interact+Sim)
-  Standing.lua     reputation events, and later gossip and grudges     (~120, from Sim)
-  Sides.lua        who takes whose side                                (exists, 278)
-  Interact.lua     the F key                                           (exists, 341)
-  Debug.lua        the test console                                    (exists, 214)
-  Sim.lua          the tick loops and nothing else                     (~150)
+  World.lua        the tree: load, save, migrate. Owns nothing else.       ~200
+  Calendar.lua     day, clock, calamities                                  ~120
+  Bodies.lua       entities: spawn, move, occupancy, replication           ~250
+  Brains.lua       the think dispatcher and the AI states                  ~250
+  Targeting.lua    pickTarget / pickNpcTarget / preysOn                    ~150
+  Fighting.lua     damage, death, loot, break points                       ~250
+  Bands.lua        groups: routes, materialise/collapse, carry             ~200
+  Wildlife.lua     spawning animals from region counts                     ~80
+  Population.lua   people, families, roles, succession                     ~150
+  Economy.lua      stock, prices, deposits                                 ~80
+  Standing.lua     reputation events; later gossip and grudges             ~150
+  Sides.lua        who takes whose side                          (exists, 278)
+  Interact.lua     the F key                                      (exists, 341)
+  Debug.lua        the test console                               (exists, 214)
+  Sim.lua          the tick loops and nothing else                         ~150
 ```
 
-`Sim.lua` stops being a cabinet and becomes what its name says: the thing that ticks. Every module lands under
-Luau's inference budget, and each has one job you can name in a sentence.
-
-The client wants the same treatment later — `Hud.lua` is 1,021 lines and one class — but it is not on the save
-path, so it is not urgent and is out of scope here.
+Budgeted at **250, not 400**, so headers and boilerplate do not push a module through the ceiling. `Brains` is
+split from the start rather than re-split under it later.
 
 ---
 
 ## 4b. The codebase has a second reader, and it has a context window
 
-Claude writes most of this. That is not a footnote, it is a design constraint (Danzo, 2026-09-18: *"your coding
-this and your context matters, so no individual file should be so large u cant read it without destroying all ur
-context"*). A 1,592-line file costs ~20k tokens to read, and a session that reads three of them has spent its
-budget before it has changed anything. The same properties that make a codebase readable by a person under time
-pressure make it workable by a model, only more so.
+Claude writes most of this (Danzo, 2026-09-18: *"your coding this and your context matters"*). A 1,617-line file
+costs ~20k tokens; a session that opens three has spent its budget before changing anything.
 
-**H1. A hard ceiling of 400 lines per file, target 250.** Not a guideline — a check that fails the build, because
-guidelines about file size always lose. Today's violators are exactly the files this plan is already splitting:
-`Sim.lua` 1592, `Hud.lua` 1021, `WorldGen.lua` 877, `Client.client.lua` 653, `Viewport.lua` 429. Generated files
-(`Sprites.lua`) are exempt.
+**H1. A hard ceiling of 400 lines, target 250** — a check that fails `npm test`, not a guideline. Today's
+violators: `Sim.lua` 1617, `Hud.lua` 1021, `WorldGen.lua` 877, `Client.client.lua` 653, `Viewport.lua` 429.
+Generated files exempt. Line count is a proxy; if it ever disagrees with real cost, add "and no file over ~6k
+tokens".
 
-**H2. The first fifteen lines of a file say what it owns.** Every module opens with what it is for, what slice it
-is the sole writer of, and what it deliberately does not do. That header is often the only part that needs
-reading to know whether this is the right file — which turns "read three files to find the logic" into one grep
-and one short read.
+**H2. The first fifteen lines say what the file owns** — its job, its slice, what it deliberately does not do.
 
-**H3. One job per file, and the filename is the job.** `Fighting.lua` holds damage and death. Nothing about
-damage lives anywhere else. The win is that a task maps to a file *before* reading anything.
+**H3. One job per file, and the filename is the job**, so a task maps to a file before anything is read.
 
-**H4. Dependencies are declared, not discovered.** The `bind(ctx)` list is a written manifest of everything a
-module touches. Reading eight lines of a bind call tells you the module's whole dependency surface without
-opening its body — and if the list is long, the seam is wrong. This is why `bind` is worth keeping even though a
-plain `require` would work.
+**H4. Plain `require` by default; `bind(ctx)` only for a genuine cycle.** `bind` was invented to break a cycle
+with a god object and it costs real safety: `Sides.bind` takes an untyped `ctx` into a row of `any` locals in a
+`--!nonstrict` file, so there is no go-to-definition and `luau-analyze` cannot see a typo. Once `Sim` is only the
+tick loops, siblings require each other directly. Keep `bind` for the one mutual pair (`Brains` ↔ `Fighting`).
 
-**H5. Tests are the cheap way to read a rule.** `witness.test.luau` states every side-taking case in 120 lines of
-assertions; the implementation is 103 lines of thresholds. Reading the test is faster and less ambiguous than
-reading the code, and it cannot drift. Prefer a test that reads like a specification over a comment that claims
-one.
+**H5. Tests are the cheap way to read a rule.** `witness.test.luau` states every side-taking case in assertions;
+reading it is faster and less ambiguous than reading thresholds, and it cannot drift.
 
-**H6. A one-line index, kept current.** `roblox/src/server/README.md`: one line per module, what it owns, its
-size. Read first, every session. This is what stops a session grepping blindly through a tree it has not seen.
+**H6. `roblox/src/server/README.md`: one line per module** — what it owns, how big — updated in the same commit
+as any move. Read first, every session.
 
-**H7. Greppable, stable names.** `Economy.deposit` is findable; `handle`, `process`, `update` are not. A model
-searching for "where does stock change" should find it with one grep, and `/usr/bin/grep -rn "Economy\." roblox/src`
-should list the whole public surface of a module without reading it.
+**H7. Greppable, stable names.** `Economy.deposit`, not `handle`/`process`/`update`.
+`/usr/bin/grep -rn "Economy\."` should list a module's whole public surface without opening it.
 
-These change the module map: nothing in §4 may exceed 400 lines, so `Brains` (~300) and `Fighting` (~250) are
-already near the ceiling and should be watched. `WorldGen.lua` at 877 is a shared-layer violator the plan has not
-yet addressed and wants splitting into generation, queries and serialisation.
+**H8. One worked example per module header.** A two-line "the call that matters looks like this" is worth more
+than a dependency list, because it shows the shape of correct use.
 
 ---
 
 ## 5. Not blowing up the machine
 
-Two different budgets, and they fail differently.
+### The 4 MB key
 
-### Memory and the 4 MB key
+The first draft warned about the wrong table. `Families.MAX_PEOPLE = 9` caps the **living** per village, so the
+registry grows at the *death* rate, not the birth rate. A full person record is ~274 B of JSON, pruned ~71 B:
 
-| Tier | Rows | Growth | Verdict |
-| --- | --- | --- | --- |
-| regions | ~36 | fixed | free |
-| tribes / villages | 3 / 3 | rung 4 grows it | free |
-| groups | ~3–40 | capped by design | cheap |
-| **people** | grows with every birth, **never shrinks** | **unbounded** | **the one to watch** |
-| players | one per account | per player | fine |
+- 4 MiB ÷ 274 B ≈ **15,300 full records**; pruned, ≈ **59,000**.
+- At roughly one death per in-game day (600 s), 15,300 days ≈ **106 real days** of continuous simulation.
 
-**The only unbounded thing is the dead.** Mitigations, in order: a person record carries only small fixed fields;
-the long dead are pruned to `{ first, last, died, killer }`; and if it still grows, the registry moves to its own
-DataStore key, chunked, because it is the one table that legitimately wants to be big.
+**People are not the thing to watch. Memory per holder, per player, is.** Rung 3 part 3 puts gossip memory on
+villages and groups: 3 villages + up to 40 groups ≈ 43 holders. At 5 entries × ~60 B that is **~13 KB per player
+ever seen**, and 300 lifetime players ≈ 3.9 MB. The key dies of gossip, not of the dead.
 
-**The forbidden shape is per-person-per-player.** Ten thousand people × fifty players is a matrix nothing
-survives. Memory of a player belongs to the **village and the party**, never to each villager separately — which
-is also what DESIGN.md §7 wants, since gossip travels by caravans and bands, not by a thousand diaries.
+What prevents it:
+- **A holder's memory is capped**: N most recent, expired by day stamp. Bounded by design, not by hope.
+- **Per-player standing and grudges live in that player's own key** (DESIGN §14 already saves player state
+  separately). The world key holds what *places and parties* remember; the player key holds what the player
+  carries.
+- `people` is a versioned sub-table, so it can be lifted into its own chunked key later without touching the rest.
 
-### CPU, per tick
+### CPU
 
-The fix is one thing: **a spatial index.** Entities bucketed by region (already a 16×16 grid, already computed).
-`Bodies.near(x, y, r)` walks the buckets in range instead of every entity in the world.
+The first draft over-claimed a spatial index. DESIGN §4 caps materialised entities at 60 NPC + 40 animal, so
+`Sides.witnessed` sweeping ≤100 cheap `cheb` comparisons per blow is microseconds. Of the eight `Sim.lua` sweeps
+only four are radius queries; the fold-back sweep, the flood sweep and **the 10 Hz think loop — the actual
+dominant cost — must touch every entity anyway**, and an index does not help them.
 
-That single change turns eight full sweeps into neighbourhood lookups, and it matters most for
-`Sides.witnessed`, which runs on **every blow that lands**. Everything else — `nearestPlayer`, `nearestFree`,
-`nearestArmedKin`, `litCampNear`, `bagAt` — falls out of the same index.
+So **the index is demand-driven**: built when a measurement says a query is hot, not on faith. The design is
+sound when wanted — a 3×3 block of 16-tile regions covers any radius ≤ 16, which is what `nearestArmedKin` (16)
+and `witnessed` (8) need.
 
-Rung 4 also wants the tiering already in DESIGN.md §4 to become real: groups far from every player stay abstract
-records and never materialise, and a distant village ticks once a day instead of every second.
+Rung 4's real answer is the tiering DESIGN §4 already describes: distant groups stay abstract and never
+materialise, and a far village ticks once a day. That, not an index, is what buys hundreds of NPCs.
 
 ---
 
 ## 6. How we get there without stopping the game
 
 A strangler, not a rewrite. Each step is its own PR, ends green on `npm test` and `npm run lint:luau`, and leaves
-the game playable. Nothing below requires a flag day.
+the game playable.
 
-### The mechanics of moving code, which are already proven here
+### The mechanics of moving code, already proven here
 
-Splitting `Sides.lua` and `Debug.lua` out of `Sim.lua` worked, and it worked a particular way. Reuse it:
+Splitting `Sides.lua` and `Debug.lua` out of `Sim.lua` worked, and it worked a particular way:
 
-- **The new module never requires `Sim`.** `Sim` requires *it*, and calls `Module.bind(ctx)` once during
-  `Sim.init`, passing the innards it needs. No require cycle, no globals, and the bind call is a written list of
-  exactly what that module depends on — which is a design review in itself. If a bind list is long, the seam is
-  wrong.
-- **Move text verbatim first, rename after.** Cut the functions across unchanged, get green, *then* rename and
-  tidy in a second commit. Mixing a move with a rewrite is how a refactor turns into a bug hunt.
+- **Move text verbatim first, rename after.** Mixing a move with a rewrite turns a refactor into a bug hunt.
 - **Watch for bare calls to moved locals.** A `local function canFight` that becomes `Sides.canFight` leaves
-  callers that still say `canFight(...)`, which is `nil` at runtime and silent until that branch executes. Luau's
-  linter catches the unused definition, not the broken call. After every move: `/usr/bin/grep -n "[^.a-zA-Z_]name("`
-  across the server, and start Play and read the Output before believing it.
-- **Definition order is load-bearing.** Luau locals are lexically scoped; a helper used at line 400 and defined
-  at line 900 is a nil global. `luau-analyze` reports it as `LocalShadow`, which is easy to misread as harmless.
+  callers saying `canFight(...)` — `nil` at runtime and **silent** until that branch runs. The linter flags the
+  unused definition, not the broken call. After every move:
+  `/usr/bin/grep -n "[^.a-zA-Z_]name(" roblox/src/server/*.lua`, then start Play and read the Output.
+- **Definition order is load-bearing.** A helper used at line 400 and defined at line 900 is a nil global;
+  `luau-analyze` calls it `LocalShadow`, which reads as harmless and is not.
+- **One module per PR**, so a bisect lands on one move.
 
-### The steps
+### The steps, in dependency order
 
-**Step 1 — `Bodies.near` (the spatial index).** No shape change, pure win, de-risks everything after.
-- Add `region -> { entity ids }` buckets, maintained in the two places a position already changes
-  (`placeEntity`, `removeEntity`), so there is exactly one pair of write sites.
-- `Bodies.near(x, y, r)` walks the 3×3 region block and filters. Regions are 16 tiles, so any radius ≤ 16 needs
-  at most nine buckets.
-- Convert the eight `pairs(S.entities)` sweeps one at a time, each with its own commit.
-- **Verify:** a Luau test that a thousand random `near()` queries return exactly what a brute-force sweep returns.
-  Then in Studio, `spawn` forty animals and compare `os.clock()` across a hundred `witnessed` calls before and
-  after. The claim is a measured number, not "should be faster".
+**Step 0 — the ceiling and the index file.** `npm test` gains a check failing any non-generated `.lua` over 400
+lines, landing with an allow-list of the five known violators that later steps delete entries from — a refactor
+with a progress bar. Write `roblox/src/server/README.md`.
 
-**Step 2 — carve `Calendar`, `Wildlife`, `Bands`.** Small, low-traffic, obvious seams, in that order.
-- `Calendar` (~120): `Sim.clock`, `isNight`, `tickCalamity`, `startCalamity`/`endCalamity`. Almost no callers.
-- `Wildlife` (~80): `spawnAnimal`, `tickWildlife`, `regionCenterNear`.
-- `Bands` (~200): `makeGroup`, `materialise`/`collapse`, `tickGroups`, `groupStep`, carry and deposit.
-- **Verify:** `npm test` plus a Studio session per PR — a squad completes a round trip and deposits, a calamity
-  fires on schedule, wolves appear at night. These are the behaviours part 1 and 1b already proved, so a
-  regression is obvious.
+**Step 1 — make the tick pure over records, and fix game time.** *The step part 2 cannot start without, and the
+review found both halves are broken today.*
+- **Births only half-happen when nobody is watching.** `tickFamilies` (`Sim.lua:1461`) completes a birth only
+  `if me` — if the mother is materialised. With no players, `Families.daily` adds the baby to the registry while
+  `t.population`, `t.news` and the baby's body are skipped, and `weeklyConceive` mutates regardless. Catch-up
+  would produce a registry that disagrees with the population it is meant to explain.
+- **Every persisted timer moves to game time** (R5): `dayStart`, `litUntil`, `droppedAt`, `pauseUntil`,
+  `replenishAt`, `retreatUntil`.
+- **Verify:** run 28 simulated days with zero entities and assert registry, `t.population` and region counts
+  match a run of the same 28 days with a player present. Plus a test that no persisted field came from
+  `os.clock`.
 
-**Step 3 — carve `Fighting` and `Brains`.** The big ones, and only once the pattern is proven.
-- `Fighting` (~250): `hitEntity`, `hitPlayer`, `killEntity`, `dropBag`, loot, break points.
-- `Brains` (~300): `think` and the state steps (`chaseStep`, `huntStep`, `fleeStep`, `brokenStep`, `alarmStep`,
-  `wanderStep`, `pickTarget`, `pickNpcTarget`).
-- These two call each other, so they bind mutually through `Sim` rather than requiring each other.
-- **Verify:** the whole part 1 QA script — welcome village defends, wary village watches, predation, band
-  retreats at half. That script is the regression suite for this step and should be written down as one.
+**Step 2 — carve `Calendar`, `Wildlife`, `Bands`.** Small, low-traffic, obvious seams, one PR each; proves the
+pattern. **Verify:** a squad completes a round trip and deposits; a calamity fires on schedule; wolves appear at
+night — behaviours parts 1 and 1b already proved.
 
-**Step 4 — name the owners (R2/R3).** Where the thinking is, and the only step that changes call sites rather
-than moving them.
-- Introduce `Economy`, `Standing`, `Population` as the sole writers of their slices.
-- Convert writers one slice at a time: find every `S.tribes[i].stock` write (there are few), replace with
-  `Economy.deposit` / `Economy.trade`. Repeat for `rep` → `Standing`, people/families → `Population`.
-- **How to be sure a slice is really owned:** after converting, grep for direct writes and expect zero outside
-  the owner. That grep belongs in the PR description as the evidence.
-- Do `Economy` first: smallest surface, and it is what rung 3 part 5 (tribute and tax) will lean on.
+**Step 3 — carve `Fighting`, `Brains`, `Targeting`, `Bodies`.** The big ones, once the pattern is proven.
+**Verify:** the part 1 QA script — welcome village defends, wary village watches, predation, band retreats at
+half — written down as a regression script, because not breaking it is the whole claim.
 
-**Step 5 — split durable from transient (R1).** The step that pays for part 2.
-- Give the entity record an explicit `scratch` sub-table for path, timers and current intent, and move the
-  transient fields into it. What remains on the entity is either a projection of a person record or position.
-- Then `Bodies.spawnFrom(personId)` builds an entity from a record, and the save path can assert that no entity
-  is ever reachable from the tree.
-- **Verify:** a test that walks the world tree and fails on any function value, Roblox Instance, or cycle —
-  i.e. "is this JSON-able". That test is the contract part 2 depends on, and it should exist before part 2 does.
+**Step 4 — name the owners (R2/R3).** The only step that changes call sites rather than moving them. `Economy`
+first (smallest surface, and rung 3 part 5 leans on it), then `Standing`, then `Population`. **The proof a slice
+is owned:** grep for direct writes outside the owner, expect zero, and put that grep in the PR description.
 
-**Step 0 — the size check and the index file.** Before any of it, because it is what keeps the rest honest.
-- `npm test` gains a check that fails on any non-generated `.lua` over 400 lines. It fails immediately, on five
-  known files, so it lands with an allow-list that the later steps delete entries from. A refactor with a
-  shrinking allow-list is a refactor with a progress bar.
-- Write `roblox/src/server/README.md`: one line per module, what it owns, how big. Update it in the same commit
-  as any move, so it cannot drift.
+**Step 5 — split `WorldGen.lua`** into generate / query / encode, because `encode` is the save format and should
+not be buried in an 877-line file.
 
-**Step 6 — rung 3 part 2** writes and reads the tree, and catch-up replays the daily tick over it.
+**Step 6 — rung 3 part 2** writes and reads the tree; catch-up replays the now-pure daily tick.
 
-### Order, and what each buys
+**The index is not a step.** It is built when a measurement says a query is hot.
 
 | Step | Size | Risk | Buys |
 | --- | --- | --- | --- |
-| 0 size check + index | tiny | none | a progress bar, and the ceiling stops being optional |
-| 1 index | small | low | measured performance, headroom for rung 4 |
-| 2 carve three | medium | low | the pattern proven, Sim shrinks ~400 lines |
-| 3 carve two | medium | medium | Sim becomes the tick loops |
-| 4 owners | medium | medium | "systems ask, they do not reach" is actually true |
-| 5 durable/transient | small | low | saving becomes "write the tree" |
+| 0 ceiling + index file | tiny | none | a progress bar; the ceiling stops being optional |
+| 1 pure tick + game time | medium | medium | **part 2 becomes possible at all** |
+| 2 carve three | medium | low | the pattern proven, Sim sheds ~400 lines |
+| 3 carve four | large | medium | Sim becomes the tick loops |
+| 4 owners | medium | medium | "systems ask, they do not reach" becomes true |
+| 5 split WorldGen | small | low | the save format is readable |
 
-Steps 1–3 are mechanical. Step 4 is the design. Step 5 is the one part 2 cannot start without.
-
-**A cheap escape hatch:** steps 1, 2 and 5 are independently valuable and can ship even if 3 and 4 are judged not
-worth the churn. Nothing here is all-or-nothing.
-
-## 7. What this costs, and what could go wrong
-
-- **It is a lot of moving with no new gameplay.** Mitigated by ordering: the index is a real performance win on
-  its own, and the carving steps are mechanical.
-- **Churn against a live QA history.** Every refactor PR should run the loop, because "nothing regressed" is the
-  entire claim being made.
-- **Over-abstraction.** The honest risk is building a framework for a world with three villages. R3 is
-  deliberately the lightest thing that fixes the actual problem. If a rule is not paying for itself, drop it.
-- **The save format is a commitment.** Once players have saves, the tree's shape is load-bearing, which is
-  exactly why this comes *before* part 2 and not after.
+**Escape hatch:** steps 0, 1 and 5 are independently valuable and can ship even if 2–4 are judged not worth the
+churn. **Step 1 is the only one that is not optional.**
 
 ---
 
-## 8. Open questions for review
+## 7. What this costs, and what could go wrong
 
-1. **Is one tree right, or should the family registry be its own key from day one?** It is the only unbounded
-   table and the only one that wants chunking.
-2. **Is R3 (named owners) enough, or does anything genuinely need queued intents?** Two systems wanting to move
-   the same person in one tick is the case to check.
-3. **Is the family a group, or its own tier?** Modelling it as a group that never leaves the village is neat, but
-   families overlap groups — a hunter in a squad is also somebody's son.
-4. **Should villages be rows under a tribe, or their own tier?** Rung 4 gives one tribe several villages.
-5. **What is the actual entity budget** on a phone with several players, and does the index alone reach it?
-6. **Does catch-up work on the tree**, or does replaying days need state the tree does not keep?
-7. **Is 400 lines the right ceiling**, and should the shared layer be held to it too? `WorldGen.lua` is 877 and
-   is the one file where a mistake corrupts every save once part 2 lands.
+- **A lot of moving with no new gameplay.** Mitigated by ordering: step 1 is a bug fix part 2 needs regardless.
+- **Churn against a live QA history.** Every refactor PR runs the loop, because "nothing regressed" is the claim.
+- **Over-abstraction.** The honest risk is building a framework for three villages. R3 is the lightest thing that
+  fixes the real problem; if a rule is not paying, drop it.
+- **The save format is a commitment.** Once there are saves, the tree's shape is load-bearing — which is exactly
+  why this comes before part 2.
+
+---
+
+## 8. Open questions
+
+Settled by review, recorded so they are not re-litigated:
+
+1. **One tree or a separate people key?** One tree, with `people` versioned as its own sub-table so it can be
+   lifted out later. Player state gets its own key from day one, per DESIGN §14.
+2. **Named owners, or queued intents?** Owners are enough; contention is already handled by the
+   `busy`/`nextWitnessAt` guards. What was missing was reference hygiene, now R5.
+3. **Is a family a group?** No — a derived index over person fields.
+4. **Villages under tribes, or their own tier?** Their own tier, keyed by id with `tribe` as a field. Rung 4 gives
+   a tribe several villages, and a per-tribe `MAX_PEOPLE` would starve all but one.
+5. **Entity budget?** ~100 by DESIGN §4's cap. What scales is players × entities and the 10 Hz think loop;
+   rung 4's answer is §4's tiering, not an index.
+6. **Does catch-up work on the tree?** Not today — step 1 is what makes it true.
+7. **Is 400 the right ceiling, and does shared obey it?** Yes and yes; `WorldGen.lua` is step 5.
+
+Still genuinely open:
+
+- **What must catch-up record** so the "you were gone eleven days" line has something to read?
+- **Is DataStore's serialiser denser than JSON** for the sparse map diff? The budget above assumes JSON bytes.
+- **What is the real death rate per in-game day?** The registry arithmetic assumes ~1 and holds under ~10.
