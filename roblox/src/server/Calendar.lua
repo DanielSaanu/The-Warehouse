@@ -31,11 +31,6 @@ function Calendar.now(): number
 	return meta.gameSeconds
 end
 
---- A lump of game time that passed with no server running (catch-up, A5).
-function Calendar.advance(seconds: number)
-	meta.gameSeconds += math.max(0, seconds)
-end
-
 function Calendar.clock(): (number, number)
 	return DayCycle.fromSeconds(Calendar.now())
 end

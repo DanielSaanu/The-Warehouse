@@ -1525,7 +1525,7 @@ function Sim.init(saved, slept: number?): (boolean, string?)
 	Debug.bind({ Sim = Sim, S = S, world = world, cheb = cheb, collapse = collapse, endCalamity = endCalamity,
 		hitEntity = hitEntity, killPlayer = killPlayer, morph = morph, nearestFree = nearestFree, newEntity = newEntity,
 		startCalamity = startCalamity, tickFamilies = tickFamilies, tidx = tidx })
-	Restore.bind({ playerRestPoint = Sim.playerRestPoint, S = S, world = world, spawnPerson = spawnPerson, removeEntity = removeEntity,
+	Restore.bind({ playerRestPoint = Sim.playerRestPoint, notice = notice, S = S, world = world, spawnPerson = spawnPerson, removeEntity = removeEntity,
 		groupScratch = groupScratch, getRng = function() return rng end })
 	if saved then
 		local ok, why = Restore.apply(saved, slept)

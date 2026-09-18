@@ -27,12 +27,12 @@ local O = TileTypes.ObjectByName
 local VILLAGE_SPRITE = { farmer = "villager", hunter = "hunter", plunderer = "bandit" }
 
 local S, world
-local spawnPerson, removeEntity, groupScratch, getRng, playerRestPoint
+local spawnPerson, removeEntity, groupScratch, getRng, playerRestPoint, notice
 
 function Restore.bind(ctx)
 	S, world = ctx.S, ctx.world
 	spawnPerson, removeEntity, groupScratch, getRng = ctx.spawnPerson, ctx.removeEntity, ctx.groupScratch, ctx.getRng
-	playerRestPoint = ctx.playerRestPoint
+	playerRestPoint, notice = ctx.playerRestPoint, ctx.notice
 end
 
 --- The world as a save would write it, stamped with the wall time (the ONE durable use of os.time: on load,
@@ -112,7 +112,7 @@ local function restoreBodies()
 			if p.role == "survivor" then t.survivor = e.id end
 		end
 	end
-	return n
+	return n, #living
 end
 
 -- ---------- apply ----------
@@ -160,12 +160,22 @@ function Restore.apply(data, slept: number?): (boolean, string?)
 	for _, b in pairs(S.bags) do world.object[WorldGen.index(world, b.x, b.y)] = O.bag.id end
 	local c = S.calamity
 	if c.active and c.kind then c.flood = Calamity.applyOverlay(world, S.regions, c.kind) end -- the overlay ONLY
-	local bodies = restoreBodies()
+	local bodies, living = restoreBodies()
 
 	-- 5. what the client is sent is rebuilt LAST, from the finished map
 	Map.reencode()
-	print(("[Restore] day %d, %d people (%d bodies), %d groups, %d camps, %d bags%s; slept %d s = %d days"):format(S.day,
-		rec.people.nextId, bodies, #data.groups, #data.camps, #data.bags,
+	-- ...and anyone ALREADY connected (only ever true for Debug reload/savetest: a real boot restores before the
+	-- door opens) still has the old calamity on screen. The client keeps its map, so tell it the one thing that can
+	-- have changed under it: the water is up, or the water is down.
+	for _, ps in pairs(S.players) do
+		if c.active then
+			notice(ps, "calamity", { kind = c.kind, phase = "start", text = Calamity.notice(c.kind), flood = c.flood })
+		else
+			notice(ps, "calamity", { kind = "flood", phase = "end", text = "The world has been reloaded." })
+		end
+	end
+	print(("[Restore] day %d, %d living (%d bodies), %d groups, %d camps, %d bags%s; slept %d s = %d days"):format(S.day,
+		living, bodies, #data.groups, #data.camps, #data.bags,
 		if c.active then ", " .. tostring(c.kind) .. " in progress" else "", report.seconds, report.days))
 	return true, nil
 end

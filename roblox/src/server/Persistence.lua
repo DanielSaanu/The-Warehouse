@@ -37,8 +37,12 @@ end
 
 --- Swap in anything with GetAsync / SetAsync / UpdateAsync (Debug `savetest` uses a table in memory, so the whole
 --- save -> lease -> load -> restore path can be run in a Studio that has no DataStore access).
+--- Returns the store it replaced (nil = the real one, not opened yet) so the caller can PUT IT BACK: a server left
+--- pointing at a fake would go on "saving" into memory and logging success while the real world was never written.
 function Persistence.useStore(fake)
+	local was = store
 	store = fake
+	return was
 end
 
 --- pcall with backoff: DataStores throttle and hiccup, and one failure is not a verdict.

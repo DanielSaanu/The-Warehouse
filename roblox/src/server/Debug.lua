@@ -15,6 +15,7 @@ local WorldGen = require(Shared:WaitForChild("WorldGen"))
 local Ecology = require(Shared:WaitForChild("Ecology"))
 local Families = require(Shared:WaitForChild("Families"))
 local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
 local Save = require(Shared:WaitForChild("Save"))
 local Calendar = require(script.Parent:WaitForChild("Calendar"))
 local Restore = require(script.Parent:WaitForChild("Restore"))
@@ -84,25 +85,33 @@ function Debug.run(cmd: string, ...): any
 		return if applied then ("reloaded (%d bytes of JSON)"):format(bytes) else "refused: " .. tostring(err)
 	elseif cmd == "savetest" then
 		-- the whole Persistence path against a store in memory: save (taking the lease), read it back as a NEW
-		-- server would, restore. Then prove the lease: a second server may not write until it runs out.
+		-- server would, restore, and the player key. STUDIO ONLY, and everything it touches is put back afterwards:
+		-- a server left pointing at the fake would "save" into memory for ever while logging success.
+		if not RunService:IsStudio() then return "savetest only runs in Studio" end
 		local mem = {}
-		Persistence.useStore({
+		local wasMode, wasWhy, wasNoSave = Persistence.mode, Persistence.why, ps and ps.noSave
+		local wasStore = Persistence.useStore({
 			GetAsync = function(_, k) return mem[k] and HttpService:JSONDecode(mem[k]) end,
 			SetAsync = function(_, k, v) mem[k] = HttpService:JSONEncode(v) end,
 			UpdateAsync = function(self, k, fn) local v = fn(self:GetAsync(k)) if v ~= nil then self:SetAsync(k, v) end end,
 		})
-		Persistence.mode = "new"
-		if not Persistence.saveWorld(Restore.snapshot) then return "save refused: " .. Persistence.why end
-		local stored = HttpService:JSONDecode(mem.world)
-		local mine = Save.mayWrite(stored, "somebody-else", os.time())
-		local boot = Persistence.loadWorld()
-		if not boot.data then return "load gave no data: " .. tostring(boot.why) end
-		local ok, why = Restore.apply(boot.data, args[1] or 0)
-		if ps then ps.noSave = false end -- their real key failed to read at join (that is why we are here); this store is ours
-		local psOk = ps and Persistence.savePlayer(ps, S.day)
-		local back = ps and Persistence.loadPlayer(ps.player.UserId)
-		return ("saved %d bytes; lease blocks a second server: %s; reloaded as '%s': %s; player key: %s, inv coin %s"):format(#mem.world,
-			tostring(not mine), boot.mode, tostring(ok or why), tostring(psOk), tostring(back and back.inv and back.inv.coin))
+		local ok, result = pcall(function()
+			Persistence.mode = "new"
+			if not Persistence.saveWorld(Restore.snapshot) then return "save refused: " .. Persistence.why end
+			local blocked = not Save.mayWrite(HttpService:JSONDecode(mem.world), "somebody-else", os.time())
+			local boot = Persistence.loadWorld()
+			if not boot.data then return "load gave no data: " .. tostring(boot.why) end
+			local applied, why = Restore.apply(boot.data, args[1] or 0)
+			if ps then ps.noSave = false end
+			local psOk = ps and Persistence.savePlayer(ps, S.day)
+			local back = ps and Persistence.loadPlayer(ps.player.UserId)
+			return ("saved %d bytes; lease blocks a second server: %s; reloaded as '%s': %s; player key: %s, inv coin %s"):format(#mem.world,
+				tostring(blocked), boot.mode, tostring(applied or why), tostring(psOk), tostring(back and back.inv and back.inv.coin))
+		end)
+		Persistence.useStore(wasStore)
+		Persistence.mode, Persistence.why = wasMode, wasWhy
+		if ps then ps.noSave = wasNoSave end
+		return if ok then result .. "; persistence is back to '" .. wasMode .. "'" else "ERROR " .. tostring(result)
 	elseif cmd == "night" then
 		Calendar.skipTo(1 - Config.NIGHT_FRACTION + 0.01)
 		return "dusk"

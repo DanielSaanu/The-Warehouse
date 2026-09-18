@@ -40,7 +40,7 @@ test('H1: no Lua file over 400 lines (allow-list may only shrink)', () => {
 
 // R5: one clock. os.clock() restarts near zero on every new server, so nothing the world remembers may be stamped
 // with it; sim code asks Calendar.now(). The only wall-clock reads allowed on the server are listed here by file,
-// with the reason. os.time() is allowed in exactly one durable role: Save's `savedAt`.
+// with the reason. (os.time() is not policed here: its one durable use is Restore.snapshot's `savedAt`.)
 const WALL_CLOCK_OK = {
   'server/Calendar.lua': 'the one place game time is advanced from wall time',
   'server/Map.lua': 'profiling print around WorldGen.generate',

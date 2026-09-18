@@ -46,8 +46,4 @@ function Map.village(id: number): WorldGen.Village
 	return Map.get().villages[id]
 end
 
-function Map.walkable(x: number, y: number): boolean
-	return MapGen.walkable(Map.get(), x, y)
-end
-
 return Map

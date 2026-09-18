@@ -9,10 +9,13 @@
   stops; a band breaks once it has lost more than half; villages have real per-tribe garrisons).
 - **Not started, and blocked on purpose:** rung 3 **part 2** (save and catch-up) and the refactor, both waiting
   on `docs/ARCHITECTURE.md`, whose review loop is **still open** — see CLAUDE.md step 0.
-- **The architecture plan is being built** (2026-09-18). After five Opus review rounds (7 → 9.0) Danzo had Fable
-  re-read it cold; it changed six decisions (`docs/ARCHITECTURE.md` §9 — ids stay numeric, `mapDiff` deleted, one
-  clock, Track A / Track B, a persistence failure policy, `genVersion`) and then started implementing Track A on
-  branch `track-a`, with the normal 3-round Opus QA loop (goals: `docs/qa/track-a.md`).
+- **Track A is built and through QA (9/10, one round)** on branch `track-a`, 2026-09-18: one game clock, pure ticks
+  in `shared/Tick.lua`, `Save.lua`, `Restore.lua`, `Persistence.lua` — **rung 3 part 2, save and catch-up, exists.**
+  The whole world is ~9.3 KB of JSON. Summary and Danzo's test checklist: `docs/qa/track-a-summary.md`.
+- **Needs Danzo:** tick Studio → Game Settings → Security → "Enable Studio Access to API Services", then run the
+  six-step checklist in the summary (the QA loop could not reach a real DataStore). Then merge `track-a`.
+- **Next:** the "you were gone eleven days" line (`meta.headlines` is in the format, nothing writes it), then
+  Track B (carving `Sim.lua`) or rung 3 part 3 (gossip).
 
 This file is the shared scratchpad. Type here in the UI (bottom pane) or in any editor. Claude reads it 
 the start of a session and works through it. Cross things out or delete them when done.

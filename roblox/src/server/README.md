@@ -7,7 +7,7 @@ Read this first. Update it in the same commit as any move. Sizes are line counts
 | `Server.server.lua` | remotes, player join/leave, the movement handler | 190 |
 | `Map.lua` | the generated map and `Map.encoded` (what joining clients are sent). Was `World.lua` | 40 |
 | `Persistence.lua` | the ONLY DataStore code: `loadWorld`, `saveWorld`, player keys, autosave, the policy (never write a key you failed to read; one server holds the lease) | 170 |
-| `Calendar.lua` | `meta.gameSeconds`, the ONE clock: `now()`, `clock()`, `setDay()`, `skipTo()`, `advance()` | 60 |
+| `Calendar.lua` | `meta.gameSeconds`, the ONE clock: `now()`, `clock()`, `setDay()`, `skipTo()` (catch-up adds its lump to `meta.gameSeconds` directly, in `Tick.catchUp`) | 60 |
 | `Restore.lua` | `Sim.state` <-> a save: `snapshot()`, and `apply(data, slept)` = the RESTORE constructor (bodies, routes, stamped tiles, overlay, `Map.reencode`) | 150 |
 | `Sim.lua` | everything else, for now: entities, AI, fighting, groups, camps, calamities, the tick loops | 1600 |
 | `Sides.lua` | who takes whose side in a fight | 280 |
