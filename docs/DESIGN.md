@@ -339,9 +339,10 @@ Rung 1 is done (grid, movement, one room, rain timer, upload pipeline).
   propagation, grudges and amends. Tribute, tax, extortion. Size tiers. Hunger. Save + catch-up.
 - Blizzard and drought. Knights and adventurers. Hiring. Full talk system with all roles and replacement.
 - Dash and shield block. Bows. Settlement healing and ruins.
-- Order: save + catch-up first (it gates everything and nothing a player does survives a shutdown without it),
-  then gossip and grudges, then tribute and tax, then hunger, then the rest. Decided before part 1 started
-  (Danzo, 2026-09-18): one world shared by every server, with a session lock. See §14.
+- Order (Danzo, 2026-09-18): the world up close first, because the game is about to be public and §20 is what
+  a new player meets in the first thirty seconds; then save + catch-up, which gates all the money; then gossip
+  and grudges, tribute and tax, hunger, the rest. Also decided: one world shared by every server, with a session
+  lock. See §14 and §20.
 
 **Rung 4: the map grows**
 - More villages, expansion, large tribes, hunting parties, raids on villages, walls and gates that matter.

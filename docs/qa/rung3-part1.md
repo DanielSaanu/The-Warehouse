@@ -1,63 +1,68 @@
-# QA goals: Rung 3 part 1 (save and catch-up)
+# QA goals: Rung 3 part 1 (the world up close)
 
-Branch: `rung3-part1`. First part of rung 3 (`docs/RUNG3.md`). Design contract: `docs/DESIGN.md` §14.
+Branch: `world-up-close`. First part of rung 3 (`docs/RUNG3.md`). Design contract: `docs/DESIGN.md` §20, and the
+pillar it fails, §1 pillar 1: **the world does not need you.**
 
-Rung 2 ended with a world that lives and remembers you **for as long as the server is up**. Nothing a player does
-survives a shutdown: standing, coin, the camp you paid for, the guard's name, the goal you were on, all of it
-regenerates from the seed next time anyone joins. This PR is the one that makes the world a place instead of a
-demo, and `docs/DESIGN.md` §16 forbids charging for anything until it lands.
+Danzo played the build on 2026-09-18 and said the wolves only attack him and not the NPCs, and that the NPCs
+barely interact with each other or the world beyond the hunters hunting. The code agrees. Today every single
+interaction in the game has the player on one end of it:
 
-It is the least visible PR in the project. A reviewer who only walks around will see almost nothing new. The
-review has to be done by leaving and coming back.
+- `pickNpcTarget` returns immediately unless the entity is a hunter, a guard or a caravan guard — the only
+  NPC-vs-NPC rule there is. A wolf's only route to aggression is `pickTarget`, which searches `nearestPlayer`.
+- A bandit's target test is `ps.rep.plunderer < -10`, a player-only check. The caravan and the band walk through
+  each other.
+- Wolves eat deer once a day, per region, as numbers in `Ecology.dailyTick`. Nobody can ever see it.
+- `farm` is a tile; nothing under `roblox/src/server/` mentions it.
+- Villagers wander. That is the entire behaviour.
+
+The bar for this PR: **stand still anywhere for thirty seconds and watch the world do something that is not about
+you.**
 
 ## Goals of this PR
 
-1. **One world, shared by every server** (decided by Danzo, 2026-09-18; DESIGN.md §14). Every server reads and
-   writes the same DataStore key. Glenworth is the same Glenworth for everyone who plays.
-2. **The session lock.** One live server owns the world at a time: a claim in MemoryStore holding the JobId,
-   renewed on a heartbeat, expiring on its own if a server dies without releasing it. A server that cannot take
-   the lock still loads the save and plays normally, but never writes the world back, and the HUD says so once
-   ("You are visiting. This server will not change the world."). Player saves are keyed by UserId and are never
-   locked, so a guest server still keeps your own coin and standing.
-3. **World save.** Seed, day, the tribes (stock, population, news), the family registry, region ecology counts and
-   grass health, group route positions and members, camps, bags, and the calamity clock. One versioned key,
-   written every 2 minutes and on `BindToClose`. Entities stay unsaved on purpose: they are materialised from
-   records when a player is near, and rebuilt on load.
-4. **Player save.** Position, facing, hp, inventory and coin, reputation per tribe, rest point, `goalStage` and
-   whether the survivor has been met. Keyed by UserId. Written on leave, on the world timer, and on `BindToClose`.
-   A returning player wakes at their rest point, not at the world spawn, and keeps the goal line they were on.
-5. **Catch-up.** On load, the days that passed while nobody was here run through the daily tick — ecology breeding,
-   starving and migration, trade restock, births and coming of age, reputation fade — capped so a month away does
-   not cost a minute of loading. A returning player is told what changed in one line: "You were gone eleven days.
-   Kenstow has a new guard."
-6. **A real clock.** `Sim.state.dayStart` is `os.clock()` today, which is process-relative and starts at zero every
-   boot, so the world cannot know how long it was gone. The calendar moves to wall time (`os.time`) while the
-   10 Hz think timers, the movement pace budget and the camp fires stay on `os.clock()`, which is what they want.
-7. **A first join is unchanged.** An empty DataStore generates the world from the seed exactly as it does now, and
-   the first five minutes (survivor, arrow, signs, goal line) plays for a player with no save. Somebody joining a
-   world that is already forty days old skips the tutorial goal line but still gets a rest point and a kit.
-8. **Debug commands** for the QA loop, on the existing `Workspace.Debug` channel: `save` (force a write),
-   `load` (re-read the key), `wipe` (delete both keys and regenerate — the reviewer's reset button), `lock`
-   (who holds it and for how long), and `age <days>` (run catch-up for N days without waiting).
-9. **Tests.** `test/luau/persist.test.luau`: a save round-trips to an identical state table, the serialiser drops
-   the unsaveable fields (`player`, `snap`, live entity handles) rather than erroring on them, an unknown save
-   version is refused instead of half-loaded, and catch-up for N days matches N daily ticks. `npm run lint:luau`
-   clean. The serialiser must be pure Luau in `shared/` so it can be tested outside Studio.
+1. **Predators hunt prey.** Wolves pick deer and boar as targets at a real range, day or night, whether or not a
+   player is anywhere near. A wolf that catches a deer kills it, eats for a beat, and the region's deer count goes
+   down by one — the same count `Ecology` would have decremented, so the ecosystem stays authoritative and does
+   not change shape depending on who is watching.
+2. **Predation is visible.** A kill that happens near a player plays out as entities (chase, telegraph, strike,
+   the deer's death) and is folded back into counts when nobody is near. Away from players it stays arithmetic.
+   The wolf does not lose interest in a deer because a player walked up.
+3. **Prey behave like prey.** Deer flee from wolves, not only from players. Boar charge whatever hit them, NPC or
+   player. A fleeing deer is a thing you can see from across a meadow and read instantly.
+4. **Bandits raid.** A bandit band ambushes caravans and people caught outside village walls, not just players
+   with bad standing. A caravan that loses a fight loses cargo to the band's tribe stock; caravan guards fight
+   back with the break-and-flee rules that already exist. The hunter/plunderer antagonism in §5 becomes real
+   behaviour instead of backstory.
+5. **Villagers get a day.** Each villager has a home hut and a work tile (farm plot, stall, well). Morning: go to
+   work. Night: go home. Wolves and bandits near an unwalled village send them running for the gate. They are not
+   decoration any more, and the family records that already exist (parents, children, succession) become something
+   you can watch rather than something the debug command prints.
+6. **Farms grow.** A farm plot carries stock that rises daily when tended and is harvested into the tribe's food,
+   which makes a plunderer raid on a farmer village mean something. Drought and flood already have hooks; a
+   trampled or flooded plot loses its stock.
+7. **The ecology stays the authority.** Every visible kill, birth and harvest moves the same region counts and
+   tribe stock the daily tick moves. No double counting: a wolf that eats a deer near a player must not also eat
+   it again in `Ecology.dailyTick`. This is the thing most likely to be got wrong and it is what the tests are for.
+8. **Caps hold.** DESIGN.md §4 caps stand: 60 NPC sprites and 40 animal sprites materialised at once, and the
+   furthest-from-any-player things stay abstract. NPC-vs-NPC fighting must not push entity counts or the 10 Hz
+   think loop past what part 5 measured on a phone.
+9. **Debug commands** on the existing `Workspace.Debug` channel: `hunt` (make the nearest wolf take the nearest
+   deer), `raid` (send the band at the caravan), `village <n>` (who is where and doing what), `farms`, and
+   `freeze 1` must still stop everything dead for deterministic tests.
+10. **Tests.** `test/luau/ecology.test.luau` grows a case for a visible kill and the daily tick agreeing on the
+    count. Behaviour selection (who targets whom) moves somewhere pure enough to test outside Studio. `npm run
+    lint:luau` and `npm run test:luau` clean.
 
 ## Out of scope (later rung 3 parts; do not penalise absence)
 
-Gossip, grudges and amends (part 2). Tribute, tax, extortion, size tiers (part 3). Hunger (part 4). Blizzard and
-drought, the full talk system, knights and adventurers, hiring, dash, shield, bows, settlement healing and ruins
-(part 5). Charging money for anything.
+Save and catch-up (part 2 — the world still regenerates each server). Gossip, grudges and amends (part 3).
+Tribute, tax, extortion, size tiers (part 4). Hunger (part 5). Blizzard and drought, the full talk system,
+knights, adventurers, hiring, dash, shield, bows, settlement healing and ruins (part 6).
 
 ## Known limitations the builder is aware of
 
-- A guest server's world drifts from the owner's for as long as it runs, and its drift is thrown away. That is the
-  accepted price of not silently rolling anyone's standing back. It should only ever happen once the first server
-  is full.
-- DataStore budgets and the 4 MB key limit. The family registry is the thing most likely to outgrow the key; the
-  long dead may need pruning, and if that is not in this PR the limit needs a measurement and a written number.
-- Catch-up runs the daily tick only. Groups do not walk their routes through the missed days; they resume from
-  the record position, so a caravan does not arrive during a shutdown.
-- Players are not simulated while offline (DESIGN.md §14), so nothing happens *to* you while you are away except
-  what the world does to the place you left.
+- NPC-vs-NPC fights away from players are resolved as a roll, not tile by tile. A caravan that loses off screen
+  loses cargo and people; you do not get to replay it.
+- Villager routines are a work tile and a home hut, not jobs with output (except farms). A villager at a stall is
+  standing at a stall.
+- There are three villages and one band. Raids are rare by construction, so a reviewer may need `raid` to see one.
