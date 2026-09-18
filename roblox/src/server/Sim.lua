@@ -335,6 +335,17 @@ end
 
 local VILLAGE_SPRITE = { farmer = "villager", hunter = "hunter", plunderer = "bandit" }
 
+-- Who is at home, per tribe type (Danzo, 2026-09-18: the other two villages "should not be so super easy to
+-- just walk in and kill everything - people live here"). The walls are the farmers showing off their
+-- established might, so the farmers really are better defended; the other two are not soft, they are different.
+-- Straight out of ideas/INBOX.md: farmers' strength is coordination and militarisation, hunters are the best
+-- fighters one-on-one, plunderers are the weakest tribe but sudden and brutal.
+local ROSTER = {
+	farmer = { guards = 4, fighters = nil, count = 0, villagers = 8 },
+	hunter = { guards = 2, fighters = "hunter", count = 4, villagers = 6 },
+	plunderer = { guards = 2, fighters = "bandit", count = 4, villagers = 5 },
+} :: { [string]: { guards: number, fighters: string?, count: number, villagers: number } }
+
 local function initTribes()
 	for i, v in ipairs(world.villages) do
 		local t = {
@@ -351,11 +362,23 @@ local function initTribes()
 			local g = v.gates[1]
 			gx, gy = g.x + (g.x - g.exit.x), g.y + (g.y - g.exit.y)
 		end
+		local roster = ROSTER[v.tribeType] or ROSTER.farmer
+		t.population = math.max(t.population, 20 + roster.guards * 5 + roster.count * 4 + roster.villagers * 2)
+		-- the gate guard, then the rest of the watch spread around the place
 		local guard = spawnPerson("guard", gx, gy, i, { radius = 1, role = "guard", label = "guard" })
 		if guard then t.guard = guard.id end
+		for _ = 2, roster.guards do
+			spawnPerson("guard", rng:int(v.x0 + 1, v.x1 - 1), rng:int(v.y0 + 1, v.y1 - 1), i,
+				{ radius = 3, role = "guard", label = "guard" })
+		end
+		-- and the tribe's own kind of fighter, at home between jobs
+		for _ = 1, roster.count do
+			spawnPerson(roster.fighters or "guard", rng:int(v.x0 + 1, v.x1 - 1), rng:int(v.y0 + 1, v.y1 - 1), i,
+				{ radius = 3, role = roster.fighters or "guard", sprite = if roster.fighters == "bandit" then "bandit" else nil })
+		end
 		local m = spawnPerson("merchant", v.stall.x, v.stall.y + 1, i, { radius = 1, role = "merchant", label = "merchant" })
 		if m then t.merchant = m.id end
-		for n = 1, 4 do
+		for n = 1, roster.villagers do
 			local x = rng:int(v.x0 + 1, v.x1 - 1)
 			local y = rng:int(v.y0 + 1, v.y1 - 1)
 			spawnPerson("villager", x, y, i, { radius = 3, role = "villager", sprite = sprite, sex = if n % 2 == 0 then "f" else "m" })
@@ -391,7 +414,7 @@ local function makeGroup(id: string, kind: string, tribeIdx: number, from: World
 	local g = {
 		id = id, kind = kind, tribe = tribeIdx, route = route, pos = 1, dir = 1, from = { x = from.x, y = from.y },
 		pauseUntil = os.clock() + rng:int(20, 60), pauses = pauses, speed = 1.5, acc = 0,
-		members = members, entities = {}, leader = nil, trail = {}, materialised = false,
+		members = members, fullSize = #members, entities = {}, leader = nil, trail = {}, materialised = false,
 		target = nil, aggroUntil = 0, lastSeen = nil,
 		carry = {}, retreatUntil = 0,   -- what they are bringing home, and whether they have had enough
 	}
@@ -690,9 +713,11 @@ local function killEntity(e, killer, ctx, byEntity)
 			table.remove(g.members, #g.members)
 			local now = os.clock()
 			g.replenishAt = now + Config.DAY_SECONDS
-			-- A band is the weakest tribe and fights by ambush (ideas/INBOX.md): losing someone ends the ambush.
-			-- They run for home instead of standing to be wiped out.
-			if g.kind == "band" then
+			-- A pack breaks when it has lost more than half, not the moment it loses one (Danzo, 2026-09-18:
+			-- "if u encounter a bandit group and kill more than half the rest run away like with wolf packs but
+			-- they shouldnt abort instantly once one dies"). Until then they fight, and they are still
+			-- individually capable of breaking at their own hp threshold.
+			if g.kind == "band" and #g.members * 2 < (g.fullSize or #g.members) then
 				g.retreatUntil = now + Config.BAND_RETREAT
 				g.target, g.aggroUntil, g.pauseUntil = nil, 0, 0
 				g.dir = -1

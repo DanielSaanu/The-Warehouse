@@ -19,10 +19,11 @@ stop, or anything to show for it. A hunter squad currently kills animals forever
    the route runs out. That is the answer to "too bloodthirsty": not a nerf to their aim, a reason to stop.
 3. **A fed predator does not hunt.** A wolf that has just eaten leaves the next deer alone for a while. Same
    idea, applied to the animal that Danzo says is otherwise good.
-4. **The band retreats instead of dying to the last man.** `ideas/INBOX.md` is explicit that plunderers are the
-   *weakest* tribe and fight by ambush — "theyre strength comes from theyre sudden and brutal nature". A band
-   that loses a member should break off and run for home, not stand and be wiped. Leading a hunter squad onto
-   them should still be a win; it should not be an extinction.
+4. **A pack breaks when it has lost more than half**, not the moment it loses one. Corrected by Danzo,
+   2026-09-18: *"if u encounter a bandit group and kill more than half the rest run away like with wolf packs
+   but they shouldnt abort instantly once one dies"*. Until then they fight, and each of them can still break
+   individually at their own hp threshold. `ideas/INBOX.md` has plunderers as the weakest tribe, fighting by
+   ambush, so leading a hunter squad onto them should still be a win — just not an extinction.
 5. **Nothing from part 1 regresses.** The witness rule, the four verdicts, the player-facing lines, predation,
    and the villagers walking home all still work.
 
@@ -36,6 +37,13 @@ that is the merchant's stock going up, which is all this part claims.
    standing on the next route tile stalled a whole group indefinitely: the route says "next tile", the tile is
    occupied, and re-planning returns the same road. A blocked walker now steps around, and a group leader walks
    on to the tile after the blocked one rather than waiting for it to clear.
+
+7. **A village is a place people live.** Danzo, 2026-09-18: the walls are the farmers showing off their
+   established might, so the farmers really should be better defended — but the other two *"should not be so
+   super easy to just walk in and kill everything. people live here"*. Every village used to get an identical
+   one guard, one merchant and four villagers regardless of tribe. Now each tribe type has its own roster:
+   farmers the largest watch behind their walls, hunters fewer guards but their own hunters at home (the best
+   fighters one-on-one), plunderers fewer guards but raiders in residence.
 
 ## Known limitations expected going in
 
