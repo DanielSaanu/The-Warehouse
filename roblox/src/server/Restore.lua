@@ -17,6 +17,7 @@ local Ecology = require(Shared:WaitForChild("Ecology"))
 local Calamity = require(Shared:WaitForChild("Calamity"))
 local Tick = require(Shared:WaitForChild("Tick"))
 local Save = require(Shared:WaitForChild("Save"))
+local Reputation = require(Shared:WaitForChild("Reputation"))
 local Map = require(script.Parent:WaitForChild("Map"))
 local Calendar = require(script.Parent:WaitForChild("Calendar"))
 
@@ -26,11 +27,12 @@ local O = TileTypes.ObjectByName
 local VILLAGE_SPRITE = { farmer = "villager", hunter = "hunter", plunderer = "bandit" }
 
 local S, world
-local spawnPerson, removeEntity, groupScratch, getRng
+local spawnPerson, removeEntity, groupScratch, getRng, playerRestPoint
 
 function Restore.bind(ctx)
 	S, world = ctx.S, ctx.world
 	spawnPerson, removeEntity, groupScratch, getRng = ctx.spawnPerson, ctx.removeEntity, ctx.groupScratch, ctx.getRng
+	playerRestPoint = ctx.playerRestPoint
 end
 
 --- The world as a save would write it, stamped with the wall time (the ONE durable use of os.time: on load,
@@ -38,6 +40,26 @@ end
 function Restore.snapshot()
 	Calendar.now() -- fold the wall time since the last tick into gameSeconds before it is copied
 	return Save.encode(S, { seed = world.seed, rngState = getRng().s, savedAt = os.time() })
+end
+
+-- ---------- a returning player ----------
+--- Lay a player's own key over their fresh live record, and say where they should stand: where they left (the
+--- caller still finds the nearest FREE tile - that one may be a wall, a flood or a campfire by now), or their rest
+--- point if they left dead. Standing fades once for the days they were away: the daily tick only fades players who
+--- are online, so without this an absent player would never be forgiven anything.
+function Restore.player(ps, saved, x: number, y: number): (number, number)
+	local sx, sy = Save.applyPlayer(ps, saved)
+	if sx and sy then
+		x, y = sx, sy
+	elseif saved.version == Save.PLAYER_VERSION then
+		local p = playerRestPoint(ps)
+		x, y = p.x, p.y
+	end
+	local away = math.max(0, S.day - (saved.lastSeenDay or S.day))
+	if away > 0 then
+		for tribe, v in pairs(ps.rep) do ps.rep[tribe] = Reputation.fade(v, away) end
+	end
+	return x, y
 end
 
 -- ---------- bodies ----------

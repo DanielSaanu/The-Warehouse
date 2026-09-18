@@ -14,8 +14,9 @@ Map.seed = 0
 Map.world = nil :: WorldGen.World?
 Map.encoded = nil :: WorldGen.Encoded?
 
-function Map.init()
-	local seed = Config.WORLD_SEED
+--- `savedSeed`: a loaded world grows its map from the seed IN THE SAVE, whatever Config says today.
+function Map.init(savedSeed: number?)
+	local seed = savedSeed or Config.WORLD_SEED
 	if seed == 0 then seed = math.random(1, 2 ^ 30) end
 	local t0 = os.clock()
 	local world = WorldGen.generate(seed, Config.WORLD_WIDTH, Config.WORLD_HEIGHT)

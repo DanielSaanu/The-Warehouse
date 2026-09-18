@@ -11,6 +11,8 @@ local Sprites = require(Shared:WaitForChild("Sprites"))
 local Map = require(script.Parent:WaitForChild("Map"))
 local Sim = require(script.Parent:WaitForChild("Sim"))
 local Interact = require(script.Parent:WaitForChild("Interact"))
+local Persistence = require(script.Parent:WaitForChild("Persistence"))
+local Restore = require(script.Parent:WaitForChild("Restore"))
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local WorldInit = Remotes:WaitForChild("WorldInit") :: RemoteEvent
@@ -28,14 +30,24 @@ local function noCharacter(player: Player)
 	player.CharacterAdded:Connect(function(character) task.defer(function() character:Destroy() end) end)
 end
 
-Map.init()
+-- THE BOOT ORDER (docs/ARCHITECTURE.md A5). Reading the save yields for seconds, and everything below - the map,
+-- the sim, every remote handler - waits for it, so there is no moment when a player can join a half-built world:
+-- nothing is listening yet. Players who arrived early are picked up by the GetPlayers() loop further down, and the
+-- client asks for the world every 1.5 s until it gets one.
+local boot = Persistence.loadWorld()
+Map.init(boot.data and boot.data.meta.seed)
 local world = Map.get()
 -- Decal id -> image id, once, so nobody has to do the Studio trick by hand.
 local sheetIds = Sprites.ResolveOnServer()
 
 Sim.remotes.EntityState = EntityState
 Sim.remotes.Notice = Notice
-Sim.init()
+local restored, restoreWhy = Sim.init(boot.data, boot.slept)
+if boot.data and not restored then
+	-- the save is real but would not go in: this server plays on a new world and must NEVER write over the old one
+	Persistence.forbid("the saved world would not restore: " .. tostring(restoreWhy))
+end
+print(("[Server] world %s (%s)"):format(if boot.data and restored then "restored" else "generated", Persistence.mode))
 
 local players = Sim.state.players
 local FACINGS = { down = true, up = true, left = true, right = true }
@@ -82,12 +94,20 @@ local function sendWorld(st)
 	Sim.hud(st)
 end
 
+local joining = {} :: { [number]: boolean }
 local function addPlayer(player: Player)
 	if player.Parent ~= Players then return nil end -- a late request from someone already leaving
-	local existing = players[player.UserId]
+	local uid = player.UserId
+	local existing = players[uid]
 	if existing then return existing end
+	if joining[uid] then return nil end -- their key is being read; the client asks again in 1.5 s
+	joining[uid] = true
 	noCharacter(player)
-	local st = Sim.addPlayer(player, world.spawn.x, world.spawn.y, snap)
+	local saved, readOk = Persistence.loadPlayer(uid) -- yields
+	joining[uid] = nil
+	if player.Parent ~= Players then return nil end
+	local st = Sim.addPlayer(player, world.spawn.x, world.spawn.y, snap, saved)
+	st.noSave = not readOk -- never write a key we failed to read: they play on a fresh kit and keep their real one
 	publish(st)
 	broadcast(player, "spawn", player.UserId, "player", st.x, st.y, st.facing, player.DisplayName, 1, "player")
 	return st
@@ -107,7 +127,9 @@ WorldInit.OnServerEvent:Connect(function(player: Player)
 end)
 
 Players.PlayerRemoving:Connect(function(player: Player)
-	if not players[player.UserId] then return end
+	local st = players[player.UserId]
+	if not st then return end
+	task.spawn(Persistence.savePlayer, st, Sim.state.day)
 	Sim.removePlayer(player)
 	broadcast(player, "leave", player.UserId)
 end)
@@ -168,6 +190,7 @@ task.spawn(function()
 end)
 
 Sim.start()
+Persistence.start(Restore.snapshot, function() return players end, function() return Sim.state.day end)
 
 -- Test hooks (see docs/qa/rung2-part2.md). From a script: ServerStorage.Debug:Invoke("teleport", 40, 50).
 -- From the Studio command bar or a tool sandbox that cannot invoke bindables: set the `Debug` attribute on

@@ -1473,11 +1473,11 @@ local function dailyTick()
 end
 
 -- ---------- players ----------
-function Sim.addPlayer(player: Player, x: number, y: number, snapFn)
+--- `saved` is the player's own key, or nil for somebody new: Restore.player lays it over the fresh record.
+function Sim.addPlayer(player: Player, x: number, y: number, snapFn, saved)
 	local uid = player.UserId
-	local free = nearestFree(x, y, 3) or { x = x, y = y }
 	local ps = {
-		player = player, x = free.x, y = free.y, facing = "down", epoch = 0, budget = Movement.newBudget(os.clock()), lastWorldInit = -math.huge,
+		player = player, x = x, y = y, facing = "down", epoch = 0, budget = Movement.newBudget(os.clock()), lastWorldInit = -math.huge,
 		hp = Stats.get("player").hp, maxHp = Stats.get("player").hp, inv = Items.dayOneKit(), rep = Reputation.newTable(),
 		rest = { kind = "village", village = 1 }, restText = "", dead = false, lastAttack = -math.huge, invulnUntil = 0,
 		known = {}, dialogue = nil, snap = snapFn,
@@ -1485,6 +1485,12 @@ function Sim.addPlayer(player: Player, x: number, y: number, snapFn)
 		-- inventory slot is in hand (all on the record, so rung 3 saves them with everything else)
 		goalStage = 0, goal = nil, goalDone = false, metSurvivor = false, selected = nil,
 	}
+	if saved then
+		x, y = Restore.player(ps, saved, x, y)
+		if not ps.goalDone and ps.goalStage > 0 then ps.goal = Talk.goal(ps.goalStage, goalContext()) end
+	end
+	local free = nearestFree(x, y, 3) or WorldGen.nearestWalkable(world, x, y, 6) or world.spawn
+	ps.x, ps.y = free.x, free.y
 	ps.restText = Sim.restText(ps)
 	S.players[uid] = ps
 	Sim.occupied[tidx(ps.x, ps.y)] = uid
@@ -1506,7 +1512,8 @@ function Sim.playerMoved(ps, fromX: number, fromY: number)
 end
 
 -- ---------- init and loops ----------
-function Sim.init()
+--- ONE of two constructors: generate, or restore `saved` after `slept` real seconds. false, why = it would not go in.
+function Sim.init(saved, slept: number?): (boolean, string?)
 	world = Map.get()
 	rng = Rng.new(world.seed * 31 + 7)
 	Calendar.bind(S.meta)
@@ -1518,13 +1525,22 @@ function Sim.init()
 	Debug.bind({ Sim = Sim, S = S, world = world, cheb = cheb, collapse = collapse, endCalamity = endCalamity,
 		hitEntity = hitEntity, killPlayer = killPlayer, morph = morph, nearestFree = nearestFree, newEntity = newEntity,
 		startCalamity = startCalamity, tickFamilies = tickFamilies, tidx = tidx })
-	Restore.bind({ Sim = Sim, S = S, world = world, spawnPerson = spawnPerson, removeEntity = removeEntity,
+	Restore.bind({ playerRestPoint = Sim.playerRestPoint, S = S, world = world, spawnPerson = spawnPerson, removeEntity = removeEntity,
 		groupScratch = groupScratch, getRng = function() return rng end })
+	if saved then
+		local ok, why = Restore.apply(saved, slept)
+		if ok then return true, nil end
+		warn("[Sim] the save would not restore (" .. tostring(why) .. "): generating a new world instead")
+		initTribes()
+		initGroups()
+		return false, why
+	end
 	initTribes()
 	initGroups()
 	local n = 0
 	for _ in pairs(S.entities) do n += 1 end
 	print(("[Sim] %d villagers, %d groups, %d regions"):format(n, 3, #S.regions.list))
+	return true, nil
 end
 
 function Sim.start()

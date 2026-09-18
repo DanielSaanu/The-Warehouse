@@ -1,6 +1,7 @@
 # Architecture: where the data lives
 
-**Status: the plan being built.** Written 2026-09-18 before rung 3 part 2 (save and catch-up), because the shape
+**Status: Track A is built (2026-09-18, branch `track-a`); Track B is not.** `roblox/src/server/README.md` has the
+check-list, and §10 lists where the build departed from this plan and why. Written 2026-09-18 before rung 3 part 2 (save and catch-up), because the shape
 of the data decides whether saving is a morning's work or a rewrite. Reviewed for five rounds (7 → 9.0, summary in
 `docs/qa/architecture-summary.md`), then re-read end to end and revised by a different model, which changed six
 decisions — listed in §9 so nobody re-litigates them by accident. This document states decisions; the history of
@@ -426,3 +427,30 @@ Also: catch-up has one stated granularity (the draft said "hourly" in one place 
 `observed`-flag test, which tested a flag the pure tick does not have, is replaced by record invariants;
 `regions[].tide` and `meta.nextPersonId` were each stored twice; `Persistence` no longer "owns" fields that
 `generate` writes.
+
+---
+
+## 10. Where the build departed from the plan (Track A, 2026-09-18)
+
+Written after building it, because a plan that is not corrected by its own implementation becomes fiction.
+
+1. **R1's `ps.save` sub-table became a whitelist.** `inv`, `rep`, `goalStage` are read at ~100 sites across four
+   `--!nonstrict` files; moving them under `ps.save` would have been a hundred chances at a silent nil. Instead
+   `Save.encodePlayer` copies **named fields**, and `Save.encode` does the same for every node of the world — so
+   nothing is saved by accident, and "what is durable" is one list per node in `shared/Save.lua`.
+2. **`Calendar.now()` is continuous, not tick-fed.** It folds `os.clock()` deltas into `gameSeconds` on every call,
+   so attack cooldowns keep their resolution and there is exactly one sim-side wall-clock read.
+3. **The calendar only moves forward.** With absolute timers, a backwards `Debug day` would leave every NPC's next
+   thought hours in the future. `setDay` refuses the past; `skipTo(frac)` means "the next time it is that hour".
+4. **The `os.clock` rule and the line ceiling live in `test/structure.test.js`**, not in the Luau linter: `npm test`
+   runs everywhere, the linter needs a gitignored binary. The ceiling is a ratchet — each allow-listed file has its
+   own limit that may only shrink — and it stopped this build twice, which is what it is for.
+5. **`server/Restore.lua` exists.** The restore constructor needs Sim's innards and Sim was at its ceiling, so it is
+   a bound module like `Sides` and `Debug`. `Sim.init(saved, slept)` runs exactly one constructor.
+6. **The lease contends instead of forbidding.** A server that finds a live lease plays without saving, and takes
+   over when the lease runs out — so a crash costs at most `LEASE_SECONDS` of not saving, where the plan's version
+   would have left a quick-restarted server NO-SAVE for its whole life.
+7. **`children[]` is not saved** (derived from `father`/`mother`, R4) and is rebuilt by `decode`.
+8. **Catch-up at the cap costs 3 ms**, measured in `tick.test.luau`. No slicing needed.
+9. **`headlines[]` is carried by the format but nothing writes it yet** — the "you were gone eleven days" line is
+   the visible half of part 2 and is the next thing to build.

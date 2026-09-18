@@ -18,6 +18,7 @@ local HttpService = game:GetService("HttpService")
 local Save = require(Shared:WaitForChild("Save"))
 local Calendar = require(script.Parent:WaitForChild("Calendar"))
 local Restore = require(script.Parent:WaitForChild("Restore"))
+local Persistence = require(script.Parent:WaitForChild("Persistence"))
 local Map = require(script.Parent:WaitForChild("Map"))
 
 local Debug = {}
@@ -81,6 +82,27 @@ function Debug.run(cmd: string, ...): any
 		local bytes = #HttpService:JSONEncode(data)
 		local applied, err = Restore.apply(data, args[1])
 		return if applied then ("reloaded (%d bytes of JSON)"):format(bytes) else "refused: " .. tostring(err)
+	elseif cmd == "savetest" then
+		-- the whole Persistence path against a store in memory: save (taking the lease), read it back as a NEW
+		-- server would, restore. Then prove the lease: a second server may not write until it runs out.
+		local mem = {}
+		Persistence.useStore({
+			GetAsync = function(_, k) return mem[k] and HttpService:JSONDecode(mem[k]) end,
+			SetAsync = function(_, k, v) mem[k] = HttpService:JSONEncode(v) end,
+			UpdateAsync = function(self, k, fn) local v = fn(self:GetAsync(k)) if v ~= nil then self:SetAsync(k, v) end end,
+		})
+		Persistence.mode = "new"
+		if not Persistence.saveWorld(Restore.snapshot) then return "save refused: " .. Persistence.why end
+		local stored = HttpService:JSONDecode(mem.world)
+		local mine = Save.mayWrite(stored, "somebody-else", os.time())
+		local boot = Persistence.loadWorld()
+		if not boot.data then return "load gave no data: " .. tostring(boot.why) end
+		local ok, why = Restore.apply(boot.data, args[1] or 0)
+		if ps then ps.noSave = false end -- their real key failed to read at join (that is why we are here); this store is ours
+		local psOk = ps and Persistence.savePlayer(ps, S.day)
+		local back = ps and Persistence.loadPlayer(ps.player.UserId)
+		return ("saved %d bytes; lease blocks a second server: %s; reloaded as '%s': %s; player key: %s, inv coin %s"):format(#mem.world,
+			tostring(not mine), boot.mode, tostring(ok or why), tostring(psOk), tostring(back and back.inv and back.inv.coin))
 	elseif cmd == "night" then
 		Calendar.skipTo(1 - Config.NIGHT_FRACTION + 0.01)
 		return "dusk"

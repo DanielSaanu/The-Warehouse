@@ -185,4 +185,19 @@ do
 	assert(Save.applyPlayer(fresh, { version = 99 }) == nil, "an unknown player version is ignored, not half-applied")
 end
 
+-- The lease: one server writes the world. Pure decisions, so they are tested here and Persistence only obeys them.
+do
+	local now = 1790000000
+	assert(Save.mayWrite(nil, "A", now), "nobody has saved yet")
+	assert(Save.mayWrite({ meta = {} }, "A", now), "a save with no lease (an old one) is free")
+	local data = Save.stampLease({}, "A", now)
+	assert(data.lease.untilTime == now + Save.LEASE_SECONDS, "a lease outlives a missed autosave or two")
+	assert(Save.mayWrite(data, "A", now + 10), "the owner renews")
+	assert(not Save.mayWrite(data, "B", now + 10), "a second server may not write while the lease is live")
+	assert(Save.mayWrite(data, "B", now + Save.LEASE_SECONDS), "but takes over when the owner has gone quiet")
+	Save.stampLease(data, "A", now, true)
+	assert(Save.mayWrite(data, "B", now + 1), "a clean shutdown releases the lease at once")
+	assert(Save.check(data), "the lease is JSON-safe too")
+end
+
 print("save ok")

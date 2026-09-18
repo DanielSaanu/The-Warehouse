@@ -121,7 +121,8 @@ function Save.decode(data)
 	local ok, why = Save.migrate(data)
 	if not ok then return nil, why end
 	if data.meta.genVersion ~= WorldGen.GEN_VERSION then
-		return nil, ("the map generator changed (save %s, now %s): this is a new world"):format(tostring(data.meta.genVersion), tostring(WorldGen.GEN_VERSION))
+		-- the third value says the save is OBSOLETE, not damaged: the caller may start a new world over it
+		return nil, ("the map generator changed (save %s, now %s): this is a new world"):format(tostring(data.meta.genVersion), tostring(WorldGen.GEN_VERSION)), true
 	end
 	local w = {
 		meta = copy(data.meta), calamity = copy(data.calamity), regions = copy(data.regions), tribes = copy(data.tribes),
@@ -177,6 +178,24 @@ function Save.applyPlayer(ps, data): (number?, number?)
 	for tribe, v in pairs(data.rep) do ps.rep[tribe] = v end
 	ps.rest = copy(data.rest)
 	return data.x, data.y
+end
+
+-- ---------- the lease ----------
+-- One server owns the world key at a time (DESIGN §14 accepts that a second server diverges; it must not also
+-- overwrite). The save carries `lease = { owner, untilTime }`; the owner renews it with every save and drops it on
+-- shutdown. These are the two decisions, pure so they are tested: may I write, and what do I stamp.
+Save.LEASE_SECONDS = 3 * Config.AUTOSAVE_SECONDS
+
+--- May `owner` write over `existing` (the table in the store now, or nil) at wall time `now`?
+function Save.mayWrite(existing, owner: string, now: number): boolean
+	local lease = type(existing) == "table" and existing.lease
+	if type(lease) ~= "table" then return true end
+	return lease.owner == owner or (lease.untilTime or 0) <= now
+end
+
+function Save.stampLease(data, owner: string, now: number, release: boolean?)
+	data.lease = { owner = owner, untilTime = if release then 0 else now + Save.LEASE_SECONDS }
+	return data
 end
 
 -- ---------- the shape check ----------
