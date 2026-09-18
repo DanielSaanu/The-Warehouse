@@ -830,6 +830,12 @@ local function wanderStep(e, now: number)
 	local tx, ty = e.home.x + rng:int(-e.radius, e.radius), e.home.y + rng:int(-e.radius, e.radius)
 	if e.tribe and not e.group and not e.species then
 		local v = S.tribes[e.tribe].village
+		-- Scattered by a fight: walk home, with a budget that can actually reach it. Wandering inside the village
+		-- bounds from twenty tiles away just fails, and the village stays empty.
+		if cheb(e.x, e.y, v.cx, v.cy) > 8 then
+			pathTo(e, v.spawn.x, v.spawn.y, 500, true)
+			return
+		end
 		tx, ty = math.clamp(tx, v.x0 + 1, v.x1 - 1), math.clamp(ty, v.y0 + 1, v.y1 - 1)
 	end
 	if freeTile(tx, ty) then pathTo(e, tx, ty, 120) end
@@ -967,14 +973,25 @@ end
 local function pickNpcTarget(e, now: number)
 	if not Sides.canFight(e) and e.species ~= "wolf" then return end
 	local range = if e.species == "wolf" then 7 else 5
+	local taken = {}
+	if e.species then
+		for _, o in pairs(S.entities) do
+			if o.species and o.npcTarget then taken[o.npcTarget] = (taken[o.npcTarget] or 0) + 1 end
+		end
+	end
 	local best, bestD = nil, range
 	for _, o in pairs(S.entities) do
-		if o ~= e and now >= o.invulnUntil and not o.broken and Sides.preysOn(e, o) then
+		if o ~= e and now >= o.invulnUntil and not o.broken and (taken[o.id] or 0) < 2 and Sides.preysOn(e, o) then
 			local d = cheb(e.x, e.y, o.x, o.y)
 			if d < bestD then best, bestD = o, d end
 		end
 	end
-	if best then e.npcTarget, e.state = best.id, "hunt" end
+	if best then
+		e.npcTarget, e.state = best.id, "hunt"
+		-- If what they just went after was coming for a player, that player should know who stepped in.
+		local ps = best.target and S.players[best.target]
+		if ps and not ps.dead and e.tribe then Sides.tellHelp(ps, e) end
+	end
 end
 
 local function huntStep(e, now: number)
@@ -1414,7 +1431,8 @@ function Sim.init()
 	S.people = Families.new()
 	S.regions = Ecology.init(world, rng:fork(1))
 	for _, r in ipairs(S.regions.list) do r.live = { deer = 0, boar = 0, wolf = 0 } end
-	Sides.bind({ state = S, world = world, faceEntity = faceEntity, markAggression = markAggression, pathTo = pathTo })
+	Sides.bind({ state = S, world = world, faceEntity = faceEntity, markAggression = markAggression, pathTo = pathTo,
+		text = Sim.text })
 	Debug.bind({ Sim = Sim, S = S, world = world, cheb = cheb, collapse = collapse, endCalamity = endCalamity,
 		hitEntity = hitEntity, killPlayer = killPlayer, morph = morph, nearestFree = nearestFree, newEntity = newEntity,
 		startCalamity = startCalamity, tickFamilies = tickFamilies, tidx = tidx })

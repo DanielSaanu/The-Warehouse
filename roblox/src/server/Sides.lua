@@ -19,10 +19,16 @@ local world
 local faceEntity   -- Sim's, so a witness that only watches still turns to look
 local markAggression
 local pathTo
+local text
 
 --- Called once by Sim.init, after the world exists.
 function Sides.bind(ctx)
 	S, world, faceEntity, markAggression, pathTo = ctx.state, ctx.world, ctx.faceEntity, ctx.markAggression, ctx.pathTo
+	text = ctx.text
+end
+
+function Sides.text(ps, msg: string, colour: string?)
+	if text then text(ps, msg, colour) end
 end
 
 local function cheb(x1: number, y1: number, x2: number, y2: number): number
@@ -111,26 +117,67 @@ local function nearestArmedKin(e)
 	return best
 end
 
---- One witness makes up its mind. Returns true if it waded in.
-function Sides.applyVerdict(e, att, vic, x: number, y: number, now: number): boolean
+--- One witness makes up its mind. Returns the verdict it actually acted on.
+function Sides.applyVerdict(e, att, vic, x: number, y: number, now: number): string
 	local verdict = Witness.decide(seerOf(e), sideParty(att, e), sideParty(vic, e))
-	if verdict == "help_victim" then return setFoe(e, att, now) end
-	if verdict == "help_attacker" then return setFoe(e, vic, now) end
+	if verdict == "help_victim" then return if setFoe(e, att, now) then verdict else "watch" end
+	if verdict == "help_attacker" then return if setFoe(e, vic, now) then verdict else "watch" end
 	if verdict == "watch" or verdict == "shout" then
 		-- looking at it is the whole behaviour, and it reads clearly: they saw, and they did nothing
 		faceEntity(e, Combat.dirTo(e.x, e.y, x, y))
 	elseif verdict == "flee" then
-		e.state, e.fleeUntil, e.threat = "flee", now + 6, { x = x, y = y }
+		-- never re-arm a flight already running, or every later blow scatters the village further and it never
+		-- comes home
+		e.state, e.threat = "flee", { x = x, y = y }
+		e.fleeUntil = math.max(e.fleeUntil or 0, now + 6)
 	elseif verdict == "alarm" then
 		local kin = nearestArmedKin(e)
 		if kin then
 			e.state = "alarm"
 			e.alarm = { to = kin.id, att = sideRef(att), vic = sideRef(vic), x = x, y = y, until_ = now + 25 }
 		else
-			e.state, e.fleeUntil, e.threat = "flee", now + 6, { x = x, y = y }
+			e.state, e.threat = "flee", { x = x, y = y }
+			e.fleeUntil = math.max(e.fleeUntil or 0, now + 6)
+			return "flee"
 		end
 	end
-	return false
+	return verdict
+end
+
+--- The player is one of the two sides, or neither. Which side decides whether an intervention reads as help or
+--- as the village turning on them.
+local function playerIn(att, vic)
+	if att.ps then return att.ps, "attacker" end
+	if vic.ps then return vic.ps, "victim" end
+	return nil, nil
+end
+
+--- One line, and not often, so the player can tell what their standing just bought them. Without this the whole
+--- feature is legible only as sprites moving, and DESIGN.md §7 is about the player understanding where they stand.
+local function tellPlayer(ps, role, forYou: number, againstYou: number, watched: number, alarmed: number, where, now: number)
+	if forYou + againstYou + alarmed == 0 and not (watched > 0 and role == "victim") then return end
+	-- Somebody wading in outranks somebody running for help, which outranks nobody moving. A louder line may
+	-- interrupt the cooldown once: a villager shouting on the first blow must not swallow "the guard came".
+	local rank = if forYou + againstYou > 0 then 3 elseif alarmed > 0 then 2 else 1
+	if now < (ps.nextSideLine or 0) and rank <= (ps.lastSideRank or 0) then return end
+	ps.nextSideLine, ps.lastSideRank = now + 6, rank
+	local place = where or "They"
+	if againstYou > 0 then
+		Sides.text(ps, ("%s takes their side."):format(place), "warn")
+	elseif forYou > 0 then
+		Sides.text(ps, ("%s turns out for you."):format(place), "good")
+	elseif alarmed > 0 then
+		Sides.text(ps, if role == "attacker" then "Someone has run for the guard." else "Someone is running for help.")
+	else
+		Sides.text(ps, "They watched. Nobody moved.", "warn")
+	end
+end
+
+--- An armed local has set about somebody who was coming for this player. Worth saying even though no blow has
+--- landed on them: a village that protects you well enough that you are never hit would otherwise say nothing.
+function Sides.tellHelp(ps, e)
+	local now = os.clock()
+	tellPlayer(ps, "victim", 1, 0, 0, 0, e.tribe and S.tribes[e.tribe].village.name, now)
 end
 
 --- Everybody who can see a fight decides what to do about it (docs/RUNG3.md part 1). Called on every blow that
@@ -138,15 +185,31 @@ end
 function Sides.witnessed(att, vic, x: number, y: number)
 	local now = os.clock()
 	local joined = 0
+	local ps, role = playerIn(att, vic)
+	local forYou, againstYou, watched, alarmed, where = 0, 0, 0, 0, nil
 	for _, e in pairs(S.entities) do
 		if joined >= Sides.WITNESS_JOIN then break end
 		local involved = (att.e == e) or (vic.e == e)
-		local busy = e.broken or e.state == "chase" or e.state == "hunt" or e.state == "alarm"
+		-- Animals do not weigh a fight, they hunt (see pickNpcTarget): without this a wolf watching a guard beat
+		-- another wolf sides with the guard, because it dislikes wolves. A baby cannot act on any verdict either.
+		-- `flee` counts as busy so a villager already running is not re-armed by every later blow.
+		local busy = e.species ~= nil or e.kind == "baby" or e.broken
+			or e.state == "chase" or e.state == "hunt" or e.state == "alarm" or e.state == "flee"
 		if not involved and not busy and now >= (e.nextWitnessAt or 0) and cheb(e.x, e.y, x, y) <= Sides.WITNESS_RANGE then
 			e.nextWitnessAt = now + Sides.WITNESS_EVERY
-			if Sides.applyVerdict(e, att, vic, x, y, now) then joined += 1 end
+			local verdict = Sides.applyVerdict(e, att, vic, x, y, now)
+			local helped = if verdict == "help_victim" then "victim" elseif verdict == "help_attacker" then "attacker" else nil
+			if helped then joined += 1 end
+			if ps then
+				if helped then
+					if helped == role then forYou += 1 else againstYou += 1 end
+					where = where or (e.tribe and S.tribes[e.tribe].village.name)
+				elseif verdict == "alarm" then alarmed += 1
+				elseif verdict == "watch" or verdict == "shout" then watched += 1 end
+			end
 		end
 	end
+	if ps then tellPlayer(ps, role, forYou, againstYou, watched, alarmed, where, now) end
 end
 
 --- The footprint plus one tile, so standing in a gateway counts.

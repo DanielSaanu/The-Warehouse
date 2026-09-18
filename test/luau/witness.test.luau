@@ -77,6 +77,19 @@ do
 	assert(Witness.decide(guard, npc(2, "hunter"), npc(1, "farmer")) == "help_victim", "so is a friendly one")
 end
 
+-- Animals have no politics. A wolf feels -70 about a wolf and 0 about the guard beating it, so the rule alone
+-- would have it side with the guard against its own packmate. Sides.witnessed excludes animal witnesses for
+-- exactly this reason; the rule is asserted here so the reason is written down where the numbers are.
+do
+	local wolf = { tribe = nil, tribeType = nil, canFight = true, home = false }
+	local packmate = animal("wolf")
+	local guard = npc(1, "farmer")
+	assert(Witness.feel(wolf, packmate) < Witness.feel(wolf, guard),
+		"by feeling alone a wolf prefers a farmer to another wolf - which is why animals must not be witnesses")
+	assert(Witness.decide(wolf, guard, packmate) == "help_attacker",
+		"and the rule would have it help the guard: Sides.witnessed must never ask an animal")
+end
+
 -- The same event, read in two villages, must come out differently. That is the whole design point.
 do
 	local bandit = npc(3, "plunderer")
