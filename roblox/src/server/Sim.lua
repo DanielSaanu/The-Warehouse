@@ -308,11 +308,52 @@ local function morph(e, kind: string, opts)
 		name = p and Families.fullName(p) or e.name, label = o.label or (p and Families.fullName(p)) or e.label, facing = facing })
 	ne.first, ne.last, ne.person = e.first, e.last, person
 	ne.home = home
+	ne.homeTile, ne.workTile, ne.farm = e.homeTile, e.workTile, e.farm
 	if p then p.entity = ne.id end
 	return ne
 end
 
 local VILLAGE_SPRITE = { farmer = "villager", hunter = "hunter", plunderer = "bandit" }
+
+--- Give a villager somewhere to sleep and somewhere to work. Farmers get a plot of their own, everyone else a
+--- spot near the stall. Before this a villager's entire day was `wanderStep` (DESIGN.md §20).
+-- Where the n-th person sleeps relative to their hut door. A village can have more people than standing huts
+-- (Glenworth has three burnt and one whole), and only one body fits on a tile, so they bed down around the door
+-- rather than four of them walking at the same square all night.
+local DOOR_SPREAD = { { 0, 0 }, { 1, 0 }, { -1, 0 }, { 0, 1 }, { 1, 1 }, { -1, 1 } }
+
+local function assignDay(e, t, n: number)
+	local door = (#t.huts > 0 and t.huts[(n - 1) % #t.huts + 1]) or { x = e.x, y = e.y }
+	local off = DOOR_SPREAD[(n - 1) % #DOOR_SPREAD + 1]
+	local cand = { x = door.x + off[1], y = door.y + off[2] }
+	e.homeTile = if WorldGen.walkable(world, cand.x, cand.y) then cand else door
+	if #t.farms > 0 then
+		local f = t.farms[(n - 1) % #t.farms + 1]
+		e.farm = f
+		e.workTile = { x = f.x, y = f.y }
+	else
+		local st = t.village.stall
+		e.workTile = WorldGen.nearestWalkable(world, st.x + (n % 3) - 1, st.y + 1, 3) or { x = e.x, y = e.y }
+	end
+end
+
+--- The huts people sleep in and the plots they work. Scanned once from the tiles, because the village record on
+--- the wire only carries spawn, bed, stall and gates, and this is server business: the map format is untouched.
+local function scanVillage(t, v)
+	t.huts, t.farms = {}, {}
+	local hutIds = { [O.hut.id] = true, [O.hut_hunter.id] = true, [O.hut_plunderer.id] = true }
+	for y = v.y0, v.y1 do
+		for x = v.x0, v.x1 do
+			local obj, ground = WorldGen.object(world, x, y), WorldGen.ground(world, x, y)
+			if hutIds[obj] then
+				local door = WorldGen.nearestWalkable(world, x, y + 1, 2)
+				if door then table.insert(t.huts, door) end
+			elseif ground == G.farm.id and WorldGen.walkable(world, x, y) then
+				table.insert(t.farms, { x = x, y = y, growth = rng:float() * 0.5, tended = 0 })
+			end
+		end
+	end
+end
 
 local function initTribes()
 	for i, v in ipairs(world.villages) do
@@ -323,6 +364,7 @@ local function initTribes()
 			guard = nil, merchant = nil, survivor = nil, news = nil,
 		}
 		S.tribes[i] = t
+		scanVillage(t, v)
 		local sprite = VILLAGE_SPRITE[v.tribeType]
 		-- guard just inside the first gate (or by the road for open villages)
 		local gx, gy = v.spawn.x + 2, v.spawn.y - 1
@@ -337,7 +379,8 @@ local function initTribes()
 		for n = 1, 4 do
 			local x = rng:int(v.x0 + 1, v.x1 - 1)
 			local y = rng:int(v.y0 + 1, v.y1 - 1)
-			spawnPerson("villager", x, y, i, { radius = 3, role = "villager", sprite = sprite, sex = if n % 2 == 0 then "f" else "m" })
+			local ve = spawnPerson("villager", x, y, i, { radius = 3, role = "villager", sprite = sprite, sex = if n % 2 == 0 then "f" else "m" })
+			if ve then assignDay(ve, t, n) end
 		end
 		t.news = nil
 		Families.formCouples(S.people, i, S.day)
@@ -589,7 +632,7 @@ local function applyRep(ps, deltas)
 	return changed
 end
 
-local function killEntity(e, killer, ctx)
+local function killEntity(e, killer, ctx, byEntity)
 	if killer then
 		lootTo(killer, Combat.loot(e.kind, rng))
 		applyRep(killer, Reputation.deltas("kill", e.kind, Sim.tribeOf(e), ctx))
@@ -601,7 +644,10 @@ local function killEntity(e, killer, ctx)
 	-- the family tree keeps the dead, and a role passes to a relative
 	if e.person then
 		local p = S.people.people[e.person]
-		Families.die(S.people, e.person, S.day, "killed", if killer then killer.player.Name else "the wild")
+		local by = if killer then killer.player.Name
+			elseif byEntity then (byEntity.name or Stats.get(byEntity.kind).label)
+			else "the wild"
+		Families.die(S.people, e.person, S.day, "killed", by)
 		local t = e.tribe and S.tribes[e.tribe]
 		if p and t and (e.role == "guard" or e.role == "merchant") then
 			local heir = Families.successor(S.people, p)
@@ -618,6 +664,20 @@ local function killEntity(e, killer, ctx)
 	if e.region and e.species then
 		local r = S.regions.list[e.region]
 		r[e.species] = math.max(0, r[e.species] - 1)
+		-- a predator's meal is booked here so Ecology's daily tick does not charge for the same deer twice
+		if byEntity and byEntity.species == "wolf" then Ecology.noteKill(r, e.species) end
+	end
+	-- DESIGN.md §5: plunderers live off what they take. A kill by a bandit moves goods from the victim's tribe
+	-- into theirs, which is what makes a raid cost the farmers something real.
+	if byEntity and byEntity.kind == "bandit" and byEntity.tribe and e.tribe and e.tribe ~= byEntity.tribe then
+		local from, to = S.tribes[e.tribe], S.tribes[byEntity.tribe]
+		for _, good in ipairs(Items.GOODS) do
+			local take = math.min(from.stock[good] or 0, 2)
+			if take > 0 then
+				from.stock[good] -= take
+				to.stock[good] = (to.stock[good] or 0) + take
+			end
+		end
 	end
 	if e.group then
 		local g = S.groups[e.group]
@@ -653,7 +713,7 @@ end
 Sim.markAggression = markAggression
 
 --- Damage to an entity from (ax, ay). Flash, knockback, death. Fighters break and run at their break point.
-local function hitEntity(e, dmg: number, ax: number, ay: number, attacker)
+local function hitEntity(e, dmg: number, ax: number, ay: number, attacker, byEntity)
 	local now = os.clock()
 	if now < e.invulnUntil then return end
 	local ctx = fightContext(e, attacker)
@@ -666,7 +726,7 @@ local function hitEntity(e, dmg: number, ax: number, ay: number, attacker)
 	e.path = nil
 	broadcastEntity(e, "hit", e.id, math.max(0, e.hp) / e.maxHp)
 	if e.hp <= 0 then
-		killEntity(e, attacker, ctx)
+		killEntity(e, attacker, ctx, byEntity)
 		return
 	end
 	local kx, ky = Combat.knockbackTile(ax, ay, e.x, e.y)
@@ -682,6 +742,10 @@ local function hitEntity(e, dmg: number, ax: number, ay: number, attacker)
 		if attacker then e.beatenBy = attacker.player.UserId end
 	elseif attacker then
 		e.state, e.target, e.aggroUntil = "chase", attacker.player.UserId, now + 12
+	elseif byEntity and S.entities[byEntity.id] then
+		-- struck by another creature. Before this the whole branch was `elseif attacker`, so anything hit by an
+		-- NPC simply stood there: a boar took a hunter's spear without ever charging him (DESIGN.md §20).
+		e.state, e.npcTarget, e.target = "hunt", byEntity.id, nil
 	end
 	if attacker and e.tribe and not e.species then
 		applyRep(attacker, Reputation.deltas("hit", e.kind, Sim.tribeOf(e), ctx))
@@ -943,7 +1007,8 @@ local function chaseStep(e, now: number)
 end
 
 --- Should this entity go for a player? Hostility depends on kind and the player's standing with its tribe.
-local function pickTarget(e, now: number)
+--- `npcD` is how far away the prey it has already picked is: the player has to be nearer than that to win.
+local function pickTarget(e, now: number, npcD: number?)
 	local k = Stats.get(e.kind)
 	local range = 0
 	local function wants(ps): boolean
@@ -955,29 +1020,70 @@ local function pickTarget(e, now: number)
 	if e.species == "wolf" then range = 7 elseif e.kind == "bandit" then range = 6 elseif e.kind == "guard" then range = 5 elseif e.kind == "hunter" or e.kind == "caravan_guard" then range = 4 end
 	if e.species == "boar" then range = 0 end -- boar only charge when hit
 	if range == 0 and not k.hostile then return end
-	local ps = nearestPlayer(e.x, e.y, range, wants)
-	if ps then
-		e.state, e.target, e.aggroUntil = "chase", ps.player.UserId, now + 10
+	local ps, d = nearestPlayer(e.x, e.y, range, wants)
+	if ps and d < (npcD or math.huge) then
+		e.state, e.target, e.npcTarget, e.aggroUntil = "chase", ps.player.UserId, nil, now + 10
 		markAggression(e, ps.player.UserId)
 		if e.escapeGiven then e.escapeGiven[ps.player.UserId] = nil end
 	end
 end
 
---- Hunters and guards deal with wildlife and bandits near them.
+-- How far each kind looks for something to fight that is not a player (DESIGN.md §20).
+local NPC_RANGE = { hunter = 6, guard = 5, caravan_guard = 5, wolf = 8, bandit = 7 }
+
+--- What this creature will start a fight with. Nil means it starts none of its own.
+--- This used to exist only for hunters, guards and caravan guards, which is why a wolf would cross a field of
+--- deer to reach the player and then stand next to a villager all night: the player was its only route to a
+--- target at all.
+local function preyTest(e): ((any) -> boolean)?
+	if e.kind == "hunter" then
+		-- hunters bring meat home and clear what preys on their squads; they do not start on other people
+		return function(o) return o.species ~= nil or o.kind == "bandit" end
+	elseif e.kind == "guard" or e.kind == "caravan_guard" then
+		return function(o) return o.species == "wolf" or o.kind == "bandit" end
+	elseif e.species == "wolf" then
+		return function(o)
+			if o.species == "deer" or o.species == "boar" then return true end
+			-- during a beast tide the wolves come off the hill and take whoever is outside the walls
+			local r = e.region and S.regions.list[e.region]
+			return (r ~= nil and r.tide and Stats.get(o.kind).flees and not o.species and not inVillage(o.x, o.y)) == true
+		end
+	elseif e.kind == "bandit" then
+		-- DESIGN.md §5: plunderers live off caravans and off anyone caught outside the walls
+		return function(o)
+			if o.species or o.kind == "bandit" then return false end
+			if o.tribe and S.tribes[o.tribe].tribeType == "plunderer" then return false end
+			return not inVillage(o.x, o.y)
+		end
+	end
+	return nil
+end
+
+--- Look for something to fight that is not a player.
 local function pickNpcTarget(e, now: number)
-	local hunt = (e.kind == "hunter") or (e.kind == "guard") or (e.kind == "caravan_guard")
-	if not hunt then return end
-	local best, bestD = nil, 5
+	if e.broken then return end
+	local wants = preyTest(e)
+	if not wants then return end
+	local best, bestD = nil, (NPC_RANGE[e.kind] or 5) + 1
 	for _, o in pairs(S.entities) do
-		if o ~= e and now >= o.invulnUntil then
-			local prey = (e.kind == "hunter" and o.species) or (o.species == "wolf") or (o.kind == "bandit" and e.kind ~= "bandit")
-			if prey then
-				local d = cheb(e.x, e.y, o.x, o.y)
-				if d < bestD then best, bestD = o, d end
-			end
+		if o ~= e and now >= o.invulnUntil and not o.broken then
+			local d = cheb(e.x, e.y, o.x, o.y)
+			if d < bestD and wants(o) then best, bestD = o, d end
 		end
 	end
 	if best then e.npcTarget, e.state = best.id, "hunt" end
+end
+
+--- The nearest thing that eats this one, within `range`.
+local function nearestPredator(e, range: number)
+	local best, bestD = nil, range + 1
+	for _, o in pairs(S.entities) do
+		if o ~= e and not o.broken and (o.species == "wolf" or o.kind == "hunter") then
+			local d = cheb(e.x, e.y, o.x, o.y)
+			if d < bestD then best, bestD = o, d end
+		end
+	end
+	return best
 end
 
 local function huntStep(e, now: number)
@@ -991,7 +1097,7 @@ local function huntStep(e, now: number)
 				e.windupAt = nil
 				e.cooldownUntil = now + 1.0
 				broadcastEntity(e, "attack", e.id, e.facing)
-				hitEntity(o, Combat.damage(e.atk, o.def), e.x, e.y, nil)
+				hitEntity(o, Combat.damage(e.atk, o.def), e.x, e.y, nil, e)
 			end
 		elseif now >= e.cooldownUntil then
 			e.windupAt = now + Config.TELEGRAPH
@@ -1076,6 +1182,53 @@ local function brokenStep(e, now: number)
 	end
 end
 
+-- ---------- a villager's day (DESIGN.md §20) ----------
+--- Work the plot you are standing on. Growth is slow on purpose: a plot wants most of a day of somebody's
+--- attention, so a village that loses its people stops feeding itself.
+local function tendFarm(e, now: number)
+	local f = e.farm
+	if not f or now < (e.nextTendAt or 0) then return end
+	e.nextTendAt = now + 5
+	f.growth = math.min(1, f.growth + 0.07)
+	f.tended = S.day
+end
+
+--- A wolf, or a bandit from somewhere else. Not their own tribe's hunters, who are the neighbours.
+local function villagerDanger(e)
+	for _, o in pairs(S.entities) do
+		if (o.species == "wolf" or (o.kind == "bandit" and o.tribe ~= e.tribe)) and cheb(e.x, e.y, o.x, o.y) <= 6 then
+			return o
+		end
+	end
+	return nil
+end
+
+--- Out to the plot in the morning, home at night, and straight home when something is hunting. A villager's
+--- whole day used to be `wanderStep`; this is the rest of it.
+local function villagerStep(e, now: number)
+	local danger = villagerDanger(e)
+	local home = danger ~= nil or Sim.isNight()
+	local want = if home then e.homeTile else e.workTile
+	if not want then
+		if not e.path then wanderStep(e, now) end
+		return
+	end
+	-- A plot has to be stood on to be worked, but a doorway does not: only one person fits on a tile, and
+	-- Glenworth has three burnt huts and one standing, so its four survivors all sleep around the same door.
+	-- Insisting on the exact tile left three of them re-pathing to an occupied one for the rest of the night.
+	local reach = if home or not e.farm then 1 else 0
+	if cheb(e.x, e.y, want.x, want.y) <= reach then
+		e.path = nil
+		if not danger and not Sim.isNight() and e.farm then tendFarm(e, now) end
+		return
+	end
+	if not e.path and now >= (e.nextRouteAt or 0) then
+		e.nextRouteAt = now + (if danger then 0.6 else 2.5)
+		-- nowhere to go (walled in, or the way is blocked): mill about rather than stand rigid
+		if not pathTo(e, want.x, want.y, 300) then wanderStep(e, now) end
+	end
+end
+
 local function think(e, now: number)
 	if e.state == "flee" then
 		if e.broken then brokenStep(e, now) return end
@@ -1093,14 +1246,37 @@ local function think(e, now: number)
 	end
 	if e.state == "chase" then chaseStep(e, now) return end
 	if e.state == "hunt" then huntStep(e, now) return end
-	-- idle: look for trouble, then go about your business
-	pickTarget(e, now)
-	if e.state == "chase" then return end
+	-- Idle: look for trouble, then go about your business. Prey is chosen first and the player only takes
+	-- priority if he is actually nearer. Running pickTarget first and returning on a hit is what made the
+	-- player the only thing a wolf would ever go for while he was anywhere on the map (DESIGN.md §20): it
+	-- would walk past a deer at arm's length to reach him.
 	pickNpcTarget(e, now)
+	local npcD = math.huge
+	if e.state == "hunt" and e.npcTarget then
+		local o = S.entities[e.npcTarget]
+		if o then npcD = cheb(e.x, e.y, o.x, o.y) else e.state, e.npcTarget = "idle", nil end
+	end
+	pickTarget(e, now, npcD)
+	if e.state == "chase" then return end
 	if e.state == "hunt" then return end
 	if e.species == "deer" then
+		-- A deer watches for wolves and hunters, not only for the player: a deer bolting across a meadow is the
+		-- ecosystem made visible, and it is the cue that something is out there.
+		local threat = nil
 		local ps = nearestPlayer(e.x, e.y, 4)
-		if ps then e.state, e.fleeUntil, e.threat = "flee", now + 2, { x = ps.x, y = ps.y } fleeStep(e) return end
+		if ps then threat = { x = ps.x, y = ps.y } end
+		if not threat then
+			local p = nearestPredator(e, 6)
+			if p then threat = { x = p.x, y = p.y } end
+		end
+		-- A bolt, then a blown breath. A deer outruns a wolf (1.3 against 1.25) and would never be caught by
+		-- anything at all without this beat -- which also means nobody could ever hunt one.
+		if threat and now >= (e.nextFleeAt or 0) then
+			e.nextFleeAt = now + 3.2
+			e.state, e.fleeUntil, e.threat = "flee", now + 2, threat
+			fleeStep(e)
+			return
+		end
 	end
 	if e.group then
 		local g = S.groups[e.group]
@@ -1113,6 +1289,7 @@ local function think(e, now: number)
 		if ps then faceEntity(e, Combat.dirTo(e.x, e.y, ps.x, ps.y)) end
 		return
 	end
+	if e.role == "villager" and (e.homeTile or e.workTile) then villagerStep(e, now) return end
 	if not e.path then wanderStep(e, now) end
 end
 
@@ -1347,6 +1524,24 @@ local function dailyTick()
 	for _, t in ipairs(S.tribes) do
 		Trade.dailyRestock(t.stock, t.tribeType)
 		t.population = math.min(60, t.population + 1)
+		-- Farms: a plot that was worked yesterday comes in as food, and a plot nobody touched goes back to weeds.
+		-- This is what makes a raid on a farmer village cost them something, and what makes the farmers' whole
+		-- reason for existing visible instead of a label on a tribe (DESIGN.md §20).
+		local harvest = 0
+		for _, f in ipairs(t.farms) do
+			if f.growth >= 1 then
+				harvest += 1
+				f.growth = 0
+			elseif f.tended < S.day - 1 then
+				f.growth = math.max(0, f.growth - 0.15)
+			end
+		end
+		if harvest > 0 then
+			t.stock.food = (t.stock.food or 0) + harvest * 3
+			if not t.news and harvest >= 2 then
+				t.news = ("The plots came in well. %d loads of food in the store."):format(harvest * 3)
+			end
+		end
 	end
 	for _, ps in pairs(S.players) do
 		for tribe, v in pairs(ps.rep) do ps.rep[tribe] = Reputation.fade(v, 1) end
@@ -1473,6 +1668,103 @@ function Sim.debug(cmd: string, ...): any
 			out[id] = ("%d members (%d visible) at %d,%d, route %d/%d"):format(#gr.members, live, Sim.groupPos(gr).x, Sim.groupPos(gr).y, gr.pos, #gr.route)
 		end
 		return out
+	elseif cmd == "hunt" then
+		-- put the nearest wolf onto the nearest deer, so a reviewer does not have to wait for nightfall and luck
+		local wolf, deer, bestD = nil, nil, math.huge
+		for _, w in pairs(S.entities) do
+			if w.species == "wolf" then
+				for _, o in pairs(S.entities) do
+					if o.species == "deer" or o.species == "boar" then
+						local dd = cheb(w.x, w.y, o.x, o.y)
+						if dd < bestD then wolf, deer, bestD = w, o, dd end
+					end
+				end
+			end
+		end
+		if not wolf or not deer then return "need a wolf and a deer materialised: try at night, or spawn one" end
+		wolf.npcTarget, wolf.state = deer.id, "hunt"
+		return ("%s at %d,%d is going for the %s at %d,%d (%d tiles)"):format(wolf.id, wolf.x, wolf.y, deer.species, deer.x, deer.y, bestD)
+	elseif cmd == "raid" then
+		-- Stage the fight §5 describes but the map rarely produces: the band and the caravan are usually on
+		-- opposite sides of the world, and a group is only entities while a player stands near it. Bandits are
+		-- moved next to the caravan and set on it. Everything after that is the ordinary rules.
+		local band, caravan = S.groups.band, S.groups.caravan
+		if not band or not caravan then return "no band or no caravan" end
+		local victims = {}
+		for oid in pairs(caravan.entities) do
+			local o = S.entities[oid]
+			if o then table.insert(victims, o) end
+		end
+		if #victims == 0 then
+			local cp = Sim.groupPos(caravan)
+			return ("the caravan is at %d,%d and is only a record from here: walk to it first"):format(cp.x, cp.y)
+		end
+		if inVillage(victims[1].x, victims[1].y) then
+			return ("the caravan is inside a village at %d,%d, where bandits will not follow: catch it on the road"):format(victims[1].x, victims[1].y)
+		end
+		local raiders = {}
+		for id in pairs(band.entities) do
+			local e = S.entities[id]
+			if e then table.insert(raiders, e) end
+		end
+		local staged = 0
+		if #raiders == 0 then
+			-- the band is elsewhere entirely: real bandits of the plunderer tribe, stood up on the spot
+			for _, off in ipairs({ { 2, 0 }, { -2, 0 }, { 0, 2 } }) do
+				local p = nearestFree(victims[1].x + off[1], victims[1].y + off[2], 3)
+				if p then
+					table.insert(raiders, newEntity("bandit", p.x, p.y, { tribe = 3, radius = 4 }))
+					staged += 1
+				end
+			end
+		end
+		if #raiders == 0 then return "nowhere free to put a bandit" end
+		for i, e in ipairs(raiders) do
+			local o = victims[(i - 1) % #victims + 1]
+			local p = nearestFree(o.x + (if i % 2 == 0 then 2 else -2), o.y + (i % 3) - 1, 3)
+			if p then placeEntity(e, p.x, p.y) end
+			e.npcTarget, e.state, e.path = o.id, "hunt", nil
+		end
+		return ("%d bandits (%d of them staged) on the caravan at %d,%d"):format(#raiders, staged, victims[1].x, victims[1].y)
+	elseif cmd == "village" then
+		local idx = args[1] or 1
+		local t = S.tribes[idx]
+		if not t then return "no such village" end
+		local out: { [string]: any } = { name = t.village.name, tribe = t.tribeType, population = t.population,
+			huts = #t.huts, plots = #t.farms, night = Sim.isNight() }
+		for _, e in pairs(S.entities) do
+			if e.tribe == idx and not e.species then
+				local where = "wandering"
+				if e.workTile and cheb(e.x, e.y, e.workTile.x, e.workTile.y) <= (if e.farm then 0 else 1) then where = "at work"
+				elseif e.homeTile and cheb(e.x, e.y, e.homeTile.x, e.homeTile.y) <= 1 then where = "at home"
+				elseif e.path then where = "walking" end
+				out[e.id] = ("%s %s: %s at %d,%d%s"):format(tostring(e.role), tostring(e.name), where, e.x, e.y, if e.broken then " (broken)" else "")
+			end
+		end
+		return out
+	elseif cmd == "region" then
+		-- the numbers behind the animals you can see, including what predators have taken today
+		local x = args[1] or (ps and ps.x) or world.spawn.x
+		local y = args[2] or (ps and ps.y) or world.spawn.y
+		local r = S.regions.list[WorldGen.regionOf(world, x, y)]
+		local live = { deer = 0, boar = 0, wolf = 0 }
+		for _, e in pairs(S.entities) do
+			if e.species and e.region == r.id then live[e.species] += 1 end
+		end
+		return { id = r.id, col = r.col, row = r.row, deer = r.deer, boar = r.boar, wolf = r.wolf,
+			grass = math.round(r.grass * 100) / 100, eaten = r.eaten, tide = r.tide, village = r.village,
+			visible = ("%d deer, %d boar, %d wolf"):format(live.deer, live.boar, live.wolf) }
+	elseif cmd == "farms" then
+		local out: { [string]: any } = {}
+		for _, t in ipairs(S.tribes) do
+			local grown, ready = 0, 0
+			for _, f in ipairs(t.farms) do
+				grown += f.growth
+				if f.growth >= 1 then ready += 1 end
+			end
+			out[t.village.name] = ("%d plots, %.2f grown, %d ready, %d food in store"):format(#t.farms, grown, ready, t.stock.food or 0)
+		end
+		return out
 	elseif cmd == "calamity" then
 		endCalamity()
 		startCalamity(args[1] or "flood")
@@ -1546,7 +1838,12 @@ function Sim.debug(cmd: string, ...): any
 	elseif cmd == "entity" then
 		local e = S.entities[args[1]]
 		if not e then return "no entity " .. tostring(args[1]) end
-		return { id = e.id, kind = e.kind, hp = e.hp, x = e.x, y = e.y, state = e.state, target = tostring(e.target), facing = e.facing, group = e.group, region = e.region, label = e.label }
+		local tgt = e.npcTarget and S.entities[e.npcTarget]
+		return { id = e.id, kind = e.kind, hp = e.hp, x = e.x, y = e.y, state = e.state, target = tostring(e.target),
+			facing = e.facing, group = e.group, region = e.region, label = e.label,
+			-- who it is going for and how far off it is: without this a hunt that never lands looks like a wander
+			npcTarget = tostring(e.npcTarget), npcAt = tgt and ("%s %d,%d (%d away)"):format(tgt.kind, tgt.x, tgt.y, cheb(e.x, e.y, tgt.x, tgt.y)) or "none",
+			pathLeft = if e.path then #e.path - e.pathI + 1 else 0, broken = e.broken or false }
 	elseif cmd == "list" then
 		local out = {}
 		for id, e in pairs(S.entities) do

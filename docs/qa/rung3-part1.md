@@ -20,12 +20,13 @@ you.**
 
 ## Goals of this PR
 
-1. **Predators hunt prey.** Wolves pick deer and boar as targets at a real range, day or night, whether or not a
-   player is anywhere near. A wolf that catches a deer kills it, eats for a beat, and the region's deer count goes
-   down by one — the same count `Ecology` would have decremented, so the ecosystem stays authoritative and does
-   not change shape depending on who is watching.
-2. **Predation is visible.** A kill that happens near a player plays out as entities (chase, telegraph, strike,
-   the deer's death) and is folded back into counts when nobody is near. Away from players it stays arithmetic.
+1. **Predators hunt prey.** Wolves pick deer and boar as targets, and the **nearest** target wins: a wolf standing
+   next to a deer no longer walks past it to reach the player. A wolf that catches a deer kills it and the
+   region's deer count goes down by one — the same count `Ecology` would have decremented, so the ecosystem stays
+   authoritative and does not change shape depending on who is watching. (Wildlife is still only materialised near
+   a player, and wolves still only come out at night or during a beast tide: §4 and §9 both stand.)
+2. **Predation is visible.** A kill near a player plays out as entities (chase, telegraph, strike, the deer's
+   death) and folds back into counts when nobody is near. Away from players it stays arithmetic in the daily tick.
    The wolf does not lose interest in a deer because a player walked up.
 3. **Prey behave like prey.** Deer flee from wolves, not only from players. Boar charge whatever hit them, NPC or
    player. A fleeing deer is a thing you can see from across a meadow and read instantly.

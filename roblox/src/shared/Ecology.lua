@@ -17,6 +17,7 @@ export type Region = {
 	grass: number,    -- 0..1
 	deer: number, boar: number, wolf: number,
 	tide: boolean,    -- beast tide: wolves roam by day
+	eaten: number,    -- prey killed by a predator someone could watch, since the last daily tick
 }
 export type Regions = { list: { Region }, cols: number, rows: number }
 
@@ -53,7 +54,7 @@ function Ecology.init(world: WorldGen.World, rng: Rng.Rng): Regions
 		if row == 1 then wolf = rng:int(1, 3) elseif forest > 0.3 and rng:chance(0.6) then wolf = 1 end
 		if village then deer, boar, wolf = math.floor(deer / 2), math.floor(boar / 2), 0 end
 		list[r] = { id = r, col = (r - 1) % cols + 1, row = row, forest = forest, open = open, village = village,
-			grass = 0.8 + rng:float() * 0.2, deer = deer, boar = boar, wolf = wolf, tide = false }
+			grass = 0.8 + rng:float() * 0.2, deer = deer, boar = boar, wolf = wolf, tide = false, eaten = 0 }
 	end
 	return regionsOf(list, cols, rows)
 end
@@ -81,9 +82,12 @@ function Ecology.dailyTick(rg: Regions, rng: Rng.Rng)
 			r.deer -= math.ceil(r.deer * 0.25)
 			r.boar -= math.ceil(r.boar * 0.15)
 		end
-		-- predators eat herbivores and breed when fed
+		-- Predators eat herbivores and breed when fed. A kill someone actually watched has already come out of
+		-- the counts (Sim calls noteKill when a wolf takes a deer on screen), and it feeds that wolf for the day,
+		-- so it is deducted here. Without this the same deer is eaten twice — once in front of the player and
+		-- once in the arithmetic — and a region quietly empties wherever people spend their time.
 		if r.wolf > 0 then
-			local need = r.wolf
+			local need = r.wolf - math.min(r.eaten, r.wolf)
 			local prey = r.deer + r.boar
 			if prey >= need then
 				local eatDeer = math.min(r.deer, math.ceil(need * 0.6))
@@ -95,6 +99,7 @@ function Ecology.dailyTick(rg: Regions, rng: Rng.Rng)
 				r.wolf -= math.ceil(r.wolf * 0.3)
 			end
 		end
+		r.eaten = 0
 		r.deer = math.clamp(r.deer, 0, math.floor(Ecology.CAP.deer * capScale))
 		r.boar = math.clamp(r.boar, 0, math.floor(Ecology.CAP.boar * capScale))
 		r.wolf = math.clamp(r.wolf, 0, if r.village then 1 else math.floor(Ecology.CAP.wolf * capScale))
@@ -125,6 +130,12 @@ function Ecology.dailyTick(rg: Regions, rng: Rng.Rng)
 		if r.deer < 2 and r.boar < 2 and rng:chance(0.2) then r.boar += 1 end
 		if r.village then r.wolf = math.min(r.wolf, 1) end
 	end
+end
+
+--- A predator took a head of prey where someone could see it. The region count moves now; the daily tick reads
+--- `eaten` so the same meal is not paid for twice. Prey only: a wolf killed by a hunter is not anyone's dinner.
+function Ecology.noteKill(r: Region, species: string)
+	if species == "deer" or species == "boar" then r.eaten += 1 end
 end
 
 --- Beast tide: wolves pour in from the north and roam by day everywhere for the rest of the day. The north is

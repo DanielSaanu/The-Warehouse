@@ -111,6 +111,45 @@ do
 	print(("ecology after 200 days: deer %d boar %d wolf %d"):format(t.deer, t.boar, t.wolf))
 end
 
+-- A kill someone watched is not paid for twice (DESIGN.md §20). Sim decrements the region count when a wolf
+-- takes a deer on screen and calls noteKill; the daily tick must then treat that wolf as fed rather than eat a
+-- second deer out of the arithmetic. Breeding runs either way, so the rule is measured as the difference between
+-- two otherwise identical days: same seed, same starting counts, one with a watched kill on the books.
+do
+	local function oneRegion(wolf: number, eaten: number): number
+		local rg = Ecology.init(world, Rng.new(5))
+		for _, r in ipairs(rg.list) do r.deer, r.boar, r.wolf, r.eaten, r.grass = 0, 0, 0, 0, 1 end
+		local r = rg.list[1]
+		-- well under the region cap, or both runs clamp to the same number and the test proves nothing
+		r.deer, r.wolf, r.eaten = 5, wolf, eaten
+		Ecology.dailyTick(rg, Rng.new(3))
+		assert(r.eaten == 0, "the tally resets each day")
+		local cap = math.floor(Ecology.CAP.deer * math.clamp(r.open / 160, 0.3, 1))
+		assert(r.deer < cap, ("headroom under the cap: %d of %d"):format(r.deer, cap))
+		return r.deer
+	end
+
+	local hungry = oneRegion(1, 0) -- nobody watching: the wolf eats out of the count
+	local fed = oneRegion(1, 1)    -- Sim already took one deer in front of a player
+	assert(fed - hungry == 1, ("a watched kill replaces the abstract one, not adds to it: %d vs %d"):format(fed, hungry))
+
+	-- the wolf that ate on screen is fed, so it still breeds rather than starving
+	local rg = Ecology.init(world, Rng.new(5))
+	for _, r in ipairs(rg.list) do r.deer, r.boar, r.wolf, r.eaten, r.grass = 0, 0, 0, 0, 1 end
+	rg.list[1].deer, rg.list[1].wolf, rg.list[1].eaten = 0, 2, 2
+	Ecology.dailyTick(rg, Rng.new(3))
+	assert(rg.list[1].wolf >= 2, "wolves that ate on screen do not starve with an empty region")
+
+	-- a wolf killed by a hunter is nobody's dinner
+	local r2 = Ecology.init(world, Rng.new(5)).list[1]
+	r2.eaten = 0
+	Ecology.noteKill(r2, "wolf")
+	assert(r2.eaten == 0, "only prey counts as a meal")
+	Ecology.noteKill(r2, "deer")
+	assert(r2.eaten == 1, "prey counts")
+	print(("watched kill: tick leaves %d deer, without one it leaves %d"):format(fed, hungry))
+end
+
 -- Calamity clock: warning on day 6, calamity on day 7, starts once, deterministic pick, has text.
 do
 	assert(Calamity.isWarningDay(6) and Calamity.isCalamityDay(7) and not Calamity.isCalamityDay(8), "week days")
