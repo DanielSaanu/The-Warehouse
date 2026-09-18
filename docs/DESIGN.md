@@ -1,4 +1,4 @@
-# Design: the tribes game (working title: Lowlands)
+# Design: Lowlands
 
 A 2D top-down pixel-art Roblox game about surviving in a living overworld. Tribes trade, raid and remember you.
 Wildlife breeds and starves without you. The world is shared by everyone on the server and keeps living while
@@ -391,6 +391,9 @@ roblox/src/client/     Viewport (scrolling window over the map, entity sprites),
 
 ## 19. Open questions
 
-- Name. Working title Lowlands until something better shows up.
-- Touch controls layout for phones.
+- ~~Name~~ **Lowlands** (Danzo, 2026-09-18). The Rojo project is named for it, so Studio is too.
+- ~~Touch controls layout for phones~~ **decided (rung 2 part 5)**: a d-pad in the bottom-left corner and the four
+  verbs (bag, standing, act, swing) in the bottom-right, both thumbs where they already rest. Tap-to-move stays,
+  because travel wants it even when a doorway does not. DESIGN.md §11 offered swipe instead; the d-pad won because
+  a tile game wants discrete steps and a d-pad is the one a new player can see.
 - Exact cap numbers (section 4 has first guesses; tune on a real phone).
