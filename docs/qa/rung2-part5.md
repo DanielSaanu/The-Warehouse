@@ -44,6 +44,9 @@ music; gamepad support; landscape-lock; shore edge tiles; anything in rung 3.
 - The game has never been run on a real phone, only at phone aspect ratios in Studio (640x360, 844x390 and
   1024x768 were checked; nothing left the play area and the middle half of the width stayed clear of both thumbs).
   Fingers are fatter than a mouse cursor. That is what publishing is for.
+- Portrait on a narrow phone is cramped: a 44 px d-pad needs about 140 px of width whichever way it is drawn, so
+  at a 390 px-wide play area only about a quarter of the width is clear between the two thumb clusters. Landscape
+  is the intended orientation and is comfortable (51% clear at every size checked).
 - The touch path was driven with a mouse in Studio, by forcing the touch layout on. Mouse and touch both come
   through `padButton` as a press, so the wiring is genuinely exercised, but multi-touch is not: nobody has yet
   held a direction with one thumb while tapping swing with the other.

@@ -75,6 +75,7 @@ end
 --- hittable however small the play area gets.
 --- `holds` maps the InputObject that is pressing a button to the release to run when it ends. A thumb that slides
 --- off the button, or lifts somewhere else entirely, still lets go of the direction: without this a d-pad sticks.
+--- The table is captured by every button's closures, so it is only ever cleared in place, never reassigned.
 local function padButton(holds: { [any]: () -> () }, parent: Instance, name: string, onDown: () -> (), onUp: (() -> ())?, min: number): TextButton
 	local b = Instance.new("TextButton")
 	b.Name = name
@@ -122,19 +123,22 @@ local function closeX(parent: Instance, onClick: () -> ()): TextButton
 	b.Name = "CloseX"
 	b.AnchorPoint = Vector2.new(1, 0)
 	b.Position = UDim2.new(1, 0, 0, 0)
-	b.Size = UDim2.fromOffset(34, 34)
+	b.Size = UDim2.fromOffset(44, 44)
 	b.BackgroundColor3 = Color3.fromRGB(62, 62, 92)
 	b.BorderSizePixel = 0
 	b.Text = "x"
 	b.TextColor3 = INK
 	b.Font = Enum.Font.Code
-	b.TextSize = 22
+	b.TextSize = 24
 	b.ZIndex = 32
 	b.AutoButtonColor = true
 	b.Parent = parent
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 4)
 	corner.Parent = b
+	local floor = Instance.new("UISizeConstraint")
+	floor.MinSize = Vector2.new(44, 44) -- on touch this is the only exit from the bag and standing panels
+	floor.Parent = b
 	b.Activated:Connect(onClick)
 	return b
 end
@@ -320,7 +324,7 @@ function Hud.new(overlay: Frame, callbacks, touch: boolean?)
 		pad.Size = UDim2.fromScale(0.22, 0.32)
 		pad.Parent = overlay
 		local padMin = Instance.new("UISizeConstraint")
-		padMin.MinSize = Vector2.new(132, 132)
+		padMin.MinSize = Vector2.new(140, 140) -- 0.32 of this is 44.8, so a button never drops under 44 px
 		padMin.Parent = pad
 		table.insert(self.touchControls, pad)
 		-- One arrow sprite, turned four ways. Thirds of the frame, in a cross.
@@ -335,7 +339,7 @@ function Hud.new(overlay: Frame, callbacks, touch: boolean?)
 				if self.cb.onMoveStart then self.cb.onMoveStart(d.dir) end
 			end, function()
 				if self.cb.onMoveEnd then self.cb.onMoveEnd(d.dir) end
-			end, 42)
+			end, 44)
 			b.Size = UDim2.fromScale(0.32, 0.32)
 			b.Position = UDim2.fromScale(d.x * 0.34, d.y * 0.34)
 			local arrow = Sprites.New("ui_arrow", b)
@@ -358,7 +362,7 @@ function Hud.new(overlay: Frame, callbacks, touch: boolean?)
 		actsMin.Parent = acts
 		table.insert(self.touchControls, acts)
 		-- 2x2. The swing is under the resting thumb, bottom right; act sits straight above it.
-		local bagBtn = padButton(self.holds, acts, "Bag", function() if self.cb.onBag then self.cb.onBag() end end, nil, 42)
+		local bagBtn = padButton(self.holds, acts, "Bag", function() if self.cb.onBag then self.cb.onBag() end end, nil, 44)
 		bagBtn.Size = UDim2.fromScale(0.46, 0.46)
 		bagBtn.Position = UDim2.fromScale(0, 0)
 		local bagIcon = Sprites.New("bag", bagBtn)
@@ -367,10 +371,10 @@ function Hud.new(overlay: Frame, callbacks, touch: boolean?)
 		bagIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 		bagIcon.Position = UDim2.fromScale(0.5, 0.5)
 
-		local repBtn = padButton(self.holds, acts, "Standing", function() if self.cb.onStanding then self.cb.onStanding() end end, nil, 42)
+		local repBtn = padButton(self.holds, acts, "Standing", function() if self.cb.onStanding then self.cb.onStanding() end end, nil, 44)
 		repBtn.Size = UDim2.fromScale(0.46, 0.46)
 		repBtn.Position = UDim2.fromScale(0, 0.54)
-		repBtn.Text = "rep"
+		repBtn.Text = "you" -- "rep" means nothing to someone who has never played this
 
 		local attackBtn = padButton(self.holds, acts, "Attack", function() if self.cb.onAttack then self.cb.onAttack() end end, nil, 48)
 		attackBtn.Size = UDim2.fromScale(0.46, 0.46)
@@ -426,6 +430,7 @@ function Hud.new(overlay: Frame, callbacks, touch: boolean?)
 		self.prompt.Size = UDim2.fromScale(0.46, 0.46)
 		self.prompt.BackgroundTransparency = 0.35
 		self.prompt.Text = "act"
+		self.prompt.TextWrapped = true -- "Give hides" in a 60 px button wraps instead of shrinking to nothing
 		self.prompt.Visible = true
 		local corner = Instance.new("UICorner")
 		corner.CornerRadius = UDim.new(0, 6)
@@ -708,12 +713,17 @@ end
 
 --- Called every frame: the legend and the touch controls are always on, except while a panel covers the play area.
 function Hud.refreshChrome(self)
-	local open = self:anyOpen()
-	-- A panel covering the d-pad must not leave a direction held down behind it.
+	local open = self:anyOpen() or self.deadFrame.Visible
+	-- A panel covering the d-pad must not leave a direction held down behind it. Cleared in place: rebinding
+	-- self.holds would orphan the table padButton's closures captured, and the safety net would be writing to one
+	-- table while the catch-all read another.
 	if open and next(self.holds) ~= nil then
-		local holds = self.holds
-		self.holds = {}
-		for _, up in pairs(holds) do up() end
+		local pending = {}
+		for i, up in pairs(self.holds) do
+			self.holds[i] = nil
+			table.insert(pending, up)
+		end
+		for _, up in ipairs(pending) do up() end
 	end
 	local want = self.legend.Text ~= "" and not open
 	if self.legend.Visible ~= want then self.legend.Visible = want end

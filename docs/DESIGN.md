@@ -399,4 +399,9 @@ roblox/src/client/     Viewport (scrolling window over the map, entity sprites),
   verbs (bag, standing, act, swing) in the bottom-right, both thumbs where they already rest. Tap-to-move stays,
   because travel wants it even when a doorway does not. DESIGN.md §11 offered swipe instead; the d-pad won because
   a tile game wants discrete steps and a d-pad is the one a new player can see.
+  Known limit, not worth fixing yet: the layout is chosen once, from `UserInputService.TouchEnabled` at load, so
+  pairing a Bluetooth keyboard mid-session leaves the d-pad up and a tablet with a keyboard attached never gets
+  one. Every verb is on a key in that case, so nobody is stuck.
+- Portrait on a narrow phone. A 44 px d-pad needs about 140 px however you draw it, so on a 390 px-wide play area
+  the two thumb clusters leave only a quarter of the width clear. Landscape is the intended orientation.
 - Exact cap numbers (section 4 has first guesses; tune on a real phone).
