@@ -7,13 +7,11 @@ the UI is hidden state: every action writes a file under `scenes/`, `sprites/`, 
 ## Start of every session
 
 0. **Read `docs/ARCHITECTURE.md` before writing any server code.** It is the plan for where the data lives, and
-   it is what rung 3 part 2 (save and catch-up) is waiting on. **Status, 2026-09-18: the review loop is closed.**
-   Five rounds scored 7, 8.5, 8.5, 8.5, 9.0 against a bar of 9.5, so it ended on Danzo's 5-round cap rather than
-   on the target. Everything all five rounds raised is in the plan. The overview is
-   `docs/qa/architecture-summary.md`; the verbatim reports are in `docs/qa/archive/architecture-round*.md` (stale
-   once summarised — do not read them unless asked). Between them the rounds found **seven save blockers**
-   invisible from the code, **three of which a previous round's own fix introduced**. **Danzo decides whether the
-   last 0.5 is worth a sixth round or is better found by building step 1** — ask him before starting either.
+   it is being built: **Track A** (save-critical: one game clock, pure ticks in `shared/`, records instead of
+   live references, `Save.lua`, then `Persistence.lua` = rung 3 part 2) and **Track B** (optional: carving
+   `Sim.lua` up for the reader). It was reviewed for five Opus rounds (7 → 9.0, `docs/qa/architecture-summary.md`)
+   and then revised by Fable on 2026-09-18 — §9 lists the six decisions that changed, so do not undo them by
+   accident. `roblox/src/server/README.md` says which steps have landed.
 1. Read `ideas/INBOX.md`. That is the to-do list the human writes in the UI. Work through it.
 2. `node bin/warehouse.js scenes` to see what exists. Open the scene JSONs you will touch.
 3. When you change art, render it and LOOK at it: `node bin/warehouse.js render <scene> --scale 8` then Read
