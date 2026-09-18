@@ -143,6 +143,50 @@ path, so it is not urgent and is out of scope here.
 
 ---
 
+## 4b. The codebase has a second reader, and it has a context window
+
+Claude writes most of this. That is not a footnote, it is a design constraint (Danzo, 2026-09-18: *"your coding
+this and your context matters, so no individual file should be so large u cant read it without destroying all ur
+context"*). A 1,592-line file costs ~20k tokens to read, and a session that reads three of them has spent its
+budget before it has changed anything. The same properties that make a codebase readable by a person under time
+pressure make it workable by a model, only more so.
+
+**H1. A hard ceiling of 400 lines per file, target 250.** Not a guideline — a check that fails the build, because
+guidelines about file size always lose. Today's violators are exactly the files this plan is already splitting:
+`Sim.lua` 1592, `Hud.lua` 1021, `WorldGen.lua` 877, `Client.client.lua` 653, `Viewport.lua` 429. Generated files
+(`Sprites.lua`) are exempt.
+
+**H2. The first fifteen lines of a file say what it owns.** Every module opens with what it is for, what slice it
+is the sole writer of, and what it deliberately does not do. That header is often the only part that needs
+reading to know whether this is the right file — which turns "read three files to find the logic" into one grep
+and one short read.
+
+**H3. One job per file, and the filename is the job.** `Fighting.lua` holds damage and death. Nothing about
+damage lives anywhere else. The win is that a task maps to a file *before* reading anything.
+
+**H4. Dependencies are declared, not discovered.** The `bind(ctx)` list is a written manifest of everything a
+module touches. Reading eight lines of a bind call tells you the module's whole dependency surface without
+opening its body — and if the list is long, the seam is wrong. This is why `bind` is worth keeping even though a
+plain `require` would work.
+
+**H5. Tests are the cheap way to read a rule.** `witness.test.luau` states every side-taking case in 120 lines of
+assertions; the implementation is 103 lines of thresholds. Reading the test is faster and less ambiguous than
+reading the code, and it cannot drift. Prefer a test that reads like a specification over a comment that claims
+one.
+
+**H6. A one-line index, kept current.** `roblox/src/server/README.md`: one line per module, what it owns, its
+size. Read first, every session. This is what stops a session grepping blindly through a tree it has not seen.
+
+**H7. Greppable, stable names.** `Economy.deposit` is findable; `handle`, `process`, `update` are not. A model
+searching for "where does stock change" should find it with one grep, and `/usr/bin/grep -rn "Economy\." roblox/src`
+should list the whole public surface of a module without reading it.
+
+These change the module map: nothing in §4 may exceed 400 lines, so `Brains` (~300) and `Fighting` (~250) are
+already near the ceiling and should be watched. `WorldGen.lua` at 877 is a shared-layer violator the plan has not
+yet addressed and wants splitting into generation, queries and serialisation.
+
+---
+
 ## 5. Not blowing up the machine
 
 Two different budgets, and they fail differently.
@@ -246,12 +290,20 @@ than moving them.
 - **Verify:** a test that walks the world tree and fails on any function value, Roblox Instance, or cycle —
   i.e. "is this JSON-able". That test is the contract part 2 depends on, and it should exist before part 2 does.
 
+**Step 0 — the size check and the index file.** Before any of it, because it is what keeps the rest honest.
+- `npm test` gains a check that fails on any non-generated `.lua` over 400 lines. It fails immediately, on five
+  known files, so it lands with an allow-list that the later steps delete entries from. A refactor with a
+  shrinking allow-list is a refactor with a progress bar.
+- Write `roblox/src/server/README.md`: one line per module, what it owns, how big. Update it in the same commit
+  as any move, so it cannot drift.
+
 **Step 6 — rung 3 part 2** writes and reads the tree, and catch-up replays the daily tick over it.
 
 ### Order, and what each buys
 
 | Step | Size | Risk | Buys |
 | --- | --- | --- | --- |
+| 0 size check + index | tiny | none | a progress bar, and the ceiling stops being optional |
 | 1 index | small | low | measured performance, headroom for rung 4 |
 | 2 carve three | medium | low | the pattern proven, Sim shrinks ~400 lines |
 | 3 carve two | medium | medium | Sim becomes the tick loops |
@@ -287,3 +339,5 @@ worth the churn. Nothing here is all-or-nothing.
 4. **Should villages be rows under a tribe, or their own tier?** Rung 4 gives one tribe several villages.
 5. **What is the actual entity budget** on a phone with several players, and does the index alone reach it?
 6. **Does catch-up work on the tree**, or does replaying days need state the tree does not keep?
+7. **Is 400 lines the right ceiling**, and should the shared layer be held to it too? `WorldGen.lua` is 877 and
+   is the one file where a mistake corrupts every save once part 2 lands.
