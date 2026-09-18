@@ -3,6 +3,7 @@
 **Lowlands** is a 2D top-down pixel-art Roblox game: a living world of farmers, hunters and raiders who remember
 what you do. Design: **[docs/DESIGN.md](docs/DESIGN.md)**. What is being built next:
 **[docs/RUNG3.md](docs/RUNG3.md)**. Getting it in front of people: **[docs/PUBLISH.md](docs/PUBLISH.md)**.
+Design principles that are *not* about this game, kept for whatever gets built next: **[docs/PRINCIPLES.md](docs/PRINCIPLES.md)**.
 
 **The Warehouse** is the asset pipeline underneath it: a place to quickly piece together game assets and ship them
 into that game.
