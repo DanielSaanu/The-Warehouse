@@ -199,6 +199,11 @@ Two numbers per (tribe, player), plus what individuals remember.
   - Harm done as **part of a group** (you rode with a bandit band) spreads the grudge across the group: small.
   - The same harm done **alone** lands entirely on you: near irreconcilable. "Don't let me recognise you."
   - **Amends** (big gifts, paying what you took back, doing a job for them) reduce grudge. Time alone barely does.
+- **Standing decides who helps you in a fight, and it is comparative** (Danzo, 2026-09-18). Every NPC who can
+  see a fight is a witness, and picks the side they dislike less: they will help someone they are merely neutral
+  about against someone they hate, and they will stand and watch a player they are wary of being killed in their
+  own square. Unarmed witnesses flee and carry what they saw, or run for the nearest armed kin. Built in
+  `docs/RUNG3.md` part 2; it is what makes riding with a band (part 4) mean anything.
 - **Memory** is per NPC group / village: what they personally saw you do, with a timestamp.
 - **Gossip**: when two groups (or a group and a village) are on the same or adjacent tile, they exchange
   memories about players. Each hop loses detail and weight. Caravans are the big spreaders. A lone bandit tells

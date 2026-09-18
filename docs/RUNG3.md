@@ -99,21 +99,54 @@ things, all of which make the parts after this one legible.
   guards and caravan guards. A wolf should hunt deer and boar the way a hunter does, and a kill near a player
   should decrement the region count so the visible layer and the abstract layer never disagree. This is pillar 1
   made watchable, and it is nearly free: wolves already know how to chase, telegraph and swing.
-- **Guards and squads weigh both sides.** Today a guard attacks a bandit within five tiles unconditionally, and
-  turns on the player for hitting one of their own regardless of standing. There is no comparison anywhere. It
-  should ask **who do I like more** — intervene for the side they favour, stay out when they dislike both, and
-  side with a bandit over a player they hate. Per-tribe reputation is already enough to make that interesting;
-  after part 3 it reads per-group memory and gets much sharper. This is what makes part 4 mean anything: the
-  moment you can ride with a band, "whose side are you on" stops being hypothetical.
+- **Everyone is a witness, and witnesses take sides.** This is the big one, and it is what Danzo actually asked
+  for on 2026-09-18: *"different outcomes depending on who's doing what around whom."*
+
+  Today there is no comparison anywhere in the code. One entity per tribe — the `guard` — reacts, and only to
+  the player hitting one of their own (`Sim.lua`, `hitEntity`); everyone else in the village stands there. Guards
+  attack bandits within five tiles unconditionally, whoever the bandit is fighting and whatever they think of the
+  other party. Nobody else in the world ever intervenes in anything.
+
+  Replace all of that with one rule applied by **every NPC who can see a fight**:
+
+  > **Help the side you dislike less, if the gap is worth a fight. If you dislike both, watch. If you like both,
+  > shout but do not swing.**
+
+  Three inputs, all of which already exist: **what the witness thinks of each side** (per-tribe standing now,
+  per-group memory after part 3, and tribe-to-tribe relations for NPC parties — hunters and plunderers are
+  natural enemies per `ideas/INBOX.md`), **what the witness is** (a guard or hunter can fight; a villager,
+  merchant or pregnant woman cannot), and **whose ground it is**.
+
+  Four outcomes: **join in** on one side, **watch**, **flee**, or **raise the alarm** — an unarmed witness runs
+  for the nearest armed person of their tribe, which is how a village that is not looking finds out.
+
+  The situations this creates are the point, and none of them are written anywhere today:
+  - Bandits chase you into a village that likes you → the guard *and* the hunters who are home turn out for you.
+  - Bandits chase you into a village that is **wary** of you → they watch. You brought this here.
+  - Someone the village hates jumps you while they are merely **neutral** about you → they help you anyway,
+    because they hate the other one more. Standing is comparative, not a permission check.
+  - You murder someone in the square of a village you are **family** in → they still turn on you. What they just
+    watched outweighs what they thought this morning.
+  - And it is not about the player at all: a band hitting a hunter squad near a farmer village, and the farmers
+    deciding whether this is their business.
+
+  Numbers to tune: how far a witness can see, how big the gap has to be before it is worth a fight, and a cap on
+  how many join so a village does not all pile onto one wolf. Unarmed witnesses that flee still **carry what they
+  saw** — which is the hook part 3 plugs straight into.
+
+  This is also what makes part 4 mean anything. The moment you can ride with a band, "whose side are you on"
+  stops being hypothetical, and every guard in the world already knows how to answer it.
 - **Villages defend themselves.** A beast tide currently gets answered by one guard while everyone else flees.
   Hunters who are home should turn out, and a village should field defenders in proportion to its size tier.
   Villagers still flee — a farmer running is correct — but the village as a whole should not be a bystander.
+  This falls out of the witness rule: a wolf is something everyone dislikes.
 
 **Depends on:** nothing. It could be built before part 1 if a quick visible win were wanted.
 
-**Done when:** stand still in a forest at night and watch a wolf take a deer; start a fight in a village you are
-family in and watch the guard take your side; start the same fight where you are hated and watch them take the
-other one.
+**Done when:** stand still in a forest at night and watch a wolf take a deer. Get chased by bandits into a
+village that likes you and watch four people turn out for you; do it again at a village that is wary of you and
+watch them fold their arms. Kill a villager in a square where you are family, and watch the same people who
+would have defended you come for you instead.
 
 ---
 
