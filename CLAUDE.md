@@ -11,7 +11,9 @@ the UI is hidden state: every action writes a file under `scenes/`, `sprites/`, 
    live references, `Save.lua`, then `Persistence.lua` = rung 3 part 2) and **Track B** (optional: carving
    `Sim.lua` up for the reader). It was reviewed for five Opus rounds (7 → 9.0, `docs/qa/architecture-summary.md`)
    and then revised by Fable on 2026-09-18 — §9 lists the six decisions that changed, so do not undo them by
-   accident. `roblox/src/server/README.md` says which steps have landed.
+   accident. **Track A is merged (2026-09-18): the world and its players save**, confirmed by Danzo against the real
+   DataStore. Studio needs Game Settings → Security → "Enable Studio Access to API Services", or the server runs
+   NO-SAVE and says so. `roblox/src/server/README.md` says which steps have landed.
 1. Read `ideas/INBOX.md`. That is the to-do list the human writes in the UI. Work through it.
 2. `node bin/warehouse.js scenes` to see what exists. Open the scene JSONs you will touch.
 3. When you change art, render it and LOOK at it: `node bin/warehouse.js render <scene> --scale 8` then Read

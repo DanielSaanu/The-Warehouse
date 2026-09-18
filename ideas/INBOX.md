@@ -12,8 +12,8 @@
 - **Track A is built and through QA (9/10, one round)** on branch `track-a`, 2026-09-18: one game clock, pure ticks
   in `shared/Tick.lua`, `Save.lua`, `Restore.lua`, `Persistence.lua` — **rung 3 part 2, save and catch-up, exists.**
   The whole world is ~9.3 KB of JSON. Summary and Danzo's test checklist: `docs/qa/track-a-summary.md`.
-- **Needs Danzo:** tick Studio → Game Settings → Security → "Enable Studio Access to API Services", then run the
-  six-step checklist in the summary (the QA loop could not reach a real DataStore). Then merge `track-a`.
+- **Confirmed by Danzo on 2026-09-18 against the real DataStore** (Studio API access on): stop, start, and the
+  world and the player were still there. `track-a` is merged into `main`.
 - **Next:** the "you were gone eleven days" line (`meta.headlines` is in the format, nothing writes it), then
   Track B (carving `Sim.lua`) or rung 3 part 3 (gossip).
 
