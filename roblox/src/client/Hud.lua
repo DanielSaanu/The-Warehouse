@@ -76,7 +76,7 @@ end
 --- `holds` maps the InputObject that is pressing a button to the release to run when it ends. A thumb that slides
 --- off the button, or lifts somewhere else entirely, still lets go of the direction: without this a d-pad sticks.
 --- The table is captured by every button's closures, so it is only ever cleared in place, never reassigned.
-local function padButton(holds: { [any]: () -> () }, parent: Instance, name: string, onDown: () -> (), onUp: (() -> ())?, min: number): TextButton
+local function padButton(holds: { [any]: (any) -> () }, parent: Instance, name: string, onDown: (any, TextButton) -> (), onUp: ((any) -> ())?, min: number): TextButton
 	local b = Instance.new("TextButton")
 	b.Name = name
 	b.BackgroundColor3 = PANEL
@@ -106,11 +106,11 @@ local function padButton(holds: { [any]: () -> () }, parent: Instance, name: str
 	b.InputBegan:Connect(function(i)
 		if not isPress(i) then return end
 		if onUp then holds[i] = onUp end
-		onDown()
+		onDown(i, b)
 	end)
 	if onUp then
 		b.InputEnded:Connect(function(i)
-			if isPress(i) and holds[i] then holds[i] = nil onUp() end
+			if isPress(i) and holds[i] then holds[i] = nil onUp(i) end
 		end)
 	end
 	return b
@@ -144,7 +144,8 @@ local function closeX(parent: Instance, onClick: () -> ()): TextButton
 end
 
 function Hud.new(overlay: Frame, callbacks, touch: boolean?)
-	local self = setmetatable({ overlay = overlay, cb = callbacks, noticeToken = 0, dialogue = nil, page = 1, touch = touch or false, holds = {} }, Hud)
+	local self = setmetatable({ overlay = overlay, cb = callbacks, noticeToken = 0, dialogue = nil, page = 1, touch = touch or false,
+		holds = {}, padDirs = {}, padInput = nil, padOffset = Vector2.new(0, 0), padDir = nil }, Hud)
 	-- The catch-all: whatever the button missed, the end of the input itself releases.
 	UserInputService.InputEnded:Connect(function(i)
 		local up = self.holds[i]
@@ -280,6 +281,7 @@ function Hud.new(overlay: Frame, callbacks, touch: boolean?)
 	local barMin = Instance.new("UISizeConstraint")
 	barMin.MinSize = Vector2.new(250, 26)
 	barMin.Parent = bar
+	self.barFrame = bar
 	self.slots = {}
 	for i = 1, Items.SLOTS do
 		local s = Instance.new("TextButton")
@@ -334,12 +336,18 @@ function Hud.new(overlay: Frame, callbacks, touch: boolean?)
 			{ dir = "right", x = 2, y = 1, rot = 90 },
 			{ dir = "down", x = 1, y = 2, rot = 180 },
 		}
+		-- A thumb drifts constantly on a 45 px target during a long walk, and Roblox does not re-fire InputBegan
+		-- when a press that is already down slides back onto a button. So the press is tracked from the moment it
+		-- lands and re-tested against the four rects every frame (Hud.refreshChrome): the direction follows the
+		-- thumb, and sliding from one arrow to the next works without lifting.
+		self.padDirs = {}
 		for _, d in ipairs(DIRS) do
-			local b = padButton(self.holds, pad, d.dir, function()
-				if self.cb.onMoveStart then self.cb.onMoveStart(d.dir) end
-			end, function()
-				if self.cb.onMoveEnd then self.cb.onMoveEnd(d.dir) end
+			local b = padButton(self.holds, pad, d.dir, function(i, btn)
+				self:padTake(i, btn, d.dir)
+			end, function(i)
+				self:padDrop(i)
 			end, 44)
+			table.insert(self.padDirs, { button = b, dir = d.dir })
 			b.Size = UDim2.fromScale(0.32, 0.32)
 			b.Position = UDim2.fromScale(d.x * 0.34, d.y * 0.34)
 			local arrow = Sprites.New("ui_arrow", b)
@@ -423,7 +431,7 @@ function Hud.new(overlay: Frame, callbacks, touch: boolean?)
 	promptMin.Parent = self.prompt
 	if self.touch then
 		-- On a thumb layout the prompt IS the act button: it joins the cluster, top right of the four.
-		promptMin.MinSize = Vector2.new(42, 42)
+		promptMin.MinSize = Vector2.new(44, 44)
 		self.prompt.Parent = self.actionsFrame
 		self.prompt.AnchorPoint = Vector2.new(0, 0)
 		self.prompt.Position = UDim2.fromScale(0.54, 0)
@@ -563,7 +571,7 @@ function Hud.new(overlay: Frame, callbacks, touch: boolean?)
 	local bag = panel(overlay, "Bag")
 	bag.AnchorPoint = Vector2.new(0.5, 0.5)
 	bag.Position = UDim2.fromScale(0.5, 0.5)
-	bag.Size = UDim2.fromScale(0.66, 0.82)
+	bag.Size = UDim2.fromScale(if self.touch then 0.82 else 0.66, if self.touch then 0.86 else 0.82)
 	bag.BackgroundTransparency = 0.05
 	bag.ZIndex = 30
 	self.bagFrame = bag
@@ -571,9 +579,16 @@ function Hud.new(overlay: Frame, callbacks, touch: boolean?)
 	self.bagTitle.Size = UDim2.fromScale(1, 0.09)
 	self.bagTitle.TextXAlignment = Enum.TextXAlignment.Left
 	self.bagTitle.TextColor3 = GOLD
+	-- Ten rows down one column gives ~23 px rows on a phone, which no thumb can hit. On touch they go two abreast
+	-- instead, which roughly doubles the row height for the same panel.
+	local bagCols = if self.touch then 2 else 1
+	local bagStep = if self.touch then 0.158 else 0.077
+	local bagHeight = if self.touch then 0.15 else 0.072
+	local bagTop = if self.touch then 0.10 else 0.11
 	self.bagRows = {}
 	for i = 1, Items.SLOTS do
 		-- A row is a button: tapping it is how a thumb takes a slot in hand, and it is the obvious place to try.
+		local col, line = (i - 1) % bagCols, math.floor((i - 1) / bagCols)
 		local row = Instance.new("TextButton")
 		row.Name = "Bag" .. i
 		row.BackgroundColor3 = GOLD
@@ -581,8 +596,8 @@ function Hud.new(overlay: Frame, callbacks, touch: boolean?)
 		row.BorderSizePixel = 0
 		row.Text = ""
 		row.AutoButtonColor = false
-		row.Size = UDim2.fromScale(1, 0.072)
-		row.Position = UDim2.fromScale(0, 0.11 + (i - 1) * 0.077)
+		row.Size = UDim2.fromScale(1 / bagCols - (if bagCols > 1 then 0.02 else 0), bagHeight)
+		row.Position = UDim2.fromScale(col * (1 / bagCols), bagTop + line * bagStep)
 		row.Parent = bag
 		row.Activated:Connect(function() if self.cb.onSelect then self.cb.onSelect(i) end end)
 		local icon = Sprites.New("item_food", row)
@@ -711,6 +726,49 @@ function Hud.setLegend(self, text: string)
 	self.legend.Visible = text ~= "" and not self:anyOpen()
 end
 
+-- ---------- d-pad press tracking ----------
+-- The press is followed rather than owned by one button. `padOffset` is calibrated at the moment the thumb lands,
+-- from the button it landed on, so the input's coordinate space and the GUI's never have to be assumed equal.
+local function padPoint(self): Vector2?
+	local i = self.padInput
+	if not i then return nil end
+	if i.UserInputType == Enum.UserInputType.Touch then
+		return Vector2.new(i.Position.X, i.Position.Y) + self.padOffset
+	end
+	return UserInputService:GetMouseLocation() + self.padOffset
+end
+
+--- Which arrow, if any, is under that point.
+function Hud.padDirAt(self, at: Vector2): string?
+	for _, e in ipairs(self.padDirs) do
+		local p0, sz = e.button.AbsolutePosition, e.button.AbsoluteSize
+		if at.X >= p0.X and at.X <= p0.X + sz.X and at.Y >= p0.Y and at.Y <= p0.Y + sz.Y then return e.dir end
+	end
+	return nil
+end
+
+--- Swap the walked direction, releasing whatever was held first. nil just lets go.
+function Hud.padSteer(self, dir: string?)
+	if self.padDir == dir then return end
+	if self.padDir and self.cb.onMoveEnd then self.cb.onMoveEnd(self.padDir) end
+	self.padDir = dir
+	if dir and self.cb.onMoveStart then self.cb.onMoveStart(dir) end
+end
+
+function Hud.padTake(self, i, button: TextButton, dir: string)
+	self.padInput = i
+	local centre = button.AbsolutePosition + button.AbsoluteSize / 2
+	local at = if i.UserInputType == Enum.UserInputType.Touch then Vector2.new(i.Position.X, i.Position.Y) else UserInputService:GetMouseLocation()
+	self.padOffset = centre - at
+	self:padSteer(dir)
+end
+
+function Hud.padDrop(self, i)
+	if self.padInput ~= nil and self.padInput ~= i then return end
+	self.padInput = nil
+	self:padSteer(nil)
+end
+
 --- Called every frame: the legend and the touch controls are always on, except while a panel covers the play area.
 function Hud.refreshChrome(self)
 	local open = self:anyOpen() or self.deadFrame.Visible
@@ -725,11 +783,19 @@ function Hud.refreshChrome(self)
 		end
 		for _, up in ipairs(pending) do up() end
 	end
+	-- Follow the thumb: a press that has drifted onto another arrow steers there, one that has drifted off the
+	-- pad altogether stops. Roblox will not re-fire InputBegan for a press that is already down.
+	if self.padInput then
+		local at = padPoint(self)
+		self:padSteer(if at then self:padDirAt(at) else nil)
+	end
 	local want = self.legend.Text ~= "" and not open
 	if self.legend.Visible ~= want then self.legend.Visible = want end
 	for _, c in ipairs(self.touchControls) do
 		if c.Visible == open then c.Visible = not open end
 	end
+	-- On touch the hot bar sits top right, which is where the bag panel reaches.
+	if self.touch and self.barFrame.Visible == open then self.barFrame.Visible = not open end
 	if self.touch and self.prompt.Visible == open then self.prompt.Visible = not open end
 end
 
@@ -836,7 +902,7 @@ function Hud.renderDialogue(self)
 	local last = self.page >= #d.lines
 	local hasChoices = d.choices ~= nil and #d.choices > 0
 	if self.touch then
-		self.dialogueMore.Text = if last then (if hasChoices then "tap a question, or the map to leave" else "tap to close") else ("tap to go on  (%d/%d)"):format(self.page, #d.lines)
+		self.dialogueMore.Text = if last then (if hasChoices then "tap a question, or the x to leave" else "tap to close") else ("tap to go on  (%d/%d)"):format(self.page, #d.lines)
 	else
 		self.dialogueMore.Text = if last then (if hasChoices then "Esc: leave" else "F / click: close") else ("F / click: more  (%d/%d)"):format(self.page, #d.lines)
 	end
