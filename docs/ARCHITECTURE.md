@@ -3,15 +3,16 @@
 **Status: a plan, not the code, and the review is still running.** Written 2026-09-18, before rung 3 part 2
 (save and catch-up), because the shape of the data decides whether saving is a morning's work or a rewrite.
 
-> **Review loop: rounds 1, 2 and 3 scored 7, 8.5 and 8.5. Round 4 is next.** Danzo raised the bar to **9.5**
+> **Review loop: rounds 1-4 scored 7, 8.5, 8.5, 8.5. Round 5 is the last one.** Danzo raised the bar to **9.5**
 > (from 8.0) and capped the loop at **5 rounds**, on 2026-09-18: *"points shouldnt be given for free, i want to
 > make sure we have this right before we start coding."* Verbatim reports:
-> `docs/qa/architecture-round1.md`, `-round2.md`, `-round3.md`.
+> `docs/qa/architecture-round1.md`, `-round2.md`, `-round3.md`, `-round4.md`.
 >
 > **Nothing here is built yet, and nothing should be built until the loop closes** — including rung 3 part 2,
-> which depends on step 1. Between them the three rounds have found **five save blockers** that were invisible
-> from reading the code — and round 3 found that one of them was *introduced* by round 2's own fix. That is the
-> whole argument for finishing the review first.
+> which depends on step 1. The four rounds have found **six save blockers** invisible from reading the code, and
+> **two of the six were introduced by a previous round's own fix** (round 2's map-diff rule caused the flood
+> blocker; round 3's "re-apply the calamity" wording caused the sixth). That is the whole argument for finishing
+> the review first — and the reason each round now audits the last round's repairs, not just the plan.
 
 Danzo's brief: *"set it up in a way where the data flows instead of congesting… a village has x amount of people,
 those people are split into groups, those groups are split into individuals. Data that affects the group is
@@ -58,18 +59,25 @@ world
 ├─ meta        version, seed, gameSeconds, savedAt, rngState, nextBagId,
 │              nextPersonId, lastDailyTick, headlines[]    (never os.clock; see R5)
 │              (day and dayFraction are DERIVED from gameSeconds — not stored)
-├─ mapDiff     sparse { "tileIndex" -> id } of every runtime tile change, byte-packed
-│              EXCEPT calamity tiles, which are an overlay (see the load order, §6)
+├─ mapDiff     sparse { "tileIndex" -> id } of every runtime change to the OBJECT
+│              layer, byte-packed. EXCEPT calamity tiles, which are an overlay
+│              (see the load order, §6). Every runtime write today is to
+│              `world.object` (camps, bags, pickups) except the flood, which is
+│              ground and is the overlay — so one layer is enough, and a second
+│              node (or a layer byte) is what a future ground edit needs.
 │              (the map itself is regenerated from the seed — it is derived, R4)
 ├─ calendar    calamity { kind, active, day, warnedDay }   (no tile list: recompute on load)
 ├─ regions[]   per 16x16: grass, deer, boar, wolf, tide     36 rows, fixed
-│              (forest/open/col/row are derived from the map — not stored)
-├─ tribes[]    type, sizeTier, stock{}, population, walled, surnames, news, chiefId
+│              (forest/open/col/row/village are derived from the map — not stored)
+│              (`live`, the materialised-animal count, is TRANSIENT — see below)
+├─ tribes[]    type, villageId, stock{}, population, walled, surnames, news
 │              (guard/merchant/survivor are ENTITY ids — cleared on save, R5)
+│              (sizeTier and chiefId are rung 4; not in the v1 schema)
 ├─ villages[]  id, tribeId, roster, bank, memory{}
 │              (name, bounds, spawn/bed/stall come from the seed — not stored)
 ├─ groups{}    caravan / squad / band / (rung 4: hire, warband)
-│              from, to, pos, dir, acc, carry{}, morale, memory{},
+│              kind, tribe, from, to, pos, dir, acc, speed, pauses, fullSize,
+│              lateTarget, carry{}, morale, memory{}, timers (game time, R5),
 │              members[]: person ids, or { player = userId } — never anonymous specs
 │              (route[] is DERIVED: recomputed from from/to on load, pos clamped)
 ├─ people{}    "id" -> { id, first, last, sex, tribe, village, role, stage, born,
@@ -87,14 +95,32 @@ silently returns nil and **the family tree detaches on the first load**. Three n
 right now: `Families.Registry.people` (`Families.lua:30`), `S.camps` (keyed by `UserId`, `Sim.lua:1286`) and
 `mapDiff`. Either the key is a string everywhere, or the node is an array of rows carrying their own `id` field.
 This is not a byte-budget question — §8 Q9 noticed the string keys and drew only the budgeting conclusion — it is
-a correctness question, and R1's test is what catches it.
+a correctness question. One honest correction to how round 3 stated it: `reg.people` is **dense** today (nothing
+ever deletes from it), so JSON encodes it as an array and it survives a round trip by luck. The rule is
+prospective — the moment §5's pruning lands it goes sparse and the luck runs out — while `S.camps` and `mapDiff`
+are sparse right now.
+
+**And the keys are only half of it: every id-shaped *value* is a string too.** Making `people` string-keyed while
+`Person.father` stays the number `7` fixes nothing — `reg.people["7"]` and `p.father == 7` still miss each other,
+and **a `decode(encode(t))` deep-equal passes anyway**, because both sides are equally wrong. So: `Person.id`,
+`father`, `mother`, `spouse`, `children[]`, `e.person`, `tribes[].villageId` and the camp keys are all strings;
+`Families.Registry.nextId` issues `"p1"`, `"p2"`, … the way entities already issue `"e1"`; and R1's test carries
+a **separate assertion that every id-typed field is a string after the round trip**, because the deep-equal
+cannot see this class of bug. `Families.lua` is `--!strict`, so this is a type change across the module
+(`Families.lua:18-30, 40-48`), not a convention — which is why it belongs in step 1 and not in a later tidy.
+
+**`regions[].live` is transient and must not be saved.** It is the count of currently materialised animals,
+zeroed on init (`Sim.lua:1551`), incremented on spawn (`:602`), decremented on removal (`:180`) and read as
+`r.live[sp] < want` to decide whether to spawn (`:619`). Persist it and every region loads believing its animals
+are already out there, so **nothing ever spawns again**. It is the clearest example of R1 at the region tier:
+the durable row is the population, the live count is a projection.
 
 **The tier rule, which is Danzo's rule made precise:**
 
 > A fact lives at the **highest tier where it is still true of everything below it** — and if it is *derived*
 > from a lower tier, it is not stored at all (R4).
 
-- True of a tribe → tribe row: stock, size tier, surnames.
+- True of a tribe → tribe row: stock, surnames, which village is theirs (by id, never by reference).
 - True of a village → village row: roster, knowledge bank, **what happened here**.
 - True of a party → group row: where it is going, load, morale, what they saw (the route itself is derived).
 - True of one person → person row, small fixed fields only.
@@ -124,11 +150,11 @@ two systems can own different fields of the same row without fighting.
 
 | Slice | Only writer |
 | --- | --- |
-| `meta` (all of it except `gameSeconds`) | `Save` |
+| `meta` (all of it except `gameSeconds`) | `Persistence` |
 | `regions[]` counts | `Ecology` |
 | `tribes[].stock` | `Economy` |
-| `tribes[].population`, `.news`, `.surnames`, `.chiefId` | `Population` |
-| `tribes[].type`, `.sizeTier`, `.walled` | `Save` (written once at generate, never after) |
+| `tribes[].population`, `.news`, `.surnames` | `Population` |
+| `tribes[].type`, `.walled`, `.villageId` | `Persistence` (written once at generate, never after) |
 | `people`, roles, succession | `Population` |
 | `villages[].roster`, `.bank` | `Population` |
 | `groups[]` from/to, pos, carry, morale, members | `Bands` |
@@ -164,6 +190,12 @@ tribe thinks of you" is `Witness.feel(...)` over stored numbers, not a cached ma
 - **The tree holds ids, never references**, and every id read is nil-checked. `removeEntity` (`Sim.lua:168`) does
   not clear other entities' `npcTarget`, `threat` or `alarm.to` — survivable while entities are transient, fatal
   the moment an id is durable.
+- **`tribes[].village` is a live table reference today, and one read compares it by identity.** `initTribes`
+  stores the `WorldGen.Village` table itself (`Sim.lua:352`); `Sides.lua:63` asks
+  `WorldGen.villageAt(...) == t.village`, which is pointer equality. Serialise that and you get a duplicate copy
+  of the village inside every tribe row — and on load the identity test is false forever, so **no NPC ever
+  recognises its own home**, which is the input to half of part 1's side-taking. It becomes `villageId`, and the
+  five read sites (`Sides.lua:63`, `Interact.lua:38`, `Sim.lua:312, 477, 1406`) resolve through `Map`.
 - **Durable id counters live in `meta` and are restored.** `nextId` is a file local starting at 0
   (`Sim.lua:42`) and issues both entity ids (`"e"..n`) and bag ids (`"b"..n`). Bags are persisted, and durable
   records hold entity ids: `person.entity = e.id` (`:317`) sits on a saved registry row, and `g.leader` holds one
@@ -179,22 +211,25 @@ tribe thinks of you" is `Witness.feel(...)` over stored numbers, not a cached ma
   number. Without `meta.rngState`, every restart replays the same stream: the same names, the same conceptions.
 - **`os.time` is the one permitted wall-clock read, and only at load.** Banning wall time outright leaves catch-up
   with nothing to measure the gap against: the world has to know how long it was down. `meta.savedAt = os.time()`
-  (UNIX epoch, stable across servers and restarts, unlike `os.clock`) is written on every save; on load,
-  `os.time() - meta.savedAt` is the elapsed real seconds that becomes `gameSeconds`. Nothing else in the codebase
-  reads a wall clock into anything durable — `Movement.newBudget(os.clock())` stays, because a per-tick movement
+  (UNIX epoch, stable across servers and restarts, unlike `os.clock`) is written on every save; on load, the gap
+  is `os.time() - meta.savedAt`. It is **added, not assigned** — `gameSeconds += math.min(gap, CATCHUP_CAP)` —
+  because assigning it would wipe the calendar back to day 1 on the first load. Nothing else in the codebase
+  reads a wall clock into anything durable; `Movement.newBudget(os.clock())` stays, because a per-tick movement
   budget is transient by definition.
 
 ---
 
 ## 4. The module map after
 
-Shared stays as it is — 18 files, median 80 lines, mostly pure Luau — **except `WorldGen.lua` at 877 lines**,
-which is split into generate / query / encode before part 2, because `encode` *is* the save format.
+Shared stays as it is — 18 files, median ~74 lines, mostly pure Luau — **except `WorldGen.lua` at 877 lines**,
+which is split into generate / query / encode before part 2, because `encode` *is* the save format. It becomes 19
+files after step 1 adds `Save.lua`, and 21 after step 5.
 
 ```
 server/
   Map.lua          the generated map: init, get, walkable, encoded  (exists as World.lua, 37)
-  Save.lua         the tree: load, save, migrate, catch-up. Owns `meta`.    ~200
+  Persistence.lua  the DataStore adapter: GetAsync, SetAsync, retries, autosave ~120
+                   (the ONLY Roblox-API half of saving; owns `meta`)
   Calendar.lua     day, clock, calamities                                  ~120
   Bodies.lua       entities: spawn, move, occupancy, replication, wildlife  ~300
   Brains.lua       the think dispatcher, the AI states, targeting          ~250
@@ -210,11 +245,17 @@ server/
   Sim.lua          the tick loops and nothing else                         ~150
 ```
 
-**The name `World.lua` is already taken, so the new module is `Save.lua`.** `server/World.lua` exists today (37
-lines: `World.init/get/walkable/encoded`, holding the generated map, required by `Server.server.lua:11` and
+**Saving is two modules, and only one of them is here.** The pure half — encode, decode, migrate, catch-up, all
+of it plain Luau over the tree — is **`shared/Save.lua`**, because `npm test` can only bundle `shared/` (H9) and
+a serialiser nobody can test is the thing this plan exists to avoid. The Roblox half — `DataStoreService`,
+retries, the autosave loop — is **`server/Persistence.lua`**, a thin adapter that calls `Save.encode` and hands
+the string to Roblox. Round 3 put "Save.lua" in `server/` in this map and in `shared/` in step 1, which is
+exactly the contradiction that makes a gate a fiction; the two names above settle it.
+
+**The name `World.lua` is also already taken.** `server/World.lua` exists today (37 lines:
+`World.init/get/walkable/encoded`, holding the generated map, required by `Server.server.lua:11` and
 `Sim.lua:27`). Two modules called "world" — one holding the map, one holding the World Record — breaks H3 before
-a line is written, so **step 0 renames the existing file to `Map.lua`** (two require sites) and the tree lives in
-`Save.lua`.
+a line is written, so **step 0 renames the existing file to `Map.lua`** (two require sites).
 
 Budgeted so headers and boilerplate do not push a module through the 400 ceiling. Two earlier entries are gone:
 `Wildlife` (80 lines) folded into `Bodies`, because a module that is 20% header is not worth the hop, and
@@ -297,6 +338,13 @@ What prevents it:
   separately). The world key holds what *places and parties* remember; the player key holds what the player
   carries.
 - `people` is a versioned sub-table, so it can be lifted into its own chunked key later without touching the rest.
+- **Pruning is a rule from the first commit, not a rescue later** (RUNG3 part 2 says so). The rule: a person
+  who has been dead longer than `PRUNE_DAYS` keeps `id`, `first`, `last`, `died`, `cause`, `killer` and loses the
+  rest (~274 B → ~71 B); a pruned person is never deleted, because `children[]` and `father`/`mother` on the
+  living point at them and a hole in the tree is worse than a stub. Two consequences the plan has to carry: it is
+  what makes `people` **sparse**, which is what arms §2's string-key rule; and the pruned stub is what a grave,
+  a grudge or "your father's name" reads. It lands with step 1's `Save.lua`, as a pure function over the registry
+  with its own test.
 
 ### CPU
 
@@ -339,7 +387,8 @@ Splitting `Sides.lua` and `Debug.lua` out of `Sim.lua` worked, and it worked a p
 **Step 0 — the ceiling, the index file, and the rename.** `npm test` gains a check failing any non-generated
 `.lua` over 400 lines, landing with the H1 allow-list that later steps delete entries from — a refactor with a
 progress bar. Rename `server/World.lua` to `server/Map.lua` (two require sites: `Server.server.lua:11`,
-`Sim.lua:27`) so `Save.lua` can have the name. Write `roblox/src/server/README.md`.
+`Sim.lua:27`), so that nothing in `server/` is called "world" when the World Record arrives. Write
+`roblox/src/server/README.md`.
 **Gate:** `npm test` + lint.
 
 **Step 1 — make the tick pure over records, fix game time, and land the serialiser.** *The step part 2 cannot
@@ -363,14 +412,25 @@ start without, and the review found every half of it is broken today.*
 - **`shared/Save.lua` lands here, not in step 6** — `encode`/`decode` plus the R1 round-trip assertions — because
   steps 1 and 1b are *verified by a serialiser that would not exist yet*. "Two consecutive boots do not grow the
   registry" needs a save and a load. It is pure Luau over the tree, so it belongs in `shared/` (H9) and every
-  later step can round-trip in `npm test` for free.
-- **Verify:** run 28 simulated days with zero entities and assert registry, `t.population` and region counts
-  match a run of the same 28 days with a player present; assert a 28-day run advances group `pos` identically
-  whether it is replayed hourly or ticked live; assert two consecutive boots do not grow the registry; assert
-  `decode(encode(tree))` deep-equals the tree, with no function, Instance, cycle, `inf`, `NaN` or numeric key.
-  The "no persisted field came from `os.clock`" rule is **a lint check in `tools/luau-check.js`**, not a test
-  assertion — a Luau test cannot see where a number came from, but a grep for `os.clock` outside an allow-list
-  of transient call sites can.
+  later step can round-trip in `npm test` for free. `server/Persistence.lua`, the DataStore adapter, is step 6's
+  job — nothing before then needs Roblox to have written a byte.
+- **Verify** (and each assertion says where it runs, because round 4 caught two that could not run at all):
+  - *In `npm test`:* 28 simulated days of the pure tick with nothing observed, against the same 28 days with an
+    `observed = true` flag stubbed in, assert registry, `t.population` and region counts agree. The original
+    wording said "with a player present", which needs materialisation, a `Player` Instance and `server/` — the
+    real player-present comparison is part of step 3's Studio script, not this gate.
+  - *In `npm test`:* two consecutive boots do not grow the registry.
+  - *In `npm test`:* `decode(encode(tree))` deep-equals the tree, with no function, Instance, cycle, `inf` or
+    `NaN`; **plus** the separate id-shape assertion from §2, which the deep-equal cannot make.
+  - *In `npm test`:* a 28-day catch-up replay lands groups where a 28-day live run does, **replaying groups at
+    1 Hz sim-steps, not in hourly lumps**. An hourly lump is `acc += 1.5` × 3600, clamped to a 55-62 tile route,
+    followed by a single `groupTurn` (`Sim.lua:570`) — so one lump traverses at most one leg where live ticking
+    does about eleven, and `depositCarry` fires once instead of eleven times. Caravans would arrive with a
+    fraction of the goods. The cost of doing it properly is nothing: 4 in-game weeks is 16,800 steps of integer
+    arithmetic.
+  - *In `npm run lint:luau`:* no persisted field came from `os.clock` — a lint check in `tools/luau-check.js`,
+    not a test assertion, because a Luau test cannot see where a number came from but a grep outside an
+    allow-list of transient call sites can.
 **Gate:** `npm test` + lint. No Studio needed, which is the point of putting it in `shared/`.
 
 **Step 1b — give `init` a restore path.** Today `initTribes` (`Sim.lua:349`) calls `Families.newAdult` for every
@@ -383,6 +443,15 @@ meaningless without it.
 
 **Step 2 — carve `Calendar`, `Tiles`, `Bands`.** Small, low-traffic, obvious seams, one PR each; proves the
 pattern.
+- **`Calendar` also splits `startCalamity` in two** — `Calamity.applyOverlay(kind)` (idempotent, tiles only) and
+  `beginCalamity(kind)` (the one-time consequences) — per the load order below. The day maths itself is pure and
+  belongs beside the existing `shared/Calamity.lua` and `shared/DayCycle.lua` (H9); `server/Calendar.lua` is the
+  thin half that owns `meta.gameSeconds` and answers `Sim.clock()`.
+- **`Bands` gives the group row a `to`.** `makeGroup` (`Sim.lua:411`) takes `to` as an argument and stores only
+  `from`, and `tickGroups` (`:553-563`) *replaces* `g.route` wholesale when a band takes its real ambush, with no
+  `to` to update. So "the route is derived from `from`/`to`" — §8 Q12 — is not true of the code yet: without this,
+  a band recomputes its route from a generate-time destination and **teleports back to its day-one grace ambush
+  on every load**. `to` is stored, and it is rewritten every time the route is retargeted.
 - **`Bands` also gives groups real members.** `g.members` is a list of anonymous specs (`{kind="hunter"}`) and
   `materialise` re-rolls names from `Names.person` every time, so the same squad is different people on every
   materialisation. Rung 3 part 3 ("four witnesses who will be home tonight") and part 4 (the player as a member)
@@ -412,6 +481,22 @@ not be buried in an 877-line file. **Gate:** `npm test` + lint — `WorldGen` is
 everything else) against the gap `os.time() - meta.savedAt` gives it. **Gate:** `npm test` + **Studio**, and the
 Studio half is the real one: a save, a server restart and a rejoin.
 
+**Catch-up is capped, and the cap has consequences the plan has to name.** DESIGN §14 and RUNG3 part 2 both say
+catch-up runs "one step per in-game hour, capped at 4 weeks", and this document never carried the cap. Read as
+**4 in-game weeks** — 28 in-game days, which at `DAY_SECONDS = 600` is 4.7 real hours of world time — because the
+alternative reading (4 real weeks) is 2.4 million in-game days of replay and is obviously not what a cap is for.
+So `gameSeconds += math.min(os.time() - meta.savedAt, 28 * Config.DAY_SECONDS)`, and:
+
+- **The unsimulated time did not happen.** Past the cap the world simply slept: the calendar advances by the cap,
+  not by the gap. A player returning after a month finds the world four in-game weeks older, not a year.
+- **`meta.lastDailyTick` is set from the post-catch-up day, and catch-up runs the daily ticks it skipped over
+  itself.** The live driver (`Sim.lua:1598-1602`) does `if day > S.lastDailyTick then S.lastDailyTick = day` and
+  runs **one** `dailyTick` — it assigns the day rather than stepping toward it, so any day the calendar jumps
+  over is silently never simulated. That is correct for a `Debug.jump`, and wrong for a load. Catch-up therefore
+  replays each missed day explicitly and leaves `lastDailyTick` equal to the day it finished on.
+- **The replay is hourly for the daily systems and 1 Hz for groups** (see step 1's verify), which is the only
+  granularity that makes "so caravans arrive" true.
+
 **The load order is fixed, and it is not obvious.** Round 2's "`mapDiff` records EVERY runtime tile change"
 collides with the calamity system, which is the fifth save blocker: `setFlood` (`WorldGen.lua:778`) stashes the
 tiles it overwrites in `world.floodBackup`, an in-memory table that is not in the tree, and `endCalamity`
@@ -422,11 +507,30 @@ on load and you get a *different* list, because `floodTiles` skips tiles that ar
 1. Regenerate the map from `meta.seed`.
 2. Apply `mapDiff` — which **excludes calamity tiles**; it is every *durable* runtime change (bags, campfires,
    pickups, player-caused edits).
-3. Re-apply the active calamity from `calendar.calamity.kind` **last**, over the restored map, rebuilding
-   `floodBackup` exactly as a live `startCalamity` would.
+3. Re-apply the active calamity's **tiles only**, from `calendar.calamity.kind`, **last** — over the restored
+   map, rebuilding `floodBackup` as the layer directly under the overlay.
 
 The overlay is derived (R4) and costs nothing to recompute; the backup never needs persisting because it is
 always the layer directly under the overlay.
+
+**And "re-apply the calamity" must not mean "call `startCalamity`" — that is the sixth blocker, and round 3's
+own wording caused it.** `startCalamity` (`Sim.lua:1374`) lays tiles, but it also sets `c.day = S.day` (the end
+date `tickCalamity` compares against, `:1438`), takes **30% of every tribe's food** (`:1402`), runs
+`Ecology.beastTide` and a population hit for a tide (`:1404-1408`), shoves entities and players out of the water,
+destroys camps (`:1399`) and sends every player a notice. Run that on load and each restart during a flood steals
+another 30% of the world's food and pushes the end date forward — **the calamity never ends**, and with a
+two-minute autosave it happens again and again. So the function splits, as part of step 2's `Calendar` carve:
+
+- **`Calamity.applyOverlay(kind)`** — idempotent, pure over the map: the flood tiles and `setFlood`, or the
+  region `tide` flags. Load calls this and nothing else, and never writes `c.day`.
+- **`beginCalamity(kind)`** — the one-time half: `c.day`, the food cut, the population hit, the shoves, the camps,
+  the notices. Only `tickCalamity` calls it, only when a calamity actually begins.
+
+The same split is what makes "is a calamity in progress" safe to ask twice, which a save/load cycle does by
+definition. (One honest imprecision: the recomputed flood tile set is not always *identical* to the original —
+a bag or campfire that has despawned since changes what `floodTiles` skips. The difference is a handful of
+cosmetic tiles at the water's edge, not a correctness problem, because `floodBackup` is rebuilt from whatever
+the overlay actually covered.)
 
 **The cross-key rule, which rung 3 part 4 needs.** A player who joins a caravan is a member of a group row in the
 world key while the player lives in their own key, and the two are written on different schedules (world every
@@ -504,7 +608,8 @@ Answered in round 3:
 
 11. **How does catch-up know how long it was down?** `meta.savedAt = os.time()`, and `os.time` is the single
     permitted wall-clock read, at load only (R5). Banning wall time outright left the gap unmeasurable.
-12. **Is `groups[].route` stored?** No — derived (R4). `from`/`to` are stored, the route is recomputed by
+12. **Is `groups[].route` stored?** No — derived (R4). `from`/`to` are stored (step 2 adds `to`, which the code
+    does not keep today) and `to` is rewritten whenever a group is retargeted, the route is recomputed by
     `WorldGen.route` on load, and `pos` is clamped to the new length. At 55-62 tiles and ~900 B a route, storing
     40 of them would be ~36 KB of the key for something the seed already determines. The risk this accepts: if
     `WorldGen.route` ever changes, a loading caravan teleports to the nearest point on its new road. That is a
@@ -515,3 +620,18 @@ Answered in round 3:
     `WorldGen.lua` (step 5). `Hud.lua`, `Client.client.lua` and `Viewport.lua` are client files, dated to rung 3
     part 5 and rung 4 in H1, and deliberately untouched here: this plan is about the server tree, and opening the
     client mid-refactor doubles the QA surface for no save benefit.
+
+Answered in round 4:
+
+15. **Does "capped at 4 weeks" mean in-game or real weeks?** In-game: 28 in-game days, 4.7 real hours at
+    `DAY_SECONDS = 600`. The real-weeks reading is 2.4 million in-game days of replay, which is not what a cap is
+    for. Past the cap the world slept; the calendar advances by the cap, not by the gap.
+16. **Where does saving touch Roblox?** In exactly one file, `server/Persistence.lua`. Everything else about
+    saving — encode, decode, migrate, catch-up, prune — is pure Luau in `shared/Save.lua` and therefore inside
+    `npm test`.
+17. **What about `sizeTier` and `chiefId`?** Out of the v1 schema. Neither exists in the code, and `chiefId`
+    belongs to DESIGN §13's chiefs-and-heirs work, which is rung 4. A field with no writer is a promise the
+    schema cannot keep; they arrive with the systems that need them.
+18. **Is the `lint` gate runnable everywhere?** No — `npm run lint:luau` needs the gitignored `tools/luau/`
+    binaries (CLAUDE.md says how to get them). A session without them runs `npm test` and says so; it is a
+    setup step, not an excuse to skip the gate.

@@ -8,10 +8,10 @@ the UI is hidden state: every action writes a file under `scenes/`, `sprites/`, 
 
 0. **Read `docs/ARCHITECTURE.md` before writing any server code.** It is the plan for where the data lives, and
    it is what rung 3 part 2 (save and catch-up) is waiting on. **Status, 2026-09-18: rounds 1, 2 and 3 scored
-   7, 8.5 and 8.5. Round 4 is next. Danzo raised the bar to 9.5 (from 8.0) and capped it at 5 rounds, because he
+   7, 8.5, 8.5 and 8.5. Round 5 is the last one. Danzo raised the bar to 9.5 (from 8.0) and capped it at 5 rounds, because he
    wants the plan right before any of it is coded.** Verbatim reports are in `docs/qa/architecture-round1.md`,
-   `-round2.md` and `-round3.md`; between them they found **five save blockers** invisible from the code, one of
-   which round 2's own fix introduced and round 3 caught. **Do not start the refactor, and do not start part 2,
+   `-round2.md`, `-round3.md` and `-round4.md`; between them they found **six save blockers** invisible from the
+   code, **two of which a previous round's own fix introduced** and the next round caught. **Do not start the refactor, and do not start part 2,
    until the loop closes.**
 1. Read `ideas/INBOX.md`. That is the to-do list the human writes in the UI. Work through it.
 2. `node bin/warehouse.js scenes` to see what exists. Open the scene JSONs you will touch.
