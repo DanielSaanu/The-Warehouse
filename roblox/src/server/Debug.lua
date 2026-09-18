@@ -74,7 +74,7 @@ function Debug.run(cmd: string, ...): any
 		local day, frac = args[1] or 7, args[2] or 0.1
 		if not Calendar.setDay(day, frac) then return "the calendar only moves forward (it is day " .. S.day .. ")" end
 		S.day = day
-		S.lastDailyTick = day -- one jump does not run six days of births and breeding
+		S.meta.lastDailyTick = day -- one jump does not run six days of births and breeding
 		return ("day %d, %.0f%% through it"):format(day, frac * 100)
 	elseif cmd == "day" then
 		Calendar.skipTo(args[1] or 0.1)

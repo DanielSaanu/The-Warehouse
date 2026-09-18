@@ -21,6 +21,7 @@ local Ecology = require(Shared:WaitForChild("Ecology"))
 local Calamity = require(Shared:WaitForChild("Calamity"))
 local DayCycle = require(Shared:WaitForChild("DayCycle"))
 local Families = require(Shared:WaitForChild("Families"))
+local Tick = require(Shared:WaitForChild("Tick"))
 local Talk = require(Shared:WaitForChild("Talk"))
 local Sides = require(script.Parent:WaitForChild("Sides"))
 local Debug = require(script.Parent:WaitForChild("Debug"))
@@ -44,7 +45,7 @@ local nextId = 0
 
 -- ---------- state ----------
 Sim.state = {
-	meta = { gameSeconds = 0 }, -- the one clock (Calendar owns it); `day` below is derived from it, a cache
+	meta = { gameSeconds = 0, lastDailyTick = 1 }, -- the one clock (Calendar owns it); `day` below is derived, a cache
 	day = 1,
 	tribes = {},      -- [i] = { village, tribeType, stock, population, walled, surnames, news }
 	people = nil,     -- Families.Registry: everyone who was ever born in this world
@@ -55,7 +56,6 @@ Sim.state = {
 	camps = {},       -- [userId] = { x, y, litUntil, out }
 	bags = {},        -- [id] = { x, y, owner, slots, droppedAt }
 	calamity = { kind = nil, active = false, warnedDay = 0, day = 0, flood = nil },
-	lastDailyTick = 1,
 }
 local S = Sim.state
 
@@ -407,15 +407,15 @@ local function forestTarget(): WorldGen.Pos
 end
 
 local function makeGroup(id: string, kind: string, tribeIdx: number, from: WorldGen.Pos, to: WorldGen.Pos, members, pauses)
-	local route = WorldGen.route(world, from.x, from.y, to.x, to.y, true) or {}
-	table.insert(route, 1, { x = from.x, y = from.y })
+	-- `route` is derived from `from` and `to` (Tick.rebuildRoute), so `to` is what a save keeps
 	local g = {
-		id = id, kind = kind, tribe = tribeIdx, route = route, pos = 1, dir = 1, from = { x = from.x, y = from.y },
+		id = id, kind = kind, tribe = tribeIdx, pos = 1, dir = 1, from = { x = from.x, y = from.y }, to = { x = to.x, y = to.y },
 		pauseUntil = Calendar.now() + rng:int(20, 60), pauses = pauses, speed = 1.5, acc = 0,
 		members = members, fullSize = #members, entities = {}, leader = nil, trail = {}, materialised = false,
 		target = nil, aggroUntil = 0, lastSeen = nil,
 		carry = {}, retreatUntil = 0,   -- what they are bringing home, and whether they have had enough
 	}
+	Tick.rebuildRoute(g, world)
 	S.groups[id] = g
 	return g
 end
@@ -458,32 +458,24 @@ local function carryTotal(g): number
 	return n
 end
 
---- Home with the kill: the hides and meat go into the village's stock. This is the point of a hunt, and until
---- now an NPC kill produced nothing at all (Danzo, 2026-09-18: "they dont seem like they hunt and return back
---- with theyre materials").
-local function depositCarry(g)
-	if carryTotal(g) == 0 then return end
-	local t = S.tribes[g.tribe]
-	local parts = {}
-	for item, n in pairs(g.carry) do
-		if n > 0 and t.stock[item] ~= nil then
-			t.stock[item] += n
-			table.insert(parts, ("%d %s"):format(n, item))
+--- What the pure group tick reports, for the server log.
+local function logGroupEvents(events)
+	for _, ev in ipairs(events) do
+		if ev.kind == "deposit" then
+			print(("[Sim] the %s %s came home with %s"):format(S.tribes[ev.tribe].village.name, ev.group, ev.text))
+		elseif ev.kind == "retarget" then
+			print("[Sim] the " .. ev.group .. " has moved down the road")
 		end
 	end
-	g.carry = {}
-	if #parts > 0 then print(("[Sim] the %s squad came home with %s"):format(t.village.name, table.concat(parts, ", "))) end
 end
 
-local function groupAtEnd(g): boolean
-	return (g.dir == 1 and g.pos >= #g.route) or (g.dir == -1 and g.pos <= 1)
-end
-
+--- Turn around at the end of the route; home with the kill, the hides and meat go into the village's stock
+--- (Danzo, 2026-09-18: "they dont seem like they hunt and return back with theyre materials"). The rule itself is
+--- Tick.groupTurn, shared with the abstract tick and catch-up.
 local function groupTurn(g)
-	-- dir -1 is the walk home, so turning while heading home means they have arrived
-	if g.dir == -1 then depositCarry(g) end
-	g.dir = -g.dir
-	g.pauseUntil = Calendar.now() + (if g.dir == 1 then g.pauses[1] else g.pauses[2])
+	local events = {}
+	Tick.groupTurn(S, g, Calendar.now(), events)
+	logGroupEvents(events)
 end
 
 local function materialise(g)
@@ -537,38 +529,18 @@ local function tickGoals()
 	end
 end
 
---- Abstract movement for collapsed groups and materialise/collapse decisions. 1 Hz.
+--- Materialise/collapse decisions, then one second of abstract movement for every group without bodies (the
+--- movement is Tick.groups: pure, shared with catch-up). 1 Hz.
 local function tickGroups(now: number)
-	local floodOn = S.calamity.active and S.calamity.kind == "flood"
 	for _, g in pairs(S.groups) do
 		local p = Sim.groupPos(g)
-		local near = anyPlayerWithin(p.x, p.y, Config.MATERIALISE_RANGE)
 		if g.materialised then
 			if not anyPlayerWithin(p.x, p.y, Config.COLLAPSE_RANGE) then collapse(g) end
-		elseif near and #g.members > 0 then
+		elseif #g.members > 0 and anyPlayerWithin(p.x, p.y, Config.MATERIALISE_RANGE) then
 			materialise(g)
 		end
-		if g.lateTarget and S.day > Config.GRACE_DAYS and not g.materialised then
-			-- grace is over: the band takes up its real ambush, part way down the road to the farmers
-			local from, to = g.from, g.lateTarget
-			local route = WorldGen.route(world, from.x, from.y, to.x, to.y, true)
-			if route then
-				table.insert(route, 1, { x = from.x, y = from.y })
-				g.route, g.pos, g.dir, g.acc = route, 1, 1, 0
-				g.pauseUntil = now + 5
-				print("[Sim] the band has moved down the road")
-			end
-			g.lateTarget = nil
-		end
-		if not g.materialised and now >= g.pauseUntil and not (floodOn and g.kind == "caravan") then
-			-- whole tiles only: `pos` indexes the route
-			g.acc += g.speed
-			local steps = math.floor(g.acc)
-			g.acc -= steps
-			g.pos = math.clamp(g.pos + g.dir * steps, 1, #g.route)
-			if groupAtEnd(g) then groupTurn(g) end
-		end
 	end
+	logGroupEvents(Tick.groups(S, world, now))
 end
 
 -- ---------- wildlife ----------
@@ -1445,26 +1417,19 @@ local function tickCalamity()
 end
 
 -- ---------- daily ----------
---- Births, growing up, couples. Runs on the daily tick and on the Debug "birth" command.
-local function tickFamilies()
-	for i, t in ipairs(S.tribes) do
-		Families.formCouples(S.people, i, S.day)
-		if S.day % Config.WEEK_DAYS == 1 then
-			for _, mother in ipairs(Families.weeklyConceive(S.people, rng, i, S.day)) do
-				local me = mother.entity and S.entities[mother.entity]
-				if me then morph(me, "pregnant", { role = "pregnant", radius = 2 }) end
-			end
-		end
+--- Give bodies to what Tick.families did to the records: a mother who is on the map changes sprite, a baby appears
+--- beside her. The records are already complete whether or not any of these bodies exist.
+local function applyFamilyEvents(ev)
+	for _, mother in ipairs(ev.conceived) do
+		local me = mother.entity and S.entities[mother.entity]
+		if me then morph(me, "pregnant", { role = "pregnant", radius = 2 }) end
 	end
-	local r = Families.daily(S.people, rng, S.day)
-	for _, baby in ipairs(r.born) do
+	for _, baby in ipairs(ev.born) do
 		local mother = S.people.people[baby.mother]
 		local me = mother and mother.entity and S.entities[mother.entity]
 		if me then
-			local t = S.tribes[baby.tribe]
-			local sprite = VILLAGE_SPRITE[t.tribeType]
 			local mx, my = me.x, me.y
-			local ne = morph(me, "villager", { role = "villager", radius = 3, sprite = sprite })
+			local ne = morph(me, "villager", { role = "villager", radius = 3, sprite = VILLAGE_SPRITE[S.tribes[baby.tribe].tribeType] })
 			ne.home = { x = mx, y = my }
 			local pos = nearestFree(mx, my, 3)
 			if pos then
@@ -1472,38 +1437,26 @@ local function tickFamilies()
 				be.first, be.last, be.person = baby.first, baby.last, baby.id
 				baby.entity = be.id
 			end
-			t.news = Families.describeBirth(baby, mother)
-			t.population += 1
 		end
 	end
-	for _, grown in ipairs(r.grown) do
+	for _, grown in ipairs(ev.grown) do
 		local be = grown.entity and S.entities[grown.entity]
 		if be then morph(be, "villager", { role = "villager", radius = 3, sprite = VILLAGE_SPRITE[S.tribes[grown.tribe].tribeType] }) end
 	end
 end
 
+--- Births, growing up, couples, on demand (the Debug "birth" command).
+local function tickFamilies()
+	applyFamilyEvents(Tick.families(S, rng, S.day))
+end
+
 local function dailyTick()
-	Ecology.dailyTick(S.regions, rng)
-	tickFamilies()
-	for _, t in ipairs(S.tribes) do
-		Trade.dailyRestock(t.stock, t.tribeType)
-		t.population = math.min(60, t.population + 1)
-	end
+	local ev = Tick.daily(S, rng, S.day, Calendar.now())
+	applyFamilyEvents(ev)
 	for _, ps in pairs(S.players) do
 		for tribe, v in pairs(ps.rep) do ps.rep[tribe] = Reputation.fade(v, 1) end
 	end
-	local now = Calendar.now()
-	for _, g in pairs(S.groups) do
-		if g.replenishAt and now >= g.replenishAt and not g.materialised then
-			local full = if g.kind == "caravan" then 3 else 4
-			while #g.members < full do
-				table.insert(g.members, { kind = if g.kind == "caravan" then "caravan_guard" elseif g.kind == "squad" then "hunter" else "bandit" })
-			end
-			g.replenishAt = nil
-		end
-	end
-	local t = Ecology.totals(S.regions)
-	print(("[Sim] day %d: deer %d boar %d wolf %d"):format(S.day, t.deer, t.boar, t.wolf))
+	print(("[Sim] day %d: deer %d boar %d wolf %d"):format(S.day, ev.totals.deer, ev.totals.boar, ev.totals.wolf))
 end
 
 -- ---------- players ----------
@@ -1593,8 +1546,8 @@ function Sim.start()
 				local ok, err = pcall(f, now)
 				if not ok then warn("[Sim] tick: " .. tostring(err)) end
 			end
-			if day > S.lastDailyTick then
-				S.lastDailyTick = day
+			if day > S.meta.lastDailyTick then
+				S.meta.lastDailyTick = day
 				local ok, err = pcall(dailyTick)
 				if not ok then warn("[Sim] daily: " .. tostring(err)) end
 			end
