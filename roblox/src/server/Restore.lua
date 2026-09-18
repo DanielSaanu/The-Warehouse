@@ -11,7 +11,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Rng = require(Shared:WaitForChild("Rng"))
-local TileTypes = require(Shared:WaitForChild("TileTypes"))
 local WorldGen = require(Shared:WaitForChild("WorldGen"))
 local Ecology = require(Shared:WaitForChild("Ecology"))
 local Calamity = require(Shared:WaitForChild("Calamity"))
@@ -21,10 +20,10 @@ local Reputation = require(Shared:WaitForChild("Reputation"))
 local Headlines = require(Shared:WaitForChild("Headlines"))
 local Map = require(script.Parent:WaitForChild("Map"))
 local Calendar = require(script.Parent:WaitForChild("Calendar"))
+local Tiles = require(script.Parent:WaitForChild("Tiles"))
 
 local Restore = {}
 
-local O = TileTypes.ObjectByName
 local VILLAGE_SPRITE = { farmer = "villager", hunter = "hunter", plunderer = "bandit" }
 
 local S, world
@@ -142,8 +141,7 @@ function Restore.apply(data, slept: number?): (boolean, string?)
 	-- 1. tear down: bodies, the overlay, and the camp/bag tiles stamped on the map
 	for _, e in pairs(table.clone(S.entities)) do removeEntity(e) end
 	if world.floodBackup then WorldGen.clearFlood(world) end
-	for _, c in pairs(S.camps) do world.object[WorldGen.index(world, c.x, c.y)] = 0 end
-	for _, b in pairs(S.bags) do world.object[WorldGen.index(world, b.x, b.y)] = 0 end
+	Tiles.unstampAll()
 
 	-- 2. the record
 	local regions = Ecology.init(world, Rng.new(world.seed):fork(1)) -- the DERIVED half (forest, village, col/row) is the map's
@@ -167,8 +165,7 @@ function Restore.apply(data, slept: number?): (boolean, string?)
 	S.day = Calendar.clock()
 
 	-- 4. the projections: stamped tiles, the overlay (only if the calamity outlived the sleep), bodies
-	for _, c in pairs(S.camps) do world.object[WorldGen.index(world, c.x, c.y)] = if c.out then O.camp_out.id else O.camp_lit.id end
-	for _, b in pairs(S.bags) do world.object[WorldGen.index(world, b.x, b.y)] = O.bag.id end
+	Tiles.stampAll() -- the tiles are derived from the rows; Tiles owns the map's object layer
 	local c = S.calamity
 	if c.active and c.kind then c.flood = Calamity.applyOverlay(world, S.regions, c.kind) end -- the overlay ONLY
 	local bodies, living = restoreBodies()
