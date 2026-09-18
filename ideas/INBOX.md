@@ -1,5 +1,17 @@
 # Ideas inbox
 
+## Where we are (2026-09-18, end of a long session)
+
+- **Merged to main:** rung 2 complete (the game is called **Lowlands**, plays on a phone, sprite sheet uploaded
+  and the image id hard-coded); rung 3 **part 1** (wolves hunt deer visibly; every NPC who sees a fight picks a
+  side by comparing what it thinks of both — a village that likes you turns out, one that is wary of you
+  watches) and **part 1b** (hunting squads carry kills home and raise the village's stock; a fed predator
+  stops; a band breaks once it has lost more than half; villages have real per-tribe garrisons).
+- **Not started, and blocked on purpose:** rung 3 **part 2** (save and catch-up) and the refactor, both waiting
+  on `docs/ARCHITECTURE.md`, whose review loop is **still open** — see CLAUDE.md step 0.
+- **Next action:** round 3 of the architecture plan review. Bar 9.5, at most 5 rounds.
+
+
 This file is the shared scratchpad. Type here in the UI (bottom pane) or in any editor. Claude reads it 
 the start of a session and works through it. Cross things out or delete them when done.
 
