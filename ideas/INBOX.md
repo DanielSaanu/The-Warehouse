@@ -48,6 +48,26 @@ BOSS(Danzo):
 
 instead of it just being a rain cycle every 60 seconds we could first off make it farther apart like once every in game week there is a flood or a beast tide or a blizzard or a drought 
 
+### 2026-09-18, Danzo, mid-Palworld-video (raw; the agreed parts moved to DESIGN.md)
+
+- Palworld is fun because of the sheer amount of freedom. By the end you are in a Gundam firing lasers with
+  exploding birds at villages of cute animals to capture them and put them in a sweatshop. That is the vibe.
+  Anything you can think to do, you probably could do. -> now **pillar 5** in `docs/DESIGN.md` §1.
+- The endgame is a kingdom: NPCs who work for you, a caravan you own, tax collected from the little places
+  around you. Get there by quest-ish means — enough affinity with whoever holds the king/chief role — or by
+  murdering the king. The family tree makes "who is the king" and "who is next" trivial to answer. -> written up
+  as **§13 Chiefs, heirs, and taking a tribe**. One thing pushed back on: killing a chief ending the tribe makes
+  the world emptier the more you play, so instead it names an heir, drops a tier, or splinters.
+- "We can make trees for anything, what the fuck is an extra array." Mostly true — the cost depends on what you
+  hang it on, so §4 now has a **data budget**: free per tribe/village/region/role, careful per person.
+- "We have to go into that third dimension a little bit." Open question at the bottom of DESIGN.md: fake height
+  is cheap and could land any week, real elevation is rung 4.
+- The other game he likes (unreleased): everything procedurally generated, characters are just parts you bolt
+  together — thrusters, attractors, magnets — and the movement is procedural too, so whatever you build moves.
+  He said it can't be done in Roblox. It can, actually: Roblox is a physics engine, and constraints + Motor6D +
+  procedural IK is exactly that toy. It is just a **different game**, not Lowlands, and it would want to start
+  from an empty baseplate. Parked here so it is not lost.
+
 
 ## Playtest 2026-09-17: Danzo's little brother, first ever session (rung 2 part 2 + part 3)
 

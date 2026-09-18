@@ -12,6 +12,16 @@ Source of truth for gameplay decisions. `ideas/INBOX.md` is the scratchpad; thin
 2. **Everything remembers.** Every tribe, group and creature keeps a relationship with each player, and they tell each other.
 3. **Simple to touch, deep underneath.** Move, attack, interact. That's the whole controller. The depth is in who you did it to.
 4. **You get better, your numbers don't.** No levels. Skill, gear, standing and knowledge are the progression.
+5. **The world says yes; the consequences say no.** (Danzo, 2026-09-18, off a Palworld video.) Freedom is the
+   draw. Palworld is fun because it hands the player an absurd amount of rope and never takes it back, and that
+   is the vibe here: anything you can think to do, you should probably be able to do. So a system never refuses
+   an action just because it was not designed for it. No invincible NPCs, no "you can't do that here", no
+   content gates on doors the fiction leaves open. If a thing is in the world you may kill it, rob it, buy it,
+   burn it, work for it or marry into it. What stops you is the world answering: §7 carries what you did to
+   people who were not there, §5's tribes answer for their own, and §13 lets you become the thing that answers
+   back. **When a builder has to choose between blocking an action and letting it through with a consequence,
+   let it through.** The exceptions are few and they are all technical, not design: no PvP damage (§14), and the
+   caps in §4 stay caps.
 
 ## 2. Decisions made (do not relitigate without a reason)
 
@@ -68,6 +78,22 @@ in-game day.
 **Caps (tunable, first guesses)**: 40 groups alive on the map; 60 NPC sprites and 40 animal sprites
 materialised across all players at once; a client renders only its viewport plus a 2-tile margin (20x16 tiles).
 If a cap is hit, the furthest-from-any-player things stay abstract.
+
+**Data budget** (Danzo asked it straight, 2026-09-18: "what the fuck is a little bit of data, an extra array?").
+Mostly he is right, and the answer differs by what you hang it on:
+
+- **Per tribe, per village, per region, per role: free.** There are a couple of dozen of each, forever. A new
+  list, tree or table there costs nothing and never grows on its own. Hang things here by default.
+- **Per group: nearly free.** Capped at 40 alive (above), so a gossip table per group is affordable by design.
+- **Per person: the one to watch.** The family registry grows with every birth and never shrinks, and
+  `docs/RUNG3.md` part 1 already names it as the table most likely to outgrow a 4 MB DataStore key. Per-person
+  cost also multiplies by every player who has an opinion attached.
+
+So the rule: **a person record carries only small fixed fields** (parents, children, birth day, death day and
+cause, role, sex). Anything list-shaped, per-player, or growing lives on the village, group or tribe. Memory of
+what a player did belongs to the place and the party, never to each villager separately, which is what §7 wants
+anyway: gossip travels by caravans and bands, not by a thousand independent diaries. And the long dead get
+pruned to name, surname, death day and killer.
 
 ## 5. Tribes
 
@@ -273,6 +299,31 @@ the plundered starting village or any village that comes to trust you.
 - Multiplayer: several players can build the same home village up together, or build rivals.
 - The endgame is a world superpower that you built, in a world that will still push back.
 
+### Chiefs, heirs, and taking a tribe (Danzo, 2026-09-18)
+
+The kingdom end of the arc runs on the family registry from §15, so most of it is a lookup rather than a system.
+
+- Every tribe has a **chief**: a named person, a role NPC like the guard or the elder (§8). The registry already
+  knows their children, siblings and surname, so "who is next" needs no new data.
+- **Killing the chief does not end the tribe.** It is the tempting version and it is the wrong one: a world that
+  loses a tribe every time you win gets emptier the more you play, which is the exact opposite of pillar 5. What
+  happens instead:
+  - the registry names an **heir**: eldest adult child, else a sibling, else the strongest surviving squad or
+    caravan leader;
+  - with no clear heir and a violent death, the tribe **drops a size tier** — fewer groups out, caravans stop,
+    walls go unmanned;
+  - with two equal claimants it **splinters**: the loser walks out with a share of the people and founds a new
+    small tribe of the same type. That is where new small tribes come from, besides resettled ruins (§5);
+  - and the tribe carries a **grudge at tribe level, for years**. Killing a chief is the largest single grudge
+    in the game, and §7 makes sure the far side of the map hears about it eventually.
+- **Two roads to a throne, both legitimate.** Take it by force and hold it, or earn standing with the chief
+  until they hand it over: kin by marriage, regent while an heir is a child, chief by acclamation where there is
+  no heir at all. The slow road leaves you a tribe that still works; the fast one leaves you a tribe that is
+  afraid of you and neighbours who all know. Pillar 5 says both roads stay open, and neither is the "good end".
+- A player holding a tribe inherits what tribes already do in §6: groups to send out, tribute to collect from the
+  villages in the territory, tax, war and peace with the neighbours. Section 13's "become a power" is then not
+  new machinery at all — it is the tribe systems already built, pointed at a player.
+
 This is rungs 4 and 5; the data model in section 4 is shaped for it from the start.
 
 ## 14. Persistence and multiplayer
@@ -405,3 +456,15 @@ roblox/src/client/     Viewport (scrolling window over the map, entity sprites),
 - Portrait on a narrow phone. A 44 px d-pad needs about 140 px however you draw it, so on a 390 px-wide play area
   the two thumb clusters leave only a quarter of the width clear. Landscape is the intended orientation.
 - Exact cap numbers (section 4 has first guesses; tune on a real phone).
+- **When does the chief role appear?** §13's succession needs one, and rung 3 part 3 (tribute and tax) needs a
+  face to make the demand. Recommendation: add `chief` in part 3 rather than waiting for the full talk system in
+  part 5 — it is one more role reading the village bank, and it makes "who do I pay" answerable.
+- **Does a player-held tribe keep running while that player is offline?** Catch-up (§14) simulates the world,
+  not players, so a tribe you own would keep sending caravans and collecting tax without you. Probably right —
+  it is the world-does-not-need-you pillar applied to your own kingdom — but it means you can lose a war in your
+  sleep. Decide before rung 4.
+- **"A little bit of the third dimension" (Danzo, 2026-09-18) — which kind?** `docs/RUNG3.md` parks real
+  elevation and interiors in rung 4 because elevation touches every routing call and the wire format. Fake
+  height (taller sprites on their own draw layer, cliff edges, drop shadows) changes no server code and could go
+  in any week it is wanted. If the goal is that the world *looks* like it has depth, that is the cheap one and we
+  can do it soon; if the goal is climbing and rooftops and being on a level someone else is not, that is rung 4.
