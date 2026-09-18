@@ -47,6 +47,13 @@ Config.CAMPFIRE_RADIUS = 3     -- wolves keep this far from a lit fire
 -- Calamities: one per week, starting this fraction into the calamity day. The warning shows the day before.
 Config.CALAMITY_START = 0.3
 
+-- The hunt as a round trip (docs/qa/rung3-part1b.md). A squad carrying this much turns for home; a predator
+-- that has just eaten leaves the next one alone for this long; a band that loses someone runs for this long.
+Config.SQUAD_LOAD = 8
+Config.FED_SECONDS = 90
+Config.FED_HUNTER = 25
+Config.BAND_RETREAT = 120
+
 -- Grace: for this many in-game days the bandit band waits near its own village instead of on the road to the
 -- farmers, so a new player's first walk cannot end in an ambush they had no way to see coming.
 Config.GRACE_DAYS = 2

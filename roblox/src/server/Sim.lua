@@ -22,6 +22,8 @@ local Calamity = require(Shared:WaitForChild("Calamity"))
 local DayCycle = require(Shared:WaitForChild("DayCycle"))
 local Families = require(Shared:WaitForChild("Families"))
 local Talk = require(Shared:WaitForChild("Talk"))
+local Sides = require(script.Parent:WaitForChild("Sides"))
+local Debug = require(script.Parent:WaitForChild("Debug"))
 local World = require(script.Parent:WaitForChild("World"))
 
 local Sim = {}
@@ -243,11 +245,30 @@ local function followPath(e, now: number)
 	local step = e.path[e.pathI]
 	if not step then e.path = nil return end
 	if not Movement.canStep(world, e.x, e.y, step.x, step.y, Sim.occupied) then
-		-- someone is in the way: wait a beat, then give up on this path so the thinker re-plans
-		e.nextStepAt = now + 0.3
+		-- Someone is in the way. Roads are one tile wide, so a single person standing on one used to stop a whole
+		-- caravan indefinitely: the route says "next tile", the next tile is occupied, and re-planning returns the
+		-- same road. So step around instead — any free neighbour that gets us closer to where the path goes next.
 		e.blockedCount = (e.blockedCount or 0) + 1
 		faceEntity(e, Combat.dirTo(e.x, e.y, step.x, step.y))
-		if e.blockedCount > 3 then e.path = nil e.blockedCount = 0 end
+		local goal = e.path[e.pathI + 1] or step
+		local best, bestD = nil, math.min(cheb(e.x, e.y, goal.x, goal.y), cheb(step.x, step.y, goal.x, goal.y) + 1)
+		for _, d in pairs(Movement.DIRS) do
+			local nx, ny = e.x + d[1], e.y + d[2]
+			if freeTile(nx, ny) then
+				local dd = cheb(nx, ny, goal.x, goal.y)
+				if dd < bestD then best, bestD = { x = nx, y = ny }, dd end
+			end
+		end
+		if best and e.blockedCount >= 2 then
+			-- slip past them, then carry on to the rest of the route from there
+			placeEntity(e, best.x, best.y, Combat.dirTo(e.x, e.y, best.x, best.y))
+			e.nextStepAt = now + Movement.stepTime(world, best.x, best.y) / e.speed
+			e.blockedCount = 0
+			if e.path[e.pathI + 1] then e.pathI += 1 else e.path = nil end
+			return
+		end
+		e.nextStepAt = now + 0.3
+		if e.blockedCount > 4 then e.path = nil e.blockedCount = 0 end
 		return
 	end
 	e.blockedCount = 0
@@ -314,6 +335,17 @@ end
 
 local VILLAGE_SPRITE = { farmer = "villager", hunter = "hunter", plunderer = "bandit" }
 
+-- Who is at home, per tribe type (Danzo, 2026-09-18: the other two villages "should not be so super easy to
+-- just walk in and kill everything - people live here"). The walls are the farmers showing off their
+-- established might, so the farmers really are better defended; the other two are not soft, they are different.
+-- Straight out of ideas/INBOX.md: farmers' strength is coordination and militarisation, hunters are the best
+-- fighters one-on-one, plunderers are the weakest tribe but sudden and brutal.
+local ROSTER = {
+	farmer = { guards = 4, fighters = nil, count = 0, villagers = 8 },
+	hunter = { guards = 2, fighters = "hunter", count = 4, villagers = 6 },
+	plunderer = { guards = 2, fighters = "bandit", count = 4, villagers = 5 },
+} :: { [string]: { guards: number, fighters: string?, count: number, villagers: number } }
+
 local function initTribes()
 	for i, v in ipairs(world.villages) do
 		local t = {
@@ -330,11 +362,23 @@ local function initTribes()
 			local g = v.gates[1]
 			gx, gy = g.x + (g.x - g.exit.x), g.y + (g.y - g.exit.y)
 		end
+		local roster = ROSTER[v.tribeType] or ROSTER.farmer
+		t.population = math.max(t.population, 20 + roster.guards * 5 + roster.count * 4 + roster.villagers * 2)
+		-- the gate guard, then the rest of the watch spread around the place
 		local guard = spawnPerson("guard", gx, gy, i, { radius = 1, role = "guard", label = "guard" })
 		if guard then t.guard = guard.id end
+		for _ = 2, roster.guards do
+			spawnPerson("guard", rng:int(v.x0 + 1, v.x1 - 1), rng:int(v.y0 + 1, v.y1 - 1), i,
+				{ radius = 3, role = "guard", label = "guard" })
+		end
+		-- and the tribe's own kind of fighter, at home between jobs
+		for _ = 1, roster.count do
+			spawnPerson(roster.fighters or "guard", rng:int(v.x0 + 1, v.x1 - 1), rng:int(v.y0 + 1, v.y1 - 1), i,
+				{ radius = 3, role = roster.fighters or "guard", sprite = if roster.fighters == "bandit" then "bandit" else nil })
+		end
 		local m = spawnPerson("merchant", v.stall.x, v.stall.y + 1, i, { radius = 1, role = "merchant", label = "merchant" })
 		if m then t.merchant = m.id end
-		for n = 1, 4 do
+		for n = 1, roster.villagers do
 			local x = rng:int(v.x0 + 1, v.x1 - 1)
 			local y = rng:int(v.y0 + 1, v.y1 - 1)
 			spawnPerson("villager", x, y, i, { radius = 3, role = "villager", sprite = sprite, sex = if n % 2 == 0 then "f" else "m" })
@@ -370,8 +414,9 @@ local function makeGroup(id: string, kind: string, tribeIdx: number, from: World
 	local g = {
 		id = id, kind = kind, tribe = tribeIdx, route = route, pos = 1, dir = 1, from = { x = from.x, y = from.y },
 		pauseUntil = os.clock() + rng:int(20, 60), pauses = pauses, speed = 1.5, acc = 0,
-		members = members, entities = {}, leader = nil, trail = {}, materialised = false,
+		members = members, fullSize = #members, entities = {}, leader = nil, trail = {}, materialised = false,
 		target = nil, aggroUntil = 0, lastSeen = nil,
+		carry = {}, retreatUntil = 0,   -- what they are bringing home, and whether they have had enough
 	}
 	S.groups[id] = g
 	return g
@@ -408,11 +453,37 @@ function Sim.groupPos(g): WorldGen.Pos
 	return g.route[math.clamp(g.pos, 1, #g.route)]
 end
 
+--- How much a group is hauling.
+local function carryTotal(g): number
+	local n = 0
+	for _, v in pairs(g.carry) do n += v end
+	return n
+end
+
+--- Home with the kill: the hides and meat go into the village's stock. This is the point of a hunt, and until
+--- now an NPC kill produced nothing at all (Danzo, 2026-09-18: "they dont seem like they hunt and return back
+--- with theyre materials").
+local function depositCarry(g)
+	if carryTotal(g) == 0 then return end
+	local t = S.tribes[g.tribe]
+	local parts = {}
+	for item, n in pairs(g.carry) do
+		if n > 0 and t.stock[item] ~= nil then
+			t.stock[item] += n
+			table.insert(parts, ("%d %s"):format(n, item))
+		end
+	end
+	g.carry = {}
+	if #parts > 0 then print(("[Sim] the %s squad came home with %s"):format(t.village.name, table.concat(parts, ", "))) end
+end
+
 local function groupAtEnd(g): boolean
 	return (g.dir == 1 and g.pos >= #g.route) or (g.dir == -1 and g.pos <= 1)
 end
 
 local function groupTurn(g)
+	-- dir -1 is the walk home, so turning while heading home means they have arrived
+	if g.dir == -1 then depositCarry(g) end
 	g.dir = -g.dir
 	g.pauseUntil = os.clock() + (if g.dir == 1 then g.pauses[1] else g.pauses[2])
 end
@@ -589,7 +660,23 @@ local function applyRep(ps, deltas)
 	return changed
 end
 
-local function killEntity(e, killer, ctx)
+local function killEntity(e, killer, ctx, byEntity)
+	-- An NPC kill used to produce nothing. Now it goes into the killer's group to be carried home, and the
+	-- killer stops being hungry for a while, which is what stops a hunt being a slaughter.
+	if byEntity and e.species then
+		local now = os.clock()
+		byEntity.fedUntil = now + (if byEntity.species then Config.FED_SECONDS else Config.FED_HUNTER)
+		local g = byEntity.group and S.groups[byEntity.group]
+		if g then
+			for item, n in pairs(Combat.loot(e.kind, rng)) do
+				if item ~= "coin" then g.carry[item] = (g.carry[item] or 0) + n end
+			end
+			-- laden: turn for home rather than keep killing
+			if g.dir == 1 and carryTotal(g) >= Config.SQUAD_LOAD then
+				g.dir, g.pauseUntil = -1, 0
+			end
+		end
+	end
 	if killer then
 		lootTo(killer, Combat.loot(e.kind, rng))
 		applyRep(killer, Reputation.deltas("kill", e.kind, Sim.tribeOf(e), ctx))
@@ -624,7 +711,22 @@ local function killEntity(e, killer, ctx)
 		if g then
 			-- the record loses a member; the tribe replaces them at home after a while
 			table.remove(g.members, #g.members)
-			g.replenishAt = os.clock() + Config.DAY_SECONDS
+			local now = os.clock()
+			g.replenishAt = now + Config.DAY_SECONDS
+			-- A pack breaks when it has lost more than half, not the moment it loses one (Danzo, 2026-09-18:
+			-- "if u encounter a bandit group and kill more than half the rest run away like with wolf packs but
+			-- they shouldnt abort instantly once one dies"). Until then they fight, and they are still
+			-- individually capable of breaking at their own hp threshold.
+			if g.kind == "band" and #g.members * 2 < (g.fullSize or #g.members) then
+				g.retreatUntil = now + Config.BAND_RETREAT
+				g.target, g.aggroUntil, g.pauseUntil = nil, 0, 0
+				g.dir = -1
+				for id in pairs(g.entities) do
+					local m = S.entities[id]
+					if m and m ~= e then m.state, m.target, m.npcTarget, m.windupAt = "idle", nil, nil, nil end
+				end
+				print("[Sim] the band has broken off and is running for home")
+			end
 		end
 	end
 	local t = e.tribe and S.tribes[e.tribe]
@@ -653,9 +755,12 @@ end
 Sim.markAggression = markAggression
 
 --- Damage to an entity from (ax, ay). Flash, knockback, death. Fighters break and run at their break point.
-local function hitEntity(e, dmg: number, ax: number, ay: number, attacker)
+local function hitEntity(e, dmg: number, ax: number, ay: number, attacker, byEntity)
 	local now = os.clock()
 	if now < e.invulnUntil then return end
+	-- everyone near enough to see it takes a view (docs/RUNG3.md part 1)
+	local striker = if attacker then { ps = attacker } elseif byEntity then { e = byEntity } else nil
+	if striker then Sides.witnessed(striker, { e = e }, e.x, e.y) end
 	local ctx = fightContext(e, attacker)
 	if attacker and not (e.attacked and e.attacked[attacker.player.UserId]) then
 		e.provokedBy = e.provokedBy or {}
@@ -666,7 +771,7 @@ local function hitEntity(e, dmg: number, ax: number, ay: number, attacker)
 	e.path = nil
 	broadcastEntity(e, "hit", e.id, math.max(0, e.hp) / e.maxHp)
 	if e.hp <= 0 then
-		killEntity(e, attacker, ctx)
+		killEntity(e, attacker, ctx, byEntity)
 		return
 	end
 	local kx, ky = Combat.knockbackTile(ax, ay, e.x, e.y)
@@ -685,13 +790,8 @@ local function hitEntity(e, dmg: number, ax: number, ay: number, attacker)
 	end
 	if attacker and e.tribe and not e.species then
 		applyRep(attacker, Reputation.deltas("hit", e.kind, Sim.tribeOf(e), ctx))
-		-- the village guard takes notice
-		local t = S.tribes[e.tribe]
-		local guard = t.guard and S.entities[t.guard]
-		if guard and guard ~= e and not guard.broken and cheb(guard.x, guard.y, e.x, e.y) <= 8 then
-			guard.state, guard.target, guard.aggroUntil = "chase", attacker.player.UserId, now + 15
-			markAggression(guard, attacker.player.UserId) -- the guard comes at you for what you did: that is still their move
-		end
+		-- Who comes for you is decided by the witness rule above, not by a hard-coded guard: a village that is
+		-- family to you still answers for its own, and one that is wary of you may watch.
 	end
 	if e.group then
 		local g = S.groups[e.group]
@@ -783,6 +883,7 @@ end
 local function hitPlayer(ps, e)
 	local now = os.clock()
 	if ps.dead or now < ps.invulnUntil then return end
+	Sides.witnessed({ e = e }, { ps = ps }, ps.x, ps.y)
 	local dmg = Combat.damage(e.atk, 0)
 	ps.hp -= dmg
 	ps.invulnUntil = now + Config.HIT_INVULN
@@ -829,6 +930,12 @@ local function wanderStep(e, now: number)
 	local tx, ty = e.home.x + rng:int(-e.radius, e.radius), e.home.y + rng:int(-e.radius, e.radius)
 	if e.tribe and not e.group and not e.species then
 		local v = S.tribes[e.tribe].village
+		-- Scattered by a fight: walk home, with a budget that can actually reach it. Wandering inside the village
+		-- bounds from twenty tiles away just fails, and the village stays empty.
+		if cheb(e.x, e.y, v.cx, v.cy) > 8 then
+			pathTo(e, v.spawn.x, v.spawn.y, 500, true)
+			return
+		end
 		tx, ty = math.clamp(tx, v.x0 + 1, v.x1 - 1), math.clamp(ty, v.y0 + 1, v.y1 - 1)
 	end
 	if freeTile(tx, ty) then pathTo(e, tx, ty, 120) end
@@ -873,11 +980,7 @@ local function fleeStep(e)
 	if best then setPath(e, { best }) end
 end
 
---- Bandits do not follow anyone in under a roof: a new player who runs for a village is safe there (goal 4 of
---- docs/qa/rung2-part4.md). The footprint plus one tile, so standing in a gateway counts.
-local function inVillage(x: number, y: number): boolean
-	return WorldGen.villageAt(world, x, y, 1) ~= nil
-end
+
 
 local function litCampNear(x: number, y: number): boolean
 	for _, c in pairs(S.camps) do
@@ -907,7 +1010,7 @@ local function chaseStep(e, now: number)
 		e.state, e.target = "idle", nil
 		return
 	end
-	if e.kind == "bandit" and inVillage(ps.x, ps.y) then
+	if e.kind == "bandit" and Sides.sheltered(ps, e) then
 		e.state, e.target, e.windupAt = "idle", nil, nil
 		return
 	end
@@ -943,19 +1046,26 @@ local function chaseStep(e, now: number)
 end
 
 --- Should this entity go for a player? Hostility depends on kind and the player's standing with its tribe.
-local function pickTarget(e, now: number)
+--- `nearerThan` is how far away the thing it is already interested in is: a predator with a deer at its feet
+--- does not cross the clearing for a person, because the world does not revolve around the player (pillar 1).
+local function pickTarget(e, now: number, nearerThan: number?)
 	local k = Stats.get(e.kind)
 	local range = 0
 	local function wants(ps): boolean
 		if e.species == "wolf" then return not litCampNear(ps.x, ps.y) end
-		if e.kind == "bandit" then return ps.rep.plunderer < -10 and not inVillage(ps.x, ps.y) end
-		if e.kind == "guard" or e.kind == "caravan_guard" or e.kind == "hunter" then return Reputation.hostile(ps.rep[Sim.tribeOf(e)]) end
+		if e.kind == "bandit" then
+			local g = e.group and S.groups[e.group]
+			if g and now < (g.retreatUntil or 0) then return false end
+			return ps.rep.plunderer < -10 and not Sides.sheltered(ps, e)
+		end
+		if e.tribe then return Sides.hostileToPlayer(e, ps) end
 		return false
 	end
 	if e.species == "wolf" then range = 7 elseif e.kind == "bandit" then range = 6 elseif e.kind == "guard" then range = 5 elseif e.kind == "hunter" or e.kind == "caravan_guard" then range = 4 end
 	if e.species == "boar" then range = 0 end -- boar only charge when hit
 	if range == 0 and not k.hostile then return end
-	local ps = nearestPlayer(e.x, e.y, range, wants)
+	local ps, psD = nearestPlayer(e.x, e.y, range, wants)
+	if ps and psD >= (nearerThan or math.huge) then ps = nil end
 	if ps then
 		e.state, e.target, e.aggroUntil = "chase", ps.player.UserId, now + 10
 		markAggression(e, ps.player.UserId)
@@ -963,26 +1073,37 @@ local function pickTarget(e, now: number)
 	end
 end
 
---- Hunters and guards deal with wildlife and bandits near them.
+--- What this one goes after unprompted: prey if it is a predator, a feud if it is armed.
 local function pickNpcTarget(e, now: number)
-	local hunt = (e.kind == "hunter") or (e.kind == "guard") or (e.kind == "caravan_guard")
-	if not hunt then return end
-	local best, bestD = nil, 5
-	for _, o in pairs(S.entities) do
-		if o ~= e and now >= o.invulnUntil then
-			local prey = (e.kind == "hunter" and o.species) or (o.species == "wolf") or (o.kind == "bandit" and e.kind ~= "bandit")
-			if prey then
-				local d = cheb(e.x, e.y, o.x, o.y)
-				if d < bestD then best, bestD = o, d end
-			end
+	if not Sides.canFight(e) and e.species ~= "wolf" then return end
+	local range = if e.species == "wolf" then 7 else 5
+	local taken = {}
+	if e.species then
+		for _, o in pairs(S.entities) do
+			if o.species and o.npcTarget then taken[o.npcTarget] = (taken[o.npcTarget] or 0) + 1 end
 		end
 	end
-	if best then e.npcTarget, e.state = best.id, "hunt" end
+	local best, bestD = nil, range
+	for _, o in pairs(S.entities) do
+		if o ~= e and now >= o.invulnUntil and not o.broken and (taken[o.id] or 0) < 2 and Sides.preysOn(e, o) then
+			local d = cheb(e.x, e.y, o.x, o.y)
+			if d < bestD then best, bestD = o, d end
+		end
+	end
+	if best then
+		e.npcTarget, e.state = best.id, "hunt"
+		-- If what they just went after was coming for a player, that player should know who stepped in.
+		local ps = best.target and S.players[best.target]
+		if ps and not ps.dead and e.tribe then Sides.tellHelp(ps, e) end
+	end
 end
 
 local function huntStep(e, now: number)
 	local o = S.entities[e.npcTarget]
 	if not o or cheb(e.x, e.y, o.x, o.y) > 8 then e.state, e.npcTarget, e.windupAt = "idle", nil, nil return end
+	-- Re-read it each tick: a guard who set off after a bandit stops when he sees who the bandit has got hold of,
+	-- and a village does not spend blood on someone it likes even less (docs/RUNG3.md part 1).
+	if not Sides.preysOn(e, o) then e.state, e.npcTarget, e.windupAt = "idle", nil, nil return end
 	if Combat.adjacent(e.x, e.y, o.x, o.y) then
 		e.path = nil
 		faceEntity(e, Combat.dirTo(e.x, e.y, o.x, o.y))
@@ -991,7 +1112,7 @@ local function huntStep(e, now: number)
 				e.windupAt = nil
 				e.cooldownUntil = now + 1.0
 				broadcastEntity(e, "attack", e.id, e.facing)
-				hitEntity(o, Combat.damage(e.atk, o.def), e.x, e.y, nil)
+				hitEntity(o, Combat.damage(e.atk, o.def), e.x, e.y, nil, e)
 			end
 		elseif now >= e.cooldownUntil then
 			e.windupAt = now + Config.TELEGRAPH
@@ -1012,9 +1133,11 @@ end
 
 --- Group members: the leader walks the route; the others follow the leader's trail.
 local function groupStep(e, g, now: number)
-	if g.kind == "band" and g.target and S.players[g.target] and inVillage(S.players[g.target].x, S.players[g.target].y) then
+	if g.kind == "band" and g.target and S.players[g.target] and Sides.sheltered(S.players[g.target], e) then
 		g.target, g.aggroUntil = nil, 0
 	end
+	-- Running for home: no aggro, no hunting, just go.
+	if now < (g.retreatUntil or 0) then g.target, g.aggroUntil = nil, 0 end
 	if g.target and now < g.aggroUntil and S.players[g.target] and not S.players[g.target].dead and not e.broken then
 		e.state, e.target, e.aggroUntil = "chase", g.target, g.aggroUntil
 		markAggression(e, g.target)
@@ -1030,11 +1153,23 @@ local function groupStep(e, g, now: number)
 		local r = g.route[nextI]
 		if not e.path then
 			if Combat.adjacent(e.x, e.y, r.x, r.y) or (e.x == r.x and e.y == r.y) then
-				if freeTile(r.x, r.y) then setPath(e, { r }) g.pos = nextI
-				elseif e.x == r.x and e.y == r.y then g.pos = nextI end
+				if freeTile(r.x, r.y) then setPath(e, { r }) g.pos = nextI g.stuck = 0
+				elseif e.x == r.x and e.y == r.y then g.pos = nextI g.stuck = 0
+				else
+					-- somebody is standing on the next tile of the route: after a few tries, walk on to the one
+					-- after it rather than waiting for them to move
+					g.stuck = (g.stuck or 0) + 1
+					if g.stuck > 3 then
+						g.pos = nextI
+						g.stuck = 0
+						local after = g.route[nextI + g.dir]
+						if after then pathTo(e, after.x, after.y, 200, true) end
+					end
+				end
 			else
 				pathTo(e, r.x, r.y, 200, true)
 				g.pos = nextI
+				g.stuck = 0
 			end
 		end
 	else
@@ -1093,10 +1228,18 @@ local function think(e, now: number)
 	end
 	if e.state == "chase" then chaseStep(e, now) return end
 	if e.state == "hunt" then huntStep(e, now) return end
-	-- idle: look for trouble, then go about your business
-	pickTarget(e, now)
+	if e.state == "alarm" then Sides.alarmStep(e, now) return end
+	-- Idle: look for trouble, then go about your business. A predator weighs its prey first and only turns on a
+	-- person if they are the nearer meal; everyone else looks for people first.
+	local preyD = math.huge
+	if e.species then
+		pickNpcTarget(e, now)
+		local o = e.state == "hunt" and S.entities[e.npcTarget]
+		if o then preyD = cheb(e.x, e.y, o.x, o.y) end
+	end
+	pickTarget(e, now, preyD)
 	if e.state == "chase" then return end
-	pickNpcTarget(e, now)
+	if e.state ~= "hunt" then pickNpcTarget(e, now) end
 	if e.state == "hunt" then return end
 	if e.species == "deer" then
 		local ps = nearestPlayer(e.x, e.y, 4)
@@ -1406,6 +1549,11 @@ function Sim.init()
 	S.people = Families.new()
 	S.regions = Ecology.init(world, rng:fork(1))
 	for _, r in ipairs(S.regions.list) do r.live = { deer = 0, boar = 0, wolf = 0 } end
+	Sides.bind({ state = S, world = world, faceEntity = faceEntity, markAggression = markAggression, pathTo = pathTo,
+		text = Sim.text })
+	Debug.bind({ Sim = Sim, S = S, world = world, cheb = cheb, collapse = collapse, endCalamity = endCalamity,
+		hitEntity = hitEntity, killPlayer = killPlayer, morph = morph, nearestFree = nearestFree, newEntity = newEntity,
+		startCalamity = startCalamity, tickFamilies = tickFamilies, tidx = tidx })
 	initTribes()
 	initGroups()
 	local n = 0
@@ -1456,165 +1604,10 @@ function Sim.start()
 	end)
 end
 
--- ---------- debug hook (ServerStorage.Debug, see docs/qa/rung2-part2.md) ----------
+-- ---------- debug hook ----------
+-- The commands themselves live in server/Debug.lua (test-only code, and Sim.lua is at Luau's inference budget).
 function Sim.debug(cmd: string, ...): any
-	local args = { ... }
-	local ps
-	for _, p in pairs(S.players) do ps = p break end
-	if cmd == "state" then
-		local n, g = 0, 0
-		for _ in pairs(S.entities) do n += 1 end
-		for _, gr in pairs(S.groups) do g += 1 end
-		local t = Ecology.totals(S.regions)
-		local out = { day = S.day, entities = n, groups = g, deer = t.deer, boar = t.boar, wolf = t.wolf, calamity = S.calamity.kind, active = S.calamity.active }
-		for id, gr in pairs(S.groups) do
-			local live = 0
-			for _ in pairs(gr.entities) do live += 1 end
-			out[id] = ("%d members (%d visible) at %d,%d, route %d/%d"):format(#gr.members, live, Sim.groupPos(gr).x, Sim.groupPos(gr).y, gr.pos, #gr.route)
-		end
-		return out
-	elseif cmd == "calamity" then
-		endCalamity()
-		startCalamity(args[1] or "flood")
-		return "started " .. (args[1] or "flood")
-	elseif cmd == "teleport" and ps then
-		local p = nearestFree(args[1], args[2], 4)
-		if not p then return "no free tile there" end
-		Sim.occupied[tidx(ps.x, ps.y)] = nil
-		ps.x, ps.y = p.x, p.y
-		Sim.occupied[tidx(ps.x, ps.y)] = ps.player.UserId
-		ps.snap(ps)
-		return ("at %d,%d"):format(p.x, p.y)
-	elseif cmd == "give" and ps then
-		if args[1] == "coin" then ps.inv.coin += args[2] or 10 else Items.add(ps.inv, args[1], args[2] or 1) end
-		Sim.hud(ps)
-		return "ok"
-	elseif cmd == "rep" and ps then
-		local t = S.tribes[args[1] or 1]
-		ps.rep[t.tribeType] = args[2] or 0
-		Sim.hud(ps)
-		return t.tribeType .. " = " .. tostring(ps.rep[t.tribeType])
-	elseif cmd == "night" then
-		S.dayStart = os.clock() - Config.DAY_SECONDS * (1 - Config.NIGHT_FRACTION + 0.01)
-		return "dusk"
-	elseif cmd == "jump" then
-		-- set the calendar: `jump 6` = morning of day 6 (the warning), `jump 7 0.29` = a moment before the calamity
-		local day, frac = args[1] or 7, args[2] or 0.1
-		S.day = day
-		S.dayStart = os.clock() - Config.DAY_SECONDS * frac
-		S.lastDailyTick = day -- one jump does not run six days of births and breeding
-		return ("day %d, %.0f%% through it"):format(day, frac * 100)
-	elseif cmd == "day" then
-		S.dayStart = os.clock() - Config.DAY_SECONDS * (args[1] or 0.1)
-		return "morning"
-	elseif cmd == "hurt" and ps then
-		ps.hp = math.max(1, ps.hp - (args[1] or 4))
-		Sim.hud(ps)
-		return ps.hp
-	elseif cmd == "kill" and ps then
-		killPlayer(ps, nil)
-		return "dead"
-	elseif cmd == "group" then
-		local g = S.groups[args[1] or "band"]
-		if not g then return "no such group" end
-		local p = Sim.groupPos(g)
-		return ("%s at %d,%d dir %d pos %d/%d%s"):format(g.id, p.x, p.y, g.dir, g.pos, #g.route, if g.materialised then " visible" else "")
-	elseif cmd == "summon" and ps then
-		-- bring a group next to the player
-		local g = S.groups[args[1] or "band"]
-		if not g then return "no such group" end
-		if g.materialised then collapse(g) end
-		local bestI, bestD = 1, math.huge
-		for i, r in ipairs(g.route) do
-			local d = cheb(r.x, r.y, ps.x, ps.y)
-			if d < bestD then bestI, bestD = i, d end
-		end
-		g.pos = bestI
-		g.pauseUntil = 0
-		return ("%s moved to route index %d (%d tiles away)"):format(g.id, bestI, bestD)
-	elseif cmd == "freeze" then
-		Sim.frozen = (args[1] or 1) ~= 0
-		return "frozen " .. tostring(Sim.frozen)
-	elseif cmd == "spawn" and ps then
-		local p = nearestFree(args[2] or (ps.x + 3), args[3] or ps.y, 3)
-		if not p then return "no room" end
-		local kind = args[1] or "wolf"
-		local r = Ecology.at(S.regions, world, p.x, p.y)
-		local e = newEntity(kind, p.x, p.y, { species = if Stats.get(kind).animal then kind else nil, region = if Stats.get(kind).animal then r.id else nil, radius = 4 })
-		if e.species then r.live[kind] += 1 r[kind] += 1 end
-		return e.id
-	elseif cmd == "entity" then
-		local e = S.entities[args[1]]
-		if not e then return "no entity " .. tostring(args[1]) end
-		return { id = e.id, kind = e.kind, hp = e.hp, x = e.x, y = e.y, state = e.state, target = tostring(e.target), facing = e.facing, group = e.group, region = e.region, label = e.label }
-	elseif cmd == "list" then
-		local out = {}
-		for id, e in pairs(S.entities) do
-			if not args[1] or e.kind == args[1] or e.role == args[1] then
-				table.insert(out, ("%s %s hp%d @%d,%d %s%s"):format(id, e.kind, e.hp, e.x, e.y, e.state, if e.target then " ->" .. tostring(e.target) else ""))
-			end
-		end
-		table.sort(out)
-		return out
-	elseif cmd == "player" and ps then
-		local slots = {}
-		for _, sl in ipairs(ps.inv.slots) do table.insert(slots, sl.item .. "x" .. sl.n) end
-		return { x = ps.x, y = ps.y, hp = ps.hp, facing = ps.facing, dead = ps.dead, coin = ps.inv.coin, inv = table.concat(slots, ","), rep = ps.rep, rest = ps.restText, epoch = ps.epoch }
-	elseif cmd == "verbose" then
-		Sim.verbose = (args[1] or 1) ~= 0
-		return "verbose " .. tostring(Sim.verbose)
-	elseif cmd == "strike" and ps then
-		-- the player's blow lands on an entity through the real path (contexts, break points, mercy)
-		local e = S.entities[args[1]]
-		if not e then return "no entity " .. tostring(args[1]) end
-		e.invulnUntil = 0
-		hitEntity(e, args[2] or 3, ps.x, ps.y, ps)
-		local live = S.entities[e.id]
-		return if live then ("%s hp %d state %s broken %s beatenBy %s"):format(e.id, e.hp, e.state, tostring(e.broken), tostring(e.beatenBy)) else e.id .. " dead"
-	elseif cmd == "people" then
-		local out = {}
-		for i, t in ipairs(S.tribes) do
-			if not args[1] or args[1] == i then
-				for _, p in ipairs(Families.villagers(S.people, i)) do
-					table.insert(out, ("%d %s %s (%s, %s, %s%s%s) %s"):format(p.id, p.first, p.last, p.sex, p.role, p.stage,
-						if p.spouse then ", spouse " .. p.spouse else "", if p.father then ", child of " .. p.father else "", tostring(p.entity)))
-				end
-			end
-		end
-		return out
-	elseif cmd == "family" then
-		local p = S.people.people[args[1]]
-		if not p then return "no person " .. tostring(args[1]) end
-		local rel = {}
-		for _, o in ipairs(Families.relatives(S.people, p)) do table.insert(rel, o.first .. " " .. o.last) end
-		return { name = Families.fullName(p), alive = p.alive, cause = p.cause, killer = p.killer, born = p.born, spouse = p.spouse, father = p.father, mother = p.mother, children = table.concat(p.children, ","), relatives = table.concat(rel, ", ") }
-	elseif cmd == "birth" then
-		-- force: the first couple in the player's village (or village 1) conceives and gives birth now
-		local ti = args[1] or 1
-		local made = 0
-		Families.formCouples(S.people, ti, S.day)
-		for _, p in ipairs(Families.villagers(S.people, ti, true)) do
-			if p.sex == "f" and p.spouse then
-				p.stage, p.role, p.due = "pregnant", "pregnant", S.day
-				local me = p.entity and S.entities[p.entity]
-				if me then morph(me, "pregnant", { role = "pregnant", radius = 2 }) end
-				made += 1
-				break
-			end
-		end
-		if made == 0 then return "no couple in village " .. ti end
-		if args[2] == "now" then tickFamilies() return "born" end
-		return "pregnant, due now: run `birth " .. ti .. " now` or wait for the daily tick"
-	elseif cmd == "goal" and ps then
-		-- `goal` reads the tutorial line, `goal 3` jumps to a stage, `goal 0` retires it
-		if args[1] ~= nil then
-			if args[1] == 0 then Sim.clearGoal(ps) else ps.goalStage = args[1] - 1 Sim.setGoal(ps, args[1]) end
-		end
-		return { stage = ps.goalStage, goal = ps.goal, done = ps.goalDone, metSurvivor = ps.metSurvivor, held = ps.selected }
-	elseif cmd == "camp" and ps then
-		return tostring(S.camps[ps.player.UserId] and (S.camps[ps.player.UserId].x .. "," .. S.camps[ps.player.UserId].y .. (if S.camps[ps.player.UserId].out then " out" else " lit")) or "none")
-	end
-	return "unknown command " .. tostring(cmd)
+	return Debug.run(cmd, ...)
 end
 
 function Sim.world(): WorldGen.World
