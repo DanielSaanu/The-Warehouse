@@ -466,9 +466,7 @@ local function killEntity(e, killer, ctx, byEntity)
 		local g = S.groups[e.group]
 		if g then
 			-- the record loses a member; the tribe replaces them at home after a while
-			local gone = #g.members
-			for i, m in ipairs(g.members) do if m.person == e.person then gone = i break end end
-			table.remove(g.members, gone)
+			for i, m in ipairs(g.members) do if m.person == e.person then table.remove(g.members, i) break end end
 			local now = Calendar.now()
 			g.replenishAt = now + Config.DAY_SECONDS
 			-- A pack breaks when it has lost more than half, not the moment it loses one (Danzo, 2026-09-18:
@@ -1003,7 +1001,7 @@ local function think(e, now: number)
 		if ps then faceEntity(e, Combat.dirTo(e.x, e.y, ps.x, ps.y)) end
 		return
 	end
-	if e.role == "villager" and e.tribe then Villagers.step(e, now) return end -- a day of their own: server/Villagers.lua
+	if (e.role == "villager" or e.role == "pregnant") and e.tribe then Villagers.step(e, now) return end -- server/Villagers.lua
 	if not e.path then wanderStep(e, now) end
 end
 
@@ -1145,6 +1143,7 @@ end
 local function dailyTick()
 	local ev = Tick.daily(S, rng, S.day, Calendar.now())
 	applyFamilyEvents(ev)
+	Villagers.harvested(ev.harvests)
 	for _, ps in pairs(S.players) do
 		for tribe, v in pairs(ps.rep) do ps.rep[tribe] = Reputation.fade(v, 1) end
 	end

@@ -78,6 +78,40 @@ do
 	print(("    farms: %d plots, 6 hands, %d food in 8 days"):format(#w.tribes[1].plots, food))
 end
 
+-- The harvest stays in the store (QA round 1: the restock's ceiling deleted it the next morning), and a farming tribe
+-- is not fed twice: its food comes from the fields, not from the abstract restock as well.
+do
+	local w, rng = newRecord(8)
+	local t = w.tribes[1]
+	t.stock.food = 80 -- a good season, well over the old 45 ceiling
+	Trade.dailyRestock(t.stock, t.tribeType, true)
+	assert(t.stock.food >= 70, "a full store is traded down a little, never cut to the ceiling: " .. t.stock.food)
+	local unfarmed, farmed = Trade.newStock("farmer"), Trade.newStock("farmer")
+	unfarmed.food, farmed.food = 10, 10
+	Trade.dailyRestock(unfarmed, "farmer", false)
+	Trade.dailyRestock(farmed, "farmer", true)
+	assert(unfarmed.food > farmed.food, "without fields a tribe still makes its good; with fields the harvest is the making")
+	-- thirty days of a full village: the store grows past the old ceiling and then settles, it does not run away
+	for day = 2, 31 do Tick.daily(w, rng, day, day * Config.DAY_SECONDS) end
+	local full = w.tribes[1].stock.food
+	assert(full > 45 and full < 120, "a full village's store settles above the old ceiling: " .. full)
+	-- the same month with nobody left to farm
+	local e, rng2 = newRecord(0)
+	e.tribes[1].stock.food = full
+	for day = 2, 31 do Tick.daily(e, rng2, day, day * Config.DAY_SECONDS) end
+	assert(e.tribes[1].stock.food < full, "a village that has lost its people eats into the store: " .. e.tribes[1].stock.food)
+	print(("    farms: a month at full strength -> %d food; the same month empty -> %d"):format(full, e.tribes[1].stock.food))
+end
+
+-- A pregnant villager still works her plot.
+do
+	local w = newRecord(3)
+	for _, p in pairs(w.people.people) do
+		if p.tribe == 1 then p.stage, p.role = "pregnant", "pregnant" break end
+	end
+	assert(Farms.workers(w, 1) == 3, "expecting a child does not take a pair of hands off the fields")
+end
+
 -- The dead do not farm.
 do
 	local w = newRecord(3)

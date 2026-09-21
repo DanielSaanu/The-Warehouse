@@ -99,6 +99,28 @@ function Villagers.step(e, now: number)
 	end
 end
 
+--- What Tick.daily brought in (`ev.harvests[tribe] = { harvested, food }`): the log gets a line, and anybody standing
+--- in that village at dawn is told. Not a headline: a harvest every other day would push births and deaths out of
+--- the 64-entry ring.
+function Villagers.harvested(harvests)
+	local world = Map.get()
+	for i, h in pairs(harvests or {}) do
+		local v = Map.village(S.tribes[i].villageId)
+		print(("[Sim] %s brought in %d plots: %d food, %d in the store"):format(v.name, h.harvested, h.food, S.tribes[i].stock.food or 0))
+		for _, ps in pairs(S.players) do
+			if not ps.dead and WorldGen.villageAt(world, ps.x, ps.y, 1) == v then
+				State.text(ps, ("The fields came in at dawn: %d food to %s's store."):format(h.food, v.name))
+			end
+		end
+	end
+end
+
+--- Forget what was scanned and scan again: a restore swaps the tribe rows under this module.
+function Villagers.reset()
+	sites = {}
+	Villagers.ready()
+end
+
 --- The flood has come: plots under water lose the season on them, and the village says so.
 function Villagers.flooded()
 	local world = Map.get()

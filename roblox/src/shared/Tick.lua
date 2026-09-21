@@ -71,7 +71,7 @@ function Tick.daily(w, rng, day: number, now: number)
 	local ev = Tick.families(w, rng, day)
 	ev.harvests = {}
 	for i, t in ipairs(w.tribes) do
-		Trade.dailyRestock(t.stock, t.tribeType)
+		Trade.dailyRestock(t.stock, t.tribeType, t.plots ~= nil and #t.plots > 0)
 		t.population = math.min(60, t.population + 1)
 		ev.harvests[i] = Farms.daily(w, i, day) -- after the restock, so a harvest is food on top of the day's trade
 	end

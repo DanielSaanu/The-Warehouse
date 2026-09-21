@@ -73,12 +73,17 @@ end
 -- What a stranger is called. Everyone with a record has a name, but a player only SEES it once they have met that
 -- person (talked to them, hit them, or been hit by them): until then a hunter is "hunter". Fifty full names on
 -- screen was a wall of text, and a name means more when you earned it. The survivor is family: always named.
-local ROLE_LABEL = { caravan_guard = "caravan guard", caravan_master = "caravan master", pregnant = "villager" }
+local ROLE_LABEL = { caravan_guard = "caravan guard", caravan_master = "caravan master" }
+-- ...and the trades that come in CROWDS are not captioned at all until met: eight villagers on adjacent plots all
+-- reading "villager" was a smear that said nothing (QA round 1). The sprite already says what they are. The posts
+-- a player goes looking for - guard, merchant, caravan master - keep their caption.
+local QUIET = { villager = true, pregnant = true, baby = true, hunter = true, bandit = true, caravan_guard = true }
 
 --- The label THIS player sees over entity `e`.
 function State.labelFor(ps, e): string?
 	if not e.person or e.role == "survivor" then return e.label end
 	if ps and ps.met and ps.met[e.person] then return e.name or e.label end
+	if QUIET[e.role] then return nil end
 	return ROLE_LABEL[e.role] or e.role or e.label
 end
 

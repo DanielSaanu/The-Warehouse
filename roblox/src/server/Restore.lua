@@ -21,6 +21,7 @@ local Headlines = require(Shared:WaitForChild("Headlines"))
 local Map = require(script.Parent:WaitForChild("Map"))
 local Calendar = require(script.Parent:WaitForChild("Calendar"))
 local Tiles = require(script.Parent:WaitForChild("Tiles"))
+local Villagers = require(script.Parent:WaitForChild("Villagers"))
 
 local Restore = {}
 
@@ -152,6 +153,7 @@ function Restore.apply(data, slept: number?): (boolean, string?)
 	S.meta, S.calamity, S.regions, S.tribes = rec.meta, rec.calamity, regions, rec.tribes
 	S.people, S.groups, S.camps, S.bags = rec.people, rec.groups, rec.camps, rec.bags
 	Calendar.bind(S.meta)
+	Villagers.reset() -- the tribe rows are new tables: rescan, and give a save from before farms its plot rows
 	getRng().s = rec.meta.rngState
 	S.day = Calendar.clock()
 

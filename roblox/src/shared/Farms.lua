@@ -15,7 +15,10 @@ local Farms = {}
 
 Farms.GROW_PER_DAY = 0.5 -- a worked plot comes in every second day
 Farms.WEEDS_PER_DAY = 0.15 -- a plot nobody touched goes back
-Farms.FOOD_PER_PLOT = 3
+-- A full farmer village (8 hands, 8 plots) brings in 4 plots a day. At 1 food each that is the 4 a day the abstract
+-- restock used to hand farmers for nothing, which the harvest now REPLACES (Trade.dailyRestock `farmed`): the
+-- store settles around 70 with everyone alive, and falls toward the trade floor as the hands are lost.
+Farms.FOOD_PER_PLOT = 1
 
 local G, O = TileTypes.GroundByName, TileTypes.ObjectByName
 
@@ -52,7 +55,8 @@ end
 function Farms.workers(w, i: number): number
 	local n = 0
 	for _, p in pairs(w.people.people) do
-		if p.alive and p.tribe == i and p.role == "villager" and p.stage == "adult" then n += 1 end
+		-- a pregnant villager is still a villager: she works her plot (her role reads "pregnant" until the birth)
+		if p.alive and p.tribe == i and not p.group and (p.role == "villager" or p.role == "pregnant") then n += 1 end
 	end
 	return n
 end

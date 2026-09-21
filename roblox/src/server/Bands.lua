@@ -172,7 +172,8 @@ function Bands.tick(now: number)
 	for _, g in pairs(S.groups) do
 		local p = Bands.pos(g)
 		if g.materialised then
-			if not anyPlayerWithin(p.x, p.y, Config.COLLAPSE_RANGE) then Bands.collapse(g) end
+			-- nobody left alive is also a reason: Tick.groups skips a materialised group, so an empty one stood frozen
+			if #g.members == 0 or not anyPlayerWithin(p.x, p.y, Config.COLLAPSE_RANGE) then Bands.collapse(g) end
 		elseif #g.members > 0 and anyPlayerWithin(p.x, p.y, Config.MATERIALISE_RANGE) then
 			materialise(g)
 		end

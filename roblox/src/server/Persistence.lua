@@ -85,6 +85,7 @@ function Persistence.loadWorld()
 	if not shapeOk then return noSave("the saved world is damaged and is being left alone: " .. tostring(shapeWhy)) end
 	local rec, why, obsolete = Save.decode(data)
 	if not rec then
+		if obsolete and not Save.mayWrite(data, ME, os.time()) then return noSave("another server is already starting the new world over an obsolete save") end
 		if obsolete then
 			Persistence.mode, Persistence.why = "new", why
 			print("[Persistence] " .. tostring(why))
