@@ -13,7 +13,15 @@ Families.GESTATION_DAYS = 7      -- pregnant for one in-game week (70 real minut
 Families.BABY_DAYS = 14          -- a baby for two weeks
 Families.CONCEIVE_CHANCE = 0.5   -- per couple per weekly roll, when the village has room
 Families.REPAIR_DAYS = 30        -- widows and widowers re-pair after a month
-Families.MAX_PEOPLE = 9          -- visible people per village (the abstract population is larger)
+-- Living named people per tribe, above which nobody conceives. It counts EVERYONE (guards and fighters too), so it
+-- has to sit above the starting rosters in Sim's ROSTER (farmer 14, hunter 13, plunderer 12) or nobody is ever
+-- born: at a flat 9 the family system idled from day 1 and a village could only shrink. Farmers are the biggest
+-- tribes (ideas/INBOX.md), so they get the most room. 18 + 15 + 14 = 47, inside DESIGN §4's 60 people.
+Families.MAX_PEOPLE = { farmer = 18, hunter = 15, plunderer = 14 } :: { [string]: number }
+
+function Families.cap(tribeType: string?): number
+	return Families.MAX_PEOPLE[tribeType or "farmer"] or Families.MAX_PEOPLE.farmer
+end
 
 export type Person = {
 	id: number, first: string, last: string, sex: string, -- "m" | "f"
@@ -101,18 +109,19 @@ function Families.formCouples(reg: Registry, tribe: number, day: number): number
 end
 
 --- The weekly roll: a village with room and a couple may conceive. Returns the mothers who fell pregnant.
-function Families.weeklyConceive(reg: Registry, rng: Rng.Rng, tribe: number, day: number): { Person }
+function Families.weeklyConceive(reg: Registry, rng: Rng.Rng, tribe: number, day: number, tribeType: string?): { Person }
 	local out: { Person } = {}
+	local cap = Families.cap(tribeType)
 	local alive = Families.villagers(reg, tribe)
 	-- babies on the way count toward the cap
 	local expecting = 0
 	for _, p in ipairs(alive) do if p.stage == "pregnant" then expecting += 1 end end
-	if #alive + expecting >= Families.MAX_PEOPLE then return out end
+	if #alive + expecting >= cap then return out end
 	for _, p in ipairs(alive) do
 		if p.sex == "f" and p.stage == "adult" and p.spouse and reg.people[p.spouse] and reg.people[p.spouse].alive and rng:chance(Families.CONCEIVE_CHANCE) then
 			p.stage, p.role, p.due = "pregnant", "pregnant", day + Families.GESTATION_DAYS
 			table.insert(out, p)
-			if #alive + expecting + #out >= Families.MAX_PEOPLE then break end
+			if #alive + expecting + #out >= cap then break end
 		end
 	end
 	return out

@@ -29,7 +29,7 @@ function Tick.families(w, rng, day: number)
 	for i in ipairs(w.tribes) do
 		Families.formCouples(w.people, i, day)
 		if day % Config.WEEK_DAYS == 1 then
-			for _, mother in ipairs(Families.weeklyConceive(w.people, rng, i, day)) do table.insert(conceived, mother) end
+			for _, mother in ipairs(Families.weeklyConceive(w.people, rng, i, day, w.tribes[i].tribeType)) do table.insert(conceived, mother) end
 		end
 	end
 	local r = Families.daily(w.people, rng, day)

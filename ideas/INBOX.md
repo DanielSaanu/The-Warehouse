@@ -23,9 +23,8 @@
   Tests, lint and a Studio smoke test pass; it has had no QA loop.
 - **Next, Danzo's call:** (a) a QA loop on the two carves before anything builds on them, (b) the rest of Track B,
   or (c) **rung 3 part 3, gossip** — which is the next thing a player would actually feel.
-- **One decision waiting on Danzo:** `Families.MAX_PEOPLE = 9` against 11-14 living per tribe means **nobody is
-  ever born** until a village is thinned, so the family system idles and catch-up has little to report. Raising it
-  above the starting rosters (16 fits DESIGN §4's 60-NPC cap) makes villages grow. One constant.
+- ~~One decision waiting on Danzo: `Families.MAX_PEOPLE = 9`~~ **Settled 2026-09-21: the cap is per tribe type**
+  (farmer 18, hunter 15, plunderer 14 - above every starting roster, farmers biggest). People are born again.
 
 This file is the shared scratchpad. Type here in the UI (bottom pane) or in any editor. Claude reads it 
 the start of a session and works through it. Cross things out or delete them when done.
