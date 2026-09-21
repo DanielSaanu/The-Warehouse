@@ -31,6 +31,7 @@ local Map = require(script.Parent:WaitForChild("Map"))
 local State = require(script.Parent:WaitForChild("State"))
 local Tiles = require(script.Parent:WaitForChild("Tiles"))
 local Villagers = require(script.Parent:WaitForChild("Villagers"))
+local Bands = require(script.Parent:WaitForChild("Bands"))
 local Calendar = require(script.Parent:WaitForChild("Calendar"))
 
 local Sim = {}
@@ -69,6 +70,7 @@ Sim.notice, Sim.text, Sim.hud, Sim.restText, Sim.broadcastObject = State.notice,
 
 -- The goal line lives in server/Goals.lua; these names are what Interact, Debug and the rest of Sim already call.
 Sim.setGoal, Sim.clearGoal = Goals.set, Goals.clear
+Sim.groupPos = Bands.pos -- what Interact, Debug and the rest of Sim already call
 
 -- ---------- entities ----------
 local function newEntity(kind: string, x: number, y: number, opts): any
@@ -319,152 +321,10 @@ local function initTribes()
 end
 
 -- ---------- groups ----------
--- A group is a record with a route (a list of tiles) and a position along it. Materialised, its members are
--- entities walking the route behind a leader; collapsed, the record's `pos` just advances.
-local function forestTarget(): WorldGen.Pos
-	local best, bestF = nil, -1
-	for _, r in ipairs(S.regions.list) do
-		if not r.village and r.forest > bestF then
-			local x0, y0, x1, y1 = WorldGen.regionBounds(world, r.id)
-			local c = WorldGen.nearestWalkable(world, math.floor((x0 + x1) / 2), math.floor((y0 + y1) / 2), 8)
-			if c and WorldGen.reachable(world, world.spawn.x, world.spawn.y, c.x, c.y) then best, bestF = c, r.forest end
-		end
-	end
-	return best or world.villages[2].spawn
-end
-
---- The TRANSIENT half of a group: who is materialised, who they are chasing. Never saved; reset on creation and
---- again when a saved group is restored.
-local function groupScratch(g)
-	g.entities, g.leader, g.trail, g.materialised = {}, nil, {}, false
-	g.target, g.aggroUntil, g.lastSeen = nil, 0, nil
-end
-
-local function makeGroup(id: string, kind: string, tribeIdx: number, from: WorldGen.Pos, to: WorldGen.Pos, members, pauses)
-	-- `route` is derived from `from` and `to` (Tick.rebuildRoute), so `to` is what a save keeps
-	local g = {
-		id = id, kind = kind, tribe = tribeIdx, pos = 1, dir = 1, from = { x = from.x, y = from.y }, to = { x = to.x, y = to.y },
-		pauseUntil = Calendar.now() + rng:int(20, 60), pauses = pauses, speed = 1.5, acc = 0,
-		members = members, fullSize = #members,
-		carry = {}, retreatUntil = 0,   -- what they are bringing home, and whether they have had enough
-	}
-	groupScratch(g)
-	Tick.rebuildRoute(g, world)
-	S.groups[id] = g
-	return g
-end
-
-local function initGroups()
-	local farmer, hunter, plunderer = world.villages[1], world.villages[2], world.villages[3]
-	makeGroup("caravan", "caravan", 1, farmer.spawn, hunter.spawn,
-		{ { kind = "caravan_master", role = "caravan_master" }, { kind = "caravan_guard", role = "caravan_guard" }, { kind = "caravan_guard", role = "caravan_guard" } },
-		{ 120, 120 })
-	makeGroup("squad", "squad", 2, hunter.spawn, forestTarget(),
-		{ { kind = "hunter" }, { kind = "hunter" }, { kind = "hunter" }, { kind = "hunter" } },
-		{ 60, 90 })
-	-- The band lies in wait part way down the road from its village toward the farmers. Not on day one: for the
-	-- first GRACE_DAYS it stays up near its own village, so a new player walking out of the burnt village does not
-	-- meet four bandits with a knife and no idea (docs/qa/rung2-part4.md goal 4).
-	local toFarm = WorldGen.route(world, plunderer.spawn.x, plunderer.spawn.y, farmer.spawn.x, farmer.spawn.y, true) or {}
-	local function alongRoad(frac: number): WorldGen.Pos
-		return toFarm[math.max(1, math.floor(#toFarm * frac))] or farmer.spawn
-	end
-	makeGroup("band", "band", 3, plunderer.spawn, alongRoad(0.18),
-		{ { kind = "bandit" }, { kind = "bandit" }, { kind = "bandit" }, { kind = "bandit" } },
-		{ 60, 150 })
-	S.groups.band.lateTarget = alongRoad(0.55)
-	S.groups.band.speed = 2
-	S.groups.squad.speed = 2
-end
-
-function Sim.groupPos(g): WorldGen.Pos
-	if g.materialised and g.leader and S.entities[g.leader] then
-		local l = S.entities[g.leader]
-		return { x = l.x, y = l.y }
-	end
-	return g.route[math.clamp(g.pos, 1, #g.route)]
-end
-
---- How much a group is hauling.
-local function carryTotal(g): number
-	local n = 0
-	for _, v in pairs(g.carry) do n += v end
-	return n
-end
-
---- What the pure group tick reports, for the server log.
-local function logGroupEvents(events)
-	for _, ev in ipairs(events) do
-		if ev.kind == "deposit" then
-			print(("[Sim] the %s %s came home with %s"):format(Map.village(S.tribes[ev.tribe].villageId).name, ev.group, ev.text))
-		elseif ev.kind == "retarget" then
-			print("[Sim] the " .. ev.group .. " has moved down the road")
-		end
-	end
-end
-
---- Turn around at the end of the route; home with the kill, the hides and meat go into the village's stock
---- (Danzo, 2026-09-18: "they dont seem like they hunt and return back with theyre materials"). The rule itself is
---- Tick.groupTurn, shared with the abstract tick and catch-up.
-local function groupTurn(g)
-	local events = {}
-	Tick.groupTurn(S, g, Calendar.now(), events)
-	logGroupEvents(events)
-end
-
-local function materialise(g)
-	local p = Sim.groupPos(g)
-	local t = S.tribes[g.tribe]
-	local first = true
-	for _, m in ipairs(g.members) do
-		local pos = nearestFree(p.x, p.y, 4)
-		if pos then
-			local fname, lname = Names.person(rng, rng:pick(t.surnames))
-			local label = if m.role == "caravan_master" then fname .. " " .. lname elseif m.kind == "bandit" then "bandit" elseif m.kind == "hunter" then fname .. " " .. lname else "caravan guard"
-			local e = newEntity(m.kind, pos.x, pos.y, { tribe = g.tribe, group = g.id, role = m.role or m.kind, name = fname .. " " .. lname, label = label, sprite = if m.kind == "bandit" then "bandit" else nil })
-			e.first, e.last = fname, lname
-			g.entities[e.id] = true
-			if first then g.leader = e.id first = false end
-		end
-	end
-	g.materialised = true
-	g.trail = {}
-end
-
-local function collapse(g)
-	local p = Sim.groupPos(g)
-	-- record where the leader got to on the route
-	local bestI, bestD = g.pos, math.huge
-	for i, r in ipairs(g.route) do
-		local d = math.abs(r.x - p.x) + math.abs(r.y - p.y)
-		if d < bestD then bestI, bestD = i, d end
-	end
-	g.pos = bestI
-	for id in pairs(g.entities) do
-		local e = S.entities[id]
-		if e then removeEntity(e) end
-	end
-	g.entities = {}
-	g.leader = nil
-	g.materialised = false
-end
+-- Groups (the caravan, the squad, the band) live in server/Bands.lua: records, routes, materialise / collapse.
 
 local function tickGoals()
 	Goals.tick(S.players, (Sim.clock()))
-end
-
---- Materialise/collapse decisions, then one second of abstract movement for every group without bodies (the
---- movement is Tick.groups: pure, shared with catch-up). 1 Hz.
-local function tickGroups(now: number)
-	for _, g in pairs(S.groups) do
-		local p = Sim.groupPos(g)
-		if g.materialised then
-			if not anyPlayerWithin(p.x, p.y, Config.COLLAPSE_RANGE) then collapse(g) end
-		elseif #g.members > 0 and anyPlayerWithin(p.x, p.y, Config.MATERIALISE_RANGE) then
-			materialise(g)
-		end
-	end
-	logGroupEvents(Tick.groups(S, world, now))
 end
 
 -- ---------- wildlife ----------
@@ -566,7 +426,7 @@ local function killEntity(e, killer, ctx, byEntity)
 				if item ~= "coin" then g.carry[item] = (g.carry[item] or 0) + n end
 			end
 			-- laden: turn for home rather than keep killing
-			if g.dir == 1 and carryTotal(g) >= Config.SQUAD_LOAD then
+			if g.dir == 1 and Bands.carryTotal(g) >= Config.SQUAD_LOAD then
 				g.dir, g.pauseUntil = -1, 0
 			end
 		end
@@ -1032,7 +892,7 @@ local function groupStep(e, g, now: number)
 			return
 		end
 		local nextI = g.pos + g.dir
-		if nextI < 1 or nextI > #g.route then groupTurn(g) return end
+		if nextI < 1 or nextI > #g.route then Bands.turn(g) return end
 		local r = g.route[nextI]
 		if not e.path then
 			if Combat.adjacent(e.x, e.y, r.x, r.y) or (e.x == r.x and e.y == r.y) then
@@ -1338,22 +1198,23 @@ function Sim.init(saved, slept: number?): (boolean, string?)
 	for _, r in ipairs(S.regions.list) do r.live = { deer = 0, boar = 0, wolf = 0 } end
 	Sides.bind({ state = S, world = world, faceEntity = faceEntity, markAggression = markAggression, pathTo = pathTo,
 		text = Sim.text })
-	Debug.bind({ Sim = Sim, S = S, world = world, cheb = cheb, collapse = collapse, endCalamity = endCalamity,
+	Debug.bind({ Sim = Sim, S = S, world = world, cheb = cheb, collapse = Bands.collapse, endCalamity = endCalamity,
 		hitEntity = hitEntity, killPlayer = killPlayer, morph = morph, nearestFree = nearestFree, newEntity = newEntity,
 		startCalamity = startCalamity, tickFamilies = tickFamilies, tidx = tidx })
 	Restore.bind({ playerRestPoint = Sim.playerRestPoint, notice = notice, S = S, world = world, spawnPerson = spawnPerson, removeEntity = removeEntity,
-		groupScratch = groupScratch, getRng = function() return rng end })
+		groupScratch = Bands.scratch, getRng = function() return rng end })
+	Bands.bind({ world = world, rng = rng, newEntity = newEntity, removeEntity = removeEntity, nearestFree = nearestFree, anyPlayerWithin = anyPlayerWithin })
 	Villagers.bind({ pathTo = pathTo, wanderStep = wanderStep, isNight = Sim.isNight })
 	if saved then
 		local ok, why = Restore.apply(saved, slept)
 		if ok then return true, nil end
 		warn("[Sim] the save would not restore (" .. tostring(why) .. "): generating a new world instead")
 		initTribes()
-		initGroups()
+		Bands.init()
 		return false, why
 	end
 	initTribes()
-	initGroups()
+	Bands.init()
 	local n = 0
 	for _ in pairs(S.entities) do n += 1 end
 	print(("[Sim] %d villagers, %d groups, %d regions"):format(n, 3, #S.regions.list))
@@ -1391,7 +1252,7 @@ function Sim.start()
 			task.wait(1)
 			local now = Calendar.now()
 			local day = Sim.clock()
-			for _, f in ipairs({ tickGroups, tickCamps, tickCalamity, tickGoals }) do
+			for _, f in ipairs({ Bands.tick, tickCamps, tickCalamity, tickGoals }) do
 				local ok, err = pcall(f, now)
 				if not ok then warn("[Sim] tick: " .. tostring(err)) end
 			end
