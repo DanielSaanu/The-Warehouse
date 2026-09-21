@@ -17,6 +17,10 @@
 - **Done since:** the "you were gone eleven days" line (QA 8/10, merged), and the first two carves of Track B
   (`State.lua`, `Tiles.lua`; `Sim.lua` 1617 → 1410). **Track B is parked at Danzo's word** — see
   `roblox/src/server/README.md` for exactly where it stops.
+- **2026-09-21, on the PC:** the PC had an unpushed branch (`world-up-close`, now on GitHub as a backup) with a first
+  take on part 1. Main had since rebuilt all of it except **a villager's day and farms that grow**; that half is now
+  ported onto main's layout on branch `villagers-day` (`shared/Farms.lua`, `server/Villagers.lua`, Debug `farms`).
+  Tests, lint and a Studio smoke test pass; it has had no QA loop.
 - **Next, Danzo's call:** (a) a QA loop on the two carves before anything builds on them, (b) the rest of Track B,
   or (c) **rung 3 part 3, gossip** — which is the next thing a player would actually feel.
 - **One decision waiting on Danzo:** `Families.MAX_PEOPLE = 9` against 11-14 living per tribe means **nobody is

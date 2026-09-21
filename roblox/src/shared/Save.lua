@@ -77,7 +77,7 @@ function Save.encode(w, stamp: { seed: number, rngState: number, savedAt: number
 	for i, r in ipairs(w.regions.list) do out.regions[i] = pick(r, REGION) end
 	for i, t in ipairs(w.tribes) do
 		local row = pick(t, TRIBE)
-		row.stock, row.surnames = copy(t.stock), copy(t.surnames)
+		row.stock, row.surnames, row.plots = copy(t.stock), copy(t.surnames), copy(t.plots) -- plots: growth only; where they are is the map's
 		out.tribes[i] = row
 	end
 	for _, g in pairs(w.groups) do

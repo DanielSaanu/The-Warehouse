@@ -12,8 +12,9 @@ Read this first. Update it in the same commit as any move. Sizes are line counts
 | `Goals.lua` | the goal line under the clock: `set`, `clear`, `rebuild`, `tick` (carved verbatim out of Sim when it hit its ceiling) | 65 |
 | `Calendar.lua` | `meta.gameSeconds`, the ONE clock: `now()`, `clock()`, `setDay()`, `skipTo()` (catch-up adds its lump to `meta.gameSeconds` directly, in `Tick.catchUp`) | 60 |
 | `Restore.lua` | `Sim.state` <-> a save: `snapshot()`, and `apply(data, slept)` = the RESTORE constructor (bodies, routes, stamped tiles, overlay, `Map.reencode`) | 150 |
-| `Sim.lua` | everything else, for now: entities, AI, fighting, groups, calamities, the tick loops | 1410 |
+| `Sim.lua` | everything else, for now: entities, AI, fighting, groups, calamities, the tick loops | 1417 |
 | `Sides.lua` | who takes whose side in a fight | 280 |
+| `Villagers.lua` | a villager's day: out to a plot in the morning, home to a hut door at night, home at a run from wolves and strange bandits; scans huts and plots off the map. What the farms YIELD is `shared/Farms.lua` (pure, in `Tick.daily`, saved as `tribes[].plots`) | 130 |
 | `Interact.lua` | the F key: talk, trade, rest, gifts | 340 |
 | `Debug.lua` | the test console (Workspace attribute `Debug`) | 215 |
 
@@ -36,6 +37,13 @@ Read this first. Update it in the same commit as any move. Sizes are line counts
 - [x] **Headlines**: `shared/Headlines.lua`, a 64-entry ring in `meta.headlines` (births from `Tick.families` - so catch-up writes
       them - deaths and calamities from Sim). A returning player gets "Welcome back / You were gone N days" plus up to three
       lines, from tribes that would tell them. Debug `welcome <days>` shows it on demand.
+
+## After Track A, continued
+
+- [x] **A villager's day and farms that grow** (2026-09-21): ported from the unpushed `world-up-close` branch, which built it
+      before Track A existed, onto this layout: the rule is pure (`shared/Farms.lua`, counts living villagers, so catch-up farms
+      too), the walk is a projection (`Villagers.lua`), plot growth is saved, plot positions are derived. Debug `farms` reports.
+      Smoke-tested in Studio (work by day, home at night, a harvest, a flood); **no QA reviewer has looked at it.**
 
 ## Track B (carving Sim.lua) — started, then parked
 

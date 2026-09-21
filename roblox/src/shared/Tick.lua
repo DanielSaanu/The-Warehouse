@@ -13,6 +13,7 @@ local DayCycle = require(script.Parent.DayCycle)
 local Ecology = require(script.Parent.Ecology)
 local Families = require(script.Parent.Families)
 local Trade = require(script.Parent.Trade)
+local Farms = require(script.Parent.Farms)
 local Headlines = require(script.Parent.Headlines)
 
 local Tick = {}
@@ -52,13 +53,15 @@ local function fullCrew(g): (number, string)
 end
 
 --- One in-game day: the ecosystem, families, stock, population, and groups that have licked their wounds.
---- `now` is game seconds (Calendar.now()). Returns the family events plus `totals` for the log line.
+--- `now` is game seconds (Calendar.now()). Returns the family events plus `harvests[tribe]` and `totals` for the log.
 function Tick.daily(w, rng, day: number, now: number)
 	Ecology.dailyTick(w.regions, rng)
 	local ev = Tick.families(w, rng, day)
-	for _, t in ipairs(w.tribes) do
+	ev.harvests = {}
+	for i, t in ipairs(w.tribes) do
 		Trade.dailyRestock(t.stock, t.tribeType)
 		t.population = math.min(60, t.population + 1)
+		ev.harvests[i] = Farms.daily(w, i, day) -- after the restock, so a harvest is food on top of the day's trade
 	end
 	for _, g in pairs(w.groups) do
 		if g.replenishAt and now >= g.replenishAt and not g.materialised then

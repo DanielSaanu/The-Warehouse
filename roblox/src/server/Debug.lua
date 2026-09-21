@@ -22,6 +22,7 @@ local Calendar = require(script.Parent:WaitForChild("Calendar"))
 local Restore = require(script.Parent:WaitForChild("Restore"))
 local Persistence = require(script.Parent:WaitForChild("Persistence"))
 local Map = require(script.Parent:WaitForChild("Map"))
+local Villagers = require(script.Parent:WaitForChild("Villagers"))
 
 local Debug = {}
 
@@ -230,6 +231,8 @@ function Debug.run(cmd: string, ...): any
 		hitEntity(e, args[2] or 3, ps.x, ps.y, ps)
 		local live = S.entities[e.id]
 		return if live then ("%s hp %d state %s broken %s beatenBy %s"):format(e.id, e.hp, e.state, tostring(e.broken), tostring(e.beatenBy)) else e.id .. " dead"
+	elseif cmd == "farms" then
+		return Villagers.report() -- huts, plots, hands, food, and who is where
 	elseif cmd == "people" then
 		local out = {}
 		for i, t in ipairs(S.tribes) do

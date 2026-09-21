@@ -30,6 +30,7 @@ local Goals = require(script.Parent:WaitForChild("Goals"))
 local Map = require(script.Parent:WaitForChild("Map"))
 local State = require(script.Parent:WaitForChild("State"))
 local Tiles = require(script.Parent:WaitForChild("Tiles"))
+local Villagers = require(script.Parent:WaitForChild("Villagers"))
 local Calendar = require(script.Parent:WaitForChild("Calendar"))
 
 local Sim = {}
@@ -1138,6 +1139,7 @@ local function think(e, now: number)
 		if ps then faceEntity(e, Combat.dirTo(e.x, e.y, ps.x, ps.y)) end
 		return
 	end
+	if e.role == "villager" and e.tribe then Villagers.step(e, now) return end -- a day of their own: server/Villagers.lua
 	if not e.path then wanderStep(e, now) end
 end
 
@@ -1194,6 +1196,7 @@ local function startCalamity(kind: string)
 			if WorldGen.ground(world, camp.x, camp.y) == G.flood.id then destroyCamp(uid, "The flood took your camp.") end
 		end
 		for _, t in ipairs(S.tribes) do t.stock.food = math.floor(t.stock.food * 0.7) end
+		Villagers.flooded()
 	else
 		Ecology.wolfSurge(S.regions)
 		for _, t in ipairs(S.tribes) do
@@ -1340,6 +1343,7 @@ function Sim.init(saved, slept: number?): (boolean, string?)
 		startCalamity = startCalamity, tickFamilies = tickFamilies, tidx = tidx })
 	Restore.bind({ playerRestPoint = Sim.playerRestPoint, notice = notice, S = S, world = world, spawnPerson = spawnPerson, removeEntity = removeEntity,
 		groupScratch = groupScratch, getRng = function() return rng end })
+	Villagers.bind({ pathTo = pathTo, wanderStep = wanderStep, isNight = Sim.isNight })
 	if saved then
 		local ok, why = Restore.apply(saved, slept)
 		if ok then return true, nil end
@@ -1357,6 +1361,7 @@ function Sim.init(saved, slept: number?): (boolean, string?)
 end
 
 function Sim.start()
+	Villagers.ready()
 	-- 10 Hz: walking and thinking
 	task.spawn(function()
 		local lastInterest, lastWild = 0, 0
