@@ -49,13 +49,17 @@ function Trade.camperPrice(tribeType: string, repMult: number): number?
 end
 
 --- Daily economy: the tribe makes its good, consumes its need, and everything drifts toward target.
-function Trade.dailyRestock(stock: Stock, tribeType: string)
+--- `farmed`: this tribe has fields (shared/Farms.lua), so its food comes from the HARVEST and the abstract gain is
+--- skipped - otherwise a farming village is fed twice. Making only ever tops up to the ceiling: it never takes
+--- away what is already in the store, or a good harvest would be deleted the next morning.
+function Trade.dailyRestock(stock: Stock, tribeType: string, farmed: boolean?)
 	local target = Trade.TARGET[tribeType] or Trade.TARGET.farmer
 	local makes, needs = Trade.MAKES[tribeType], Trade.NEEDS[tribeType]
 	for good, t in pairs(target) do
 		local have = stock[good] or 0
 		if good == makes then
-			have = math.min(math.floor(t * 1.5), have + math.max(1, math.floor(t * 0.15)))
+			local ceiling = math.floor(t * 1.5)
+			if have < ceiling and not (farmed and good == "food") then have = math.min(ceiling, have + math.max(1, math.floor(t * 0.15))) end
 		elseif good == needs then
 			have = math.max(0, have - 1)
 		end

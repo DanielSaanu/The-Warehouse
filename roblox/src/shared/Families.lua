@@ -13,7 +13,15 @@ Families.GESTATION_DAYS = 7      -- pregnant for one in-game week (70 real minut
 Families.BABY_DAYS = 14          -- a baby for two weeks
 Families.CONCEIVE_CHANCE = 0.5   -- per couple per weekly roll, when the village has room
 Families.REPAIR_DAYS = 30        -- widows and widowers re-pair after a month
-Families.MAX_PEOPLE = 9          -- visible people per village (the abstract population is larger)
+-- Living named people per tribe, above which nobody conceives. It counts EVERYONE (guards and fighters too), so it
+-- has to sit above the starting rosters in Sim's ROSTER (farmer 14, hunter 13, plunderer 12) or nobody is ever
+-- born: at a flat 9 the family system idled from day 1 and a village could only shrink. Farmers are the biggest
+-- tribes (ideas/INBOX.md), so they get the most room. 18 + 15 + 14 = 47, inside DESIGN §4's 60 people.
+Families.MAX_PEOPLE = { farmer = 18, hunter = 15, plunderer = 14 } :: { [string]: number }
+
+function Families.cap(tribeType: string?): number
+	return Families.MAX_PEOPLE[tribeType or "farmer"] or Families.MAX_PEOPLE.farmer
+end
 
 export type Person = {
 	id: number, first: string, last: string, sex: string, -- "m" | "f"
@@ -26,6 +34,7 @@ export type Person = {
 	due: number?,                   -- pregnant: the day the baby comes
 	grown: number?,                 -- baby: the day it becomes an adult
 	entity: string?,                -- the live entity id, if any
+	group: string?,                 -- on the road with this group (caravan / squad / band): a person, but not a villager
 }
 export type Registry = { people: { [number]: Person }, nextId: number }
 
@@ -59,11 +68,13 @@ function Families.newAdult(reg: Registry, rng: Rng.Rng, tribe: number, village: 
 	return Families.add(reg, { first = first, last = last, sex = sex or (if rng:chance(0.5) then "m" else "f"), tribe = tribe, village = village, role = role, born = born })
 end
 
---- Everyone alive in a village (optionally only adults).
+--- Everyone alive AT HOME in a village (optionally only adults). People out with a group are of the tribe - they
+--- keep its surnames, and `relatives` finds them - but they are on the road: they do not count toward the village's
+--- cap, pair off, conceive or inherit a post. Without this the squad's four hunters would put Kenstow over its cap.
 function Families.villagers(reg: Registry, tribe: number, adultsOnly: boolean?): { Person }
 	local out: { Person } = {}
 	for _, p in pairs(reg.people) do
-		if p.alive and p.tribe == tribe and (not adultsOnly or p.stage == "adult") then table.insert(out, p) end
+		if p.alive and p.tribe == tribe and not p.group and (not adultsOnly or p.stage == "adult") then table.insert(out, p) end
 	end
 	table.sort(out, function(a: Person, b: Person) return a.id < b.id end)
 	return out
@@ -101,18 +112,19 @@ function Families.formCouples(reg: Registry, tribe: number, day: number): number
 end
 
 --- The weekly roll: a village with room and a couple may conceive. Returns the mothers who fell pregnant.
-function Families.weeklyConceive(reg: Registry, rng: Rng.Rng, tribe: number, day: number): { Person }
+function Families.weeklyConceive(reg: Registry, rng: Rng.Rng, tribe: number, day: number, tribeType: string?): { Person }
 	local out: { Person } = {}
+	local cap = Families.cap(tribeType)
 	local alive = Families.villagers(reg, tribe)
 	-- babies on the way count toward the cap
 	local expecting = 0
 	for _, p in ipairs(alive) do if p.stage == "pregnant" then expecting += 1 end end
-	if #alive + expecting >= Families.MAX_PEOPLE then return out end
+	if #alive + expecting >= cap then return out end
 	for _, p in ipairs(alive) do
 		if p.sex == "f" and p.stage == "adult" and p.spouse and reg.people[p.spouse] and reg.people[p.spouse].alive and rng:chance(Families.CONCEIVE_CHANCE) then
 			p.stage, p.role, p.due = "pregnant", "pregnant", day + Families.GESTATION_DAYS
 			table.insert(out, p)
-			if #alive + expecting + #out >= Families.MAX_PEOPLE then break end
+			if #alive + expecting + #out >= cap then break end
 		end
 	end
 	return out

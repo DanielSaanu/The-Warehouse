@@ -21,6 +21,7 @@ local Headlines = require(Shared:WaitForChild("Headlines"))
 local Map = require(script.Parent:WaitForChild("Map"))
 local Calendar = require(script.Parent:WaitForChild("Calendar"))
 local Tiles = require(script.Parent:WaitForChild("Tiles"))
+local Villagers = require(script.Parent:WaitForChild("Villagers"))
 
 local Restore = {}
 
@@ -48,7 +49,7 @@ end
 --- point if they left dead. Standing fades once for the days they were away: the daily tick only fades players who
 --- are online, so without this an absent player would never be forgiven anything.
 function Restore.player(ps, saved, x: number, y: number): (number, number)
-	local sx, sy = Save.applyPlayer(ps, saved)
+	local sx, sy = Save.applyPlayer(ps, saved, S.meta.worldId)
 	if sx and sy then
 		x, y = sx, sy
 	elseif saved.version == Save.PLAYER_VERSION then
@@ -107,7 +108,7 @@ local function restoreBodies()
 	local living = {}
 	for _, p in pairs(S.people.people) do
 		p.entity = nil
-		if p.alive then table.insert(living, p) end
+		if p.alive and not p.group then table.insert(living, p) end -- people on the road get their bodies from Bands.materialise
 	end
 	table.sort(living, function(a, b) return a.id < b.id end)
 	local n = 0
@@ -123,6 +124,11 @@ local function restoreBodies()
 		end
 	end
 	return n, #living
+end
+
+--- A name for a world that no other world will have. Wall time is fine here: it is an identity, not a timer (R5).
+function Restore.newWorldId(): string
+	return ("%d-%d-%d"):format(world.seed, os.time(), math.random(1, 1e6))
 end
 
 -- ---------- apply ----------
@@ -152,6 +158,8 @@ function Restore.apply(data, slept: number?): (boolean, string?)
 	S.meta, S.calamity, S.regions, S.tribes = rec.meta, rec.calamity, regions, rec.tribes
 	S.people, S.groups, S.camps, S.bags = rec.people, rec.groups, rec.camps, rec.bags
 	Calendar.bind(S.meta)
+	S.meta.worldId = S.meta.worldId or Restore.newWorldId() -- a world saved before worlds had ids gets one now
+	Villagers.reset() -- the tribe rows are new tables: rescan, and give a save from before farms its plot rows
 	getRng().s = rec.meta.rngState
 	S.day = Calendar.clock()
 

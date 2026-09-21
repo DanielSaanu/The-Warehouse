@@ -45,8 +45,8 @@ world
 ├─ tribes[]    type, villageId, stock{}, population, walled, surnames, news
 ├─ villages[]  id, tribeId                (rung 3 part 3 adds memory; nothing else is stored in v1)
 ├─ groups{}    id, kind, tribe, from, to, pos, dir, acc, speed, pauses, fullSize,
-│              lateTarget, carry{}, members[], pauseUntil, replenishAt, retreatUntil
-├─ people      nextId, rows: the full Families.Person minus `entity`
+│              lateTarget, carry{}, members[] {kind, role, person}, pauseUntil, replenishAt, retreatUntil
+├─ people      nextId, rows: the full Families.Person minus `entity` (`group` = on the road with that group)
 ├─ camps{}     owner, x, y, litUntil, out
 ├─ bags{}      id, x, y, owner, slots, droppedAt, public
 └─ players     a SEPARATE DataStore key per player (DESIGN §14):
@@ -205,7 +205,7 @@ adapters print, notify and spawn.**
 
 ## 5. Not blowing up the machine
 
-**The 4 MB key.** `Families.MAX_PEOPLE = 9` caps the *living per tribe*, so the registry grows at the death rate.
+**The 4 MB key.** `Families.MAX_PEOPLE` (per tribe type: 18 / 15 / 14; it was a flat 9) caps the *living per tribe*, so the registry grows at the death rate.
 A full person record is ~274 B of JSON, pruned ~71 B: 4 MiB ÷ 274 ≈ 15,300 records ≈ 106 real days of continuous
 simulation at one death per in-game day (the real rate is ≤ 0.9). **People are not the thing to watch. Memory per
 holder, per player, is** (part 3): 43 holders × 5 entries × 60 B ≈ 13 KB per player ever seen; 300 players ≈

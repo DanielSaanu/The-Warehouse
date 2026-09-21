@@ -13,6 +13,7 @@ local DayCycle = require(script.Parent.DayCycle)
 local Ecology = require(script.Parent.Ecology)
 local Families = require(script.Parent.Families)
 local Trade = require(script.Parent.Trade)
+local Farms = require(script.Parent.Farms)
 local Headlines = require(script.Parent.Headlines)
 
 local Tick = {}
@@ -28,7 +29,7 @@ function Tick.families(w, rng, day: number)
 	for i in ipairs(w.tribes) do
 		Families.formCouples(w.people, i, day)
 		if day % Config.WEEK_DAYS == 1 then
-			for _, mother in ipairs(Families.weeklyConceive(w.people, rng, i, day)) do table.insert(conceived, mother) end
+			for _, mother in ipairs(Families.weeklyConceive(w.people, rng, i, day, w.tribes[i].tribeType)) do table.insert(conceived, mother) end
 		end
 	end
 	local r = Families.daily(w.people, rng, day)
@@ -51,19 +52,33 @@ local function fullCrew(g): (number, string)
 	return 4, if g.kind == "squad" then "hunter" else "bandit"
 end
 
+--- A new named member for a group: a PERSON of the tribe (so they can be known, mourned and gossiped about) who
+--- is on the road rather than in the village (`Person.group`). Used for a new world's groups and for replacements.
+function Tick.enlist(w, rng, g, kind: string, role: string?, day: number)
+	local t = w.tribes[g.tribe]
+	local surname = if t.surnames and #t.surnames > 0 then rng:pick(t.surnames) else nil
+	local p = Families.newAdult(w.people, rng, g.tribe, t.villageId or g.tribe, role or kind, day, surname)
+	p.group = g.id
+	local m = { kind = kind, role = role, person = p.id }
+	table.insert(g.members, m)
+	return m
+end
+
 --- One in-game day: the ecosystem, families, stock, population, and groups that have licked their wounds.
---- `now` is game seconds (Calendar.now()). Returns the family events plus `totals` for the log line.
+--- `now` is game seconds (Calendar.now()). Returns the family events plus `harvests[tribe]` and `totals` for the log.
 function Tick.daily(w, rng, day: number, now: number)
 	Ecology.dailyTick(w.regions, rng)
 	local ev = Tick.families(w, rng, day)
-	for _, t in ipairs(w.tribes) do
-		Trade.dailyRestock(t.stock, t.tribeType)
+	ev.harvests = {}
+	for i, t in ipairs(w.tribes) do
+		Trade.dailyRestock(t.stock, t.tribeType, t.plots ~= nil and #t.plots > 0)
 		t.population = math.min(60, t.population + 1)
+		ev.harvests[i] = Farms.daily(w, i, day) -- after the restock, so a harvest is food on top of the day's trade
 	end
 	for _, g in pairs(w.groups) do
 		if g.replenishAt and now >= g.replenishAt and not g.materialised then
 			local full, kind = fullCrew(g)
-			while #g.members < full do table.insert(g.members, { kind = kind }) end
+			while #g.members < full do Tick.enlist(w, rng, g, kind, nil, day) end -- new faces: the dead stay dead
 			g.replenishAt = nil
 		end
 	end

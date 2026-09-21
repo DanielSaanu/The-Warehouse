@@ -15,8 +15,9 @@ local WorldGen = require(script.Parent.WorldGen)
 
 local Save = {}
 
-Save.VERSION = 1        -- the shape of the world key; bump it with a step in Save.migrate
+Save.VERSION = 2        -- the shape of the world key; bump it with a step in Save.migrate
 Save.PLAYER_VERSION = 1
+Save.MET_CAP = 128        -- remembered faces per player (ids are small numbers: ~0.5 KB at the cap)
 Save.PRUNE_DAYS = 8 * Config.WEEK_DAYS -- the dead keep their full record this long, then only a gravestone
 
 local function pick(src, fields: { string })
@@ -35,13 +36,13 @@ end
 local function pos(p) return if p then { x = p.x, y = p.y } else nil end
 
 -- ---------- the saved fields, node by node ----------
-local META = { "gameSeconds", "lastDailyTick", "nextBagId" }
+local META = { "gameSeconds", "lastDailyTick", "nextBagId", "worldId" }
 local CALAMITY = { "kind", "active", "day", "warnedDay" }
 local REGION = { "grass", "deer", "boar", "wolf" }
 local TRIBE = { "tribeType", "villageId", "population", "walled", "news" }
 local GROUP = { "id", "kind", "tribe", "pos", "dir", "acc", "speed", "fullSize", "pauseUntil", "replenishAt", "retreatUntil" }
 local PERSON = { "id", "first", "last", "sex", "tribe", "village", "role", "stage", "born", "alive", "died", "cause", "killer",
-	"father", "mother", "spouse", "widowed", "due", "grown" }
+	"father", "mother", "spouse", "widowed", "due", "grown", "group" }
 local GRAVE = { "id", "first", "last", "sex", "tribe", "born", "died", "cause", "killer", "father", "mother" }
 local CAMP = { "owner", "x", "y", "litUntil", "out" }
 local BAG = { "id", "x", "y", "owner", "droppedAt", "public" }
@@ -77,14 +78,14 @@ function Save.encode(w, stamp: { seed: number, rngState: number, savedAt: number
 	for i, r in ipairs(w.regions.list) do out.regions[i] = pick(r, REGION) end
 	for i, t in ipairs(w.tribes) do
 		local row = pick(t, TRIBE)
-		row.stock, row.surnames = copy(t.stock), copy(t.surnames)
+		row.stock, row.surnames, row.plots = copy(t.stock), copy(t.surnames), copy(t.plots) -- plots: growth only; where they are is the map's
 		out.tribes[i] = row
 	end
 	for _, g in pairs(w.groups) do
 		local row = pick(g, GROUP)
 		row.from, row.to, row.lateTarget = pos(g.from), pos(g.to), pos(g.lateTarget)
 		row.pauses, row.carry, row.members = copy(g.pauses), copy(g.carry), {}
-		for i, m in ipairs(g.members) do row.members[i] = { kind = m.kind, role = m.role } end
+		for i, m in ipairs(g.members) do row.members[i] = { kind = m.kind, role = m.role, person = m.person } end
 		table.insert(out.groups, row)
 	end
 	sortedBy(out.groups, "id")
@@ -104,12 +105,15 @@ function Save.encode(w, stamp: { seed: number, rngState: number, savedAt: number
 end
 
 -- ---------- decode ----------
---- Bring older saves up to VERSION, one step per version. There is only one version so far; the function exists so
---- that the first format change has somewhere to go and a test to copy.
+--- Bring older saves up to VERSION, one step per version. Returns data, or nil, why, obsolete.
+--- v1 -> v2 (2026-09-21): group members became people in the registry (`members[].person`, `Person.group`). There is
+--- deliberately NO upgrade step: Danzo chose to start the world again rather than invent people for the old groups,
+--- so a v1 world is OBSOLETE - a new one is started over it, like a save from another map generator. Players keep
+--- their own keys. The next format change should upgrade in place: `if v == 2 then ... v = 3 end`.
 function Save.migrate(data)
 	local v = data.meta and data.meta.version
-	if type(v) ~= "number" or v > Save.VERSION then return nil, "unknown save version " .. tostring(v) end
-	-- if v == 1 then ...upgrade in place...; v = 2 end
+	if type(v) ~= "number" or v > Save.VERSION then return nil, "unknown save version " .. tostring(v), false end
+	if v < 2 then return nil, "the save is from before groups had named members (v1): this is a new world", true end
 	return data
 end
 
@@ -118,8 +122,8 @@ end
 --- the caller lays these over a fresh Ecology.init. Returns nil, reason if the save cannot be used; a save made by
 --- a different WorldGen is one of those, because its seed no longer grows the map its records were made on.
 function Save.decode(data)
-	local ok, why = Save.migrate(data)
-	if not ok then return nil, why end
+	local ok, why, old = Save.migrate(data)
+	if not ok then return nil, why, old end
 	if data.meta.genVersion ~= WorldGen.GEN_VERSION then
 		-- the third value says the save is OBSOLETE, not damaged: the caller may start a new world over it
 		return nil, ("the map generator changed (save %s, now %s): this is a new world"):format(tostring(data.meta.genVersion), tostring(WorldGen.GEN_VERSION)), true
@@ -159,17 +163,23 @@ function Save.decode(data)
 end
 
 -- ---------- players (their own key each) ----------
-function Save.encodePlayer(ps, day: number)
+--- `worldId` is the world's own id (meta.worldId): the faces a player has met are people OF that world.
+function Save.encodePlayer(ps, day: number, worldId: string?)
 	local out = pick(ps, PLAYER)
 	out.version, out.lastSeenDay = Save.PLAYER_VERSION, day
 	out.inv = { coin = ps.inv.coin, slots = copy(ps.inv.slots) }
 	out.rep, out.rest = copy(ps.rep), copy(ps.rest)
+	-- the people this player has met (they see names, not trades): ids, newest kept if the list ever gets long
+	out.met, out.metWorld = {}, worldId
+	for id in pairs(ps.met or {}) do table.insert(out.met, id) end
+	table.sort(out.met)
+	while #out.met > Save.MET_CAP do table.remove(out.met, 1) end
 	return out
 end
 
 --- Lay a saved player over a freshly made live one. Position is the caller's business (the tile may be a wall, a
 --- flood or a campfire by now), so x and y are returned, not applied.
-function Save.applyPlayer(ps, data): (number?, number?)
+function Save.applyPlayer(ps, data, worldId: string?): (number?, number?)
 	if type(data) ~= "table" or data.version ~= Save.PLAYER_VERSION then return nil, nil end
 	for _, k in ipairs(PLAYER) do
 		if k ~= "x" and k ~= "y" and data[k] ~= nil then ps[k] = data[k] end
@@ -177,6 +187,11 @@ function Save.applyPlayer(ps, data): (number?, number?)
 	ps.inv = { coin = data.inv.coin, slots = copy(data.inv.slots or {}) }
 	for tribe, v in pairs(data.rep) do ps.rep[tribe] = v end
 	ps.rest = copy(data.rest)
+	-- Person ids mean nothing in another world: after a reset, id 2 is somebody else, and a stranger would be named.
+	ps.met = {}
+	if worldId ~= nil and data.metWorld == worldId then
+		for _, id in ipairs(data.met or {}) do ps.met[id] = true end
+	end
 	return data.x, data.y
 end
 

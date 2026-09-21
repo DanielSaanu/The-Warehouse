@@ -20,6 +20,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Save = require(Shared:WaitForChild("Save"))
+local State = require(script.Parent:WaitForChild("State")) -- only for the id of the running world (meta.worldId)
 
 local Persistence = {}
 
@@ -85,6 +86,7 @@ function Persistence.loadWorld()
 	if not shapeOk then return noSave("the saved world is damaged and is being left alone: " .. tostring(shapeWhy)) end
 	local rec, why, obsolete = Save.decode(data)
 	if not rec then
+		if obsolete and not Save.mayWrite(data, ME, os.time()) then return noSave("another server is already starting the new world over an obsolete save") end
 		if obsolete then
 			Persistence.mode, Persistence.why = "new", why
 			print("[Persistence] " .. tostring(why))
@@ -144,7 +146,7 @@ end
 
 function Persistence.savePlayer(ps, day: number): boolean
 	if not Config.SAVE_WORLD or ps.noSave then return false end
-	local data = Save.encodePlayer(ps, day)
+	local data = Save.encodePlayer(ps, day, State.state.meta.worldId)
 	-- somebody who left before their client ever drew the world never saw their welcome: their absence is not over
 	if ps.welcome and not ps.sawWorld and ps.lastSeenDay then data.lastSeenDay = ps.lastSeenDay end
 	if ps.dead then data.x, data.y, data.hp = nil, nil, ps.maxHp end -- the dead wake at their rest point, whole

@@ -288,7 +288,17 @@ do
 	assert(baby.stage == "adult" or reg.people[baby.id].stage == "adult", "babies grow up within 120 days")
 	assert(baby.father and baby.mother and baby.last == reg.people[baby.father].last, "the baby takes the father's surname")
 	assert(table.find(reg.people[baby.mother].children, baby.id), "the mother's record lists the child")
-	assert(#Families.villagers(reg, 1) <= Families.MAX_PEOPLE, "villages stay under the visible cap")
+	assert(#Families.villagers(reg, 1) <= Families.cap("farmer"), "villages stay under the cap")
+	-- The cap sits ABOVE every starting roster, or nobody is ever born (it was a flat 9 against 12-14 living).
+	for tribeType, start in pairs({ farmer = 14, hunter = 13, plunderer = 12 }) do
+		local r2, rng2 = Families.new(), Rng.new(11)
+		for n = 1, start do Families.newAdult(r2, rng2, 1, 1, "villager", 1, nil, if n % 2 == 0 then "f" else "m") end
+		Families.formCouples(r2, 1, 1)
+		local mothers = 0
+		for wk = 1, 12 do mothers += #Families.weeklyConceive(r2, rng2, 1, wk * 7, tribeType) end
+		assert(mothers >= 1, "a " .. tribeType .. " village at its starting size has room for a child")
+		assert(start + mothers <= Families.cap(tribeType), "and stops at its cap: " .. tribeType)
+	end
 	Families.die(reg, guard.id, 50, "killed", "Dan")
 	assert(not guard.alive and guard.killer == "Dan", "a death is recorded with its cause")
 	local heir = Families.successor(reg, guard)

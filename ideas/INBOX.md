@@ -17,11 +17,19 @@
 - **Done since:** the "you were gone eleven days" line (QA 8/10, merged), and the first two carves of Track B
   (`State.lua`, `Tiles.lua`; `Sim.lua` 1617 → 1410). **Track B is parked at Danzo's word** — see
   `roblox/src/server/README.md` for exactly where it stops.
-- **Next, Danzo's call:** (a) a QA loop on the two carves before anything builds on them, (b) the rest of Track B,
-  or (c) **rung 3 part 3, gossip** — which is the next thing a player would actually feel.
-- **One decision waiting on Danzo:** `Families.MAX_PEOPLE = 9` against 11-14 living per tribe means **nobody is
-  ever born** until a village is thinned, so the family system idles and catch-up has little to report. Raising it
-  above the starting rosters (16 fits DESIGN §4's 60-NPC cap) makes villages grow. One constant.
+- **2026-09-21, on the PC:** the PC had an unpushed branch (`world-up-close`, now on GitHub as a backup) with a first
+  take on part 1. Main had since rebuilt all of it except **a villager's day and farms that grow**; that half is now
+  ported onto main's layout on branch `villagers-day` (`shared/Farms.lua`, `server/Villagers.lua`, Debug `farms`).
+  Tests, lint and a Studio smoke test pass; it has had no QA loop.
+- **2026-09-21, later the same day (branch `track-b1-bands`, on top of `villagers-day`):** births fixed (the living cap is
+  per tribe type: 18 / 15 / 14); **Track B restarted at Danzo's word** - `Bands.lua` carved, groups are made of named
+  PEOPLE who stay the same people (save format v2, the old world reset by choice); strangers show a trade or nothing until
+  met; the squad no longer walks through Wild's Rest. QA loop: 8 then **8.5** (`docs/qa/track-b1-summary.md`).
+- **Next, Danzo's call:** merge the stack to main, then **rung 3 part 3, gossip** - stable group members were the thing it
+  was waiting for. The rest of Track B (Calendar's calamity half, B2-B4) can wait. One small question is open in the QA
+  summary: how long a dropped bag should last (`Tiles.lua` says 6 in-game days, its comment says an hour).
+- ~~One decision waiting on Danzo: `Families.MAX_PEOPLE = 9`~~ **Settled 2026-09-21: the cap is per tribe type**
+  (farmer 18, hunter 15, plunderer 14 - above every starting roster, farmers biggest). People are born again.
 
 This file is the shared scratchpad. Type here in the UI (bottom pane) or in any editor. Claude reads it 
 the start of a session and works through it. Cross things out or delete them when done.

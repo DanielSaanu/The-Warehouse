@@ -17,6 +17,7 @@ local Talk = require(Shared:WaitForChild("Talk"))
 local Rng = require(Shared:WaitForChild("Rng"))
 local Sim = require(script.Parent:WaitForChild("Sim"))
 local Map = require(script.Parent:WaitForChild("Map"))
+local State = require(script.Parent:WaitForChild("State"))
 
 local Interact = {}
 local S = Sim.state
@@ -103,6 +104,7 @@ local function talkTo(ps, e)
 	local ctx = Interact.context(ps, tribeIdx or 1)
 	local rep = ps.rep[ctx.tribeType]
 	Sim.faceEntity(e, Combat.dirTo(e.x, e.y, ps.x, ps.y))
+	State.meet(ps, e) -- from now on this player sees their name, not their trade
 	if e.role == "survivor" then
 		if not ps.metSurvivor then
 			ps.metSurvivor = true
