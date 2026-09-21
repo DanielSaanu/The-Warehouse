@@ -7,7 +7,7 @@
 -- why neither initTribes, Restore nor morph has to know about them. Hut doors and plots are scanned off the map
 -- once per tribe (derived, never saved); the scan also gives the tribe its plot rows (Farms.ensure).
 -- Bound, not required, for pathTo / wanderStep / isNight, which still live in Sim (Track B2 moves them).
---   if e.role == "villager" then Villagers.step(e, now) return end      -- from Sim's think, when idle
+--   if e.role == "villager" or e.role == "pregnant" then Villagers.step(e, now) return end   -- Sim's think, idle
 --   Villagers.flooded()                                                  -- from startCalamity("flood")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -137,8 +137,8 @@ function Villagers.report()
 		for _, plot in ipairs(t.plots) do grown += plot.growth end
 		local atWork, atHome, all = 0, 0, 0
 		for _, e in pairs(S.entities) do
-			if e.tribe == i and e.role == "villager" and e.workTile then
-				all += 1
+			if e.tribe == i and (e.role == "villager" or e.role == "pregnant") then all += 1 end
+			if e.tribe == i and e.workTile then
 				if cheb(e.x, e.y, e.workTile.x, e.workTile.y) <= 1 then atWork += 1
 				elseif cheb(e.x, e.y, e.homeTile.x, e.homeTile.y) <= 1 then atHome += 1 end
 			end

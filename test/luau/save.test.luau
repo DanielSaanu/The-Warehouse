@@ -185,14 +185,19 @@ do
 	assert(Save.applyPlayer(fresh, { version = 99 }) == nil, "an unknown player version is ignored, not half-applied")
 	-- the people a player has met (they see names, not trades) travel with the player, capped
 	ps.met = { [7] = true, [43] = true }
-	local d2 = Save.encodePlayer(ps, 9)
-	assert(Save.check(d2) and #d2.met == 2 and d2.met[1] == 7, "met people are saved as a sorted array of ids")
-	Save.applyPlayer(fresh, d2)
-	assert(fresh.met[7] and fresh.met[43] and not fresh.met[8], "and come back as a set")
-	Save.applyPlayer(fresh, data)
+	local d2 = Save.encodePlayer(ps, 9, "1-100-7")
+	assert(Save.check(d2) and #d2.met == 2 and d2.met[1] == 7 and d2.metWorld == "1-100-7", "met people are saved as a sorted array of ids, with the world they belong to")
+	Save.applyPlayer(fresh, d2, "1-100-7")
+	assert(fresh.met[7] and fresh.met[43] and not fresh.met[8], "and come back as a set in the same world")
+	-- person ids mean nothing in another world: after a reset, id 7 is somebody else (QA round 2)
+	Save.applyPlayer(fresh, d2, "1-200-9")
+	assert(next(fresh.met) == nil, "a different world: nobody is an acquaintance")
+	Save.applyPlayer(fresh, d2, nil)
+	assert(next(fresh.met) == nil, "a world with no id yet: nobody is an acquaintance")
+	Save.applyPlayer(fresh, data, "1-100-7")
 	assert(next(fresh.met) == nil, "a key from before faces were remembered restores as nobody met")
 	for id = 1, Save.MET_CAP + 20 do ps.met[id] = true end
-	local d3 = Save.encodePlayer(ps, 9)
+	local d3 = Save.encodePlayer(ps, 9, "1-100-7")
 	assert(#d3.met == Save.MET_CAP and d3.met[#d3.met] == Save.MET_CAP + 20, "the list is capped, keeping the newest ids")
 end
 

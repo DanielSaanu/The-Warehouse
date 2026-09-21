@@ -36,7 +36,7 @@ end
 local function pos(p) return if p then { x = p.x, y = p.y } else nil end
 
 -- ---------- the saved fields, node by node ----------
-local META = { "gameSeconds", "lastDailyTick", "nextBagId" }
+local META = { "gameSeconds", "lastDailyTick", "nextBagId", "worldId" }
 local CALAMITY = { "kind", "active", "day", "warnedDay" }
 local REGION = { "grass", "deer", "boar", "wolf" }
 local TRIBE = { "tribeType", "villageId", "population", "walled", "news" }
@@ -163,13 +163,14 @@ function Save.decode(data)
 end
 
 -- ---------- players (their own key each) ----------
-function Save.encodePlayer(ps, day: number)
+--- `worldId` is the world's own id (meta.worldId): the faces a player has met are people OF that world.
+function Save.encodePlayer(ps, day: number, worldId: string?)
 	local out = pick(ps, PLAYER)
 	out.version, out.lastSeenDay = Save.PLAYER_VERSION, day
 	out.inv = { coin = ps.inv.coin, slots = copy(ps.inv.slots) }
 	out.rep, out.rest = copy(ps.rep), copy(ps.rest)
 	-- the people this player has met (they see names, not trades): ids, newest kept if the list ever gets long
-	out.met = {}
+	out.met, out.metWorld = {}, worldId
 	for id in pairs(ps.met or {}) do table.insert(out.met, id) end
 	table.sort(out.met)
 	while #out.met > Save.MET_CAP do table.remove(out.met, 1) end
@@ -178,7 +179,7 @@ end
 
 --- Lay a saved player over a freshly made live one. Position is the caller's business (the tile may be a wall, a
 --- flood or a campfire by now), so x and y are returned, not applied.
-function Save.applyPlayer(ps, data): (number?, number?)
+function Save.applyPlayer(ps, data, worldId: string?): (number?, number?)
 	if type(data) ~= "table" or data.version ~= Save.PLAYER_VERSION then return nil, nil end
 	for _, k in ipairs(PLAYER) do
 		if k ~= "x" and k ~= "y" and data[k] ~= nil then ps[k] = data[k] end
@@ -186,8 +187,11 @@ function Save.applyPlayer(ps, data): (number?, number?)
 	ps.inv = { coin = data.inv.coin, slots = copy(data.inv.slots or {}) }
 	for tribe, v in pairs(data.rep) do ps.rep[tribe] = v end
 	ps.rest = copy(data.rest)
+	-- Person ids mean nothing in another world: after a reset, id 2 is somebody else, and a stranger would be named.
 	ps.met = {}
-	for _, id in ipairs(data.met or {}) do ps.met[id] = true end
+	if worldId ~= nil and data.metWorld == worldId then
+		for _, id in ipairs(data.met or {}) do ps.met[id] = true end
+	end
 	return data.x, data.y
 end
 

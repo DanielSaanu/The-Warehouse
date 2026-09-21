@@ -32,13 +32,27 @@ end
 
 -- A group is a record with a route (a list of tiles) and a position along it. Materialised, its members are
 -- entities walking the route behind a leader; collapsed, the record's `pos` just advances.
+--- Does the road from `from` to `to` pass within `near` tiles of any village but `ownId`? The squad's old forest lay
+--- beyond Wild's Rest, its road ran through the middle of the village, and every trip was a battle: the band wiped
+--- out, half the garrison dead, before the first daily tick (QA rounds 1 and 2). Targeting rules could not fix it
+--- (a village must be allowed to defend itself); not walking through it does.
+local function passesVillage(from: WorldGen.Pos, to: WorldGen.Pos, ownId: number, near: number): boolean
+	for _, p in ipairs(WorldGen.route(world, from.x, from.y, to.x, to.y, true) or {}) do
+		for i, v in ipairs(world.villages) do
+			if i ~= ownId and p.x >= v.x0 - near and p.x <= v.x1 + near and p.y >= v.y0 - near and p.y <= v.y1 + near then return true end
+		end
+	end
+	return false
+end
+
 local function forestTarget(): WorldGen.Pos
 	local best, bestF = nil, -1
+	local home = world.villages[2].spawn
 	for _, r in ipairs(S.regions.list) do
 		if not r.village and r.forest > bestF then
 			local x0, y0, x1, y1 = WorldGen.regionBounds(world, r.id)
 			local c = WorldGen.nearestWalkable(world, math.floor((x0 + x1) / 2), math.floor((y0 + y1) / 2), 8)
-			if c and WorldGen.reachable(world, world.spawn.x, world.spawn.y, c.x, c.y) then best, bestF = c, r.forest end
+			if c and WorldGen.reachable(world, world.spawn.x, world.spawn.y, c.x, c.y) and not passesVillage(home, c, 2, 4) then best, bestF = c, r.forest end
 		end
 	end
 	return best or world.villages[2].spawn

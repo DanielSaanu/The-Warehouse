@@ -473,7 +473,7 @@ local function killEntity(e, killer, ctx, byEntity)
 			-- "if u encounter a bandit group and kill more than half the rest run away like with wolf packs but
 			-- they shouldnt abort instantly once one dies"). Until then they fight, and they are still
 			-- individually capable of breaking at their own hp threshold.
-			if g.kind == "band" and #g.members * 2 < (g.fullSize or #g.members) then
+			if g.kind == "band" and #g.members * 2 < (g.fullSize or #g.members) and now >= (g.retreatUntil or 0) then
 				g.retreatUntil = now + Config.BAND_RETREAT
 				g.target, g.aggroUntil, g.pauseUntil = nil, 0, 0
 				g.dir = -1
@@ -1216,6 +1216,7 @@ function Sim.init(saved, slept: number?): (boolean, string?)
 		Bands.init()
 		return false, why
 	end
+	S.meta.worldId = Restore.newWorldId()
 	initTribes()
 	Bands.init()
 	local n = 0

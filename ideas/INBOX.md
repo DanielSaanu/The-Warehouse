@@ -21,8 +21,13 @@
   take on part 1. Main had since rebuilt all of it except **a villager's day and farms that grow**; that half is now
   ported onto main's layout on branch `villagers-day` (`shared/Farms.lua`, `server/Villagers.lua`, Debug `farms`).
   Tests, lint and a Studio smoke test pass; it has had no QA loop.
-- **Next, Danzo's call:** (a) a QA loop on the two carves before anything builds on them, (b) the rest of Track B,
-  or (c) **rung 3 part 3, gossip** — which is the next thing a player would actually feel.
+- **2026-09-21, later the same day (branch `track-b1-bands`, on top of `villagers-day`):** births fixed (the living cap is
+  per tribe type: 18 / 15 / 14); **Track B restarted at Danzo's word** - `Bands.lua` carved, groups are made of named
+  PEOPLE who stay the same people (save format v2, the old world reset by choice); strangers show a trade or nothing until
+  met; the squad no longer walks through Wild's Rest. QA loop: 8 then **8.5** (`docs/qa/track-b1-summary.md`).
+- **Next, Danzo's call:** merge the stack to main, then **rung 3 part 3, gossip** - stable group members were the thing it
+  was waiting for. The rest of Track B (Calendar's calamity half, B2-B4) can wait. One small question is open in the QA
+  summary: how long a dropped bag should last (`Tiles.lua` says 6 in-game days, its comment says an hour).
 - ~~One decision waiting on Danzo: `Families.MAX_PEOPLE = 9`~~ **Settled 2026-09-21: the cap is per tribe type**
   (farmer 18, hunter 15, plunderer 14 - above every starting roster, farmers biggest). People are born again.
 

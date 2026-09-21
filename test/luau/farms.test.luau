@@ -103,6 +103,24 @@ do
 	print(("    farms: a month at full strength -> %d food; the same month empty -> %d"):format(full, e.tribes[1].stock.food))
 end
 
+-- The fields do not fall into lockstep (QA round 2: one shared rate and a reset to zero made every plot ripen on the
+-- same morning for ever). Over a month a full village brings something in on most days, and on any given day the
+-- plots are at different stages.
+do
+	local w = newRecord(8)
+	local harvestDays, spreadDays = 0, 0
+	for day = 2, 31 do
+		if Farms.daily(w, 1, day) then harvestDays += 1 end
+		local lo, hi = math.huge, -math.huge
+		for _, plot in ipairs(w.tribes[1].plots) do lo, hi = math.min(lo, plot.growth), math.max(hi, plot.growth) end
+		if hi - lo > 0.2 then spreadDays += 1 end
+	end
+	assert(harvestDays >= 20, "a working farm brings something in most days, not everything every other day: " .. harvestDays)
+	assert(spreadDays >= 25, "and its plots are at different stages: " .. spreadDays)
+	for _, plot in ipairs(w.tribes[1].plots) do assert(plot.growth >= 0 and plot.growth < 1, "growth stays in [0, 1)") end
+	print(("    farms: something harvested on %d of 30 days, plots out of step on %d"):format(harvestDays, spreadDays))
+end
+
 -- A pregnant villager still works her plot.
 do
 	local w = newRecord(3)

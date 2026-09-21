@@ -20,6 +20,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Save = require(Shared:WaitForChild("Save"))
+local State = require(script.Parent:WaitForChild("State")) -- only for the id of the running world (meta.worldId)
 
 local Persistence = {}
 
@@ -145,7 +146,7 @@ end
 
 function Persistence.savePlayer(ps, day: number): boolean
 	if not Config.SAVE_WORLD or ps.noSave then return false end
-	local data = Save.encodePlayer(ps, day)
+	local data = Save.encodePlayer(ps, day, State.state.meta.worldId)
 	-- somebody who left before their client ever drew the world never saw their welcome: their absence is not over
 	if ps.welcome and not ps.sawWorld and ps.lastSeenDay then data.lastSeenDay = ps.lastSeenDay end
 	if ps.dead then data.x, data.y, data.hp = nil, nil, ps.maxHp end -- the dead wake at their rest point, whole

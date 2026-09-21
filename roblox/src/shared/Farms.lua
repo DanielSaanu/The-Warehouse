@@ -13,7 +13,7 @@ local TileTypes = require(script.Parent.TileTypes)
 
 local Farms = {}
 
-Farms.GROW_PER_DAY = 0.5 -- a worked plot comes in every second day
+Farms.GROW_PER_DAY = 0.5 -- a worked plot comes in about every second day (each plot has its own pace: Farms.pace)
 Farms.WEEDS_PER_DAY = 0.15 -- a plot nobody touched goes back
 -- A full farmer village (8 hands, 8 plots) brings in 4 plots a day. At 1 food each that is the 4 a day the abstract
 -- restock used to hand farmers for nothing, which the harvest now REPLACES (Trade.dailyRestock `farmed`): the
@@ -51,6 +51,13 @@ function Farms.ensure(t, n: number)
 	for i = #t.plots, n + 1, -1 do t.plots[i] = nil end
 end
 
+--- Plot `k`'s own pace, 0.85 to 1.15 of GROW_PER_DAY, fixed by its place in the scan. With one shared rate and a
+--- reset to zero, every plot ripened on the same morning for ever after the first harvest: all-ripe or all-bare,
+--- never a working farm (QA round 2). Different paces, and a harvest that KEEPS its remainder, keep them apart.
+function Farms.pace(k: number): number
+	return Farms.GROW_PER_DAY * (0.85 + ((k * 17) % 7) / 20)
+end
+
 --- The living adult villagers of tribe `i`: the people who farm.
 function Farms.workers(w, i: number): number
 	local n = 0
@@ -76,10 +83,10 @@ function Farms.daily(w, i: number, day: number)
 	for n, k in ipairs(order) do
 		local plot = t.plots[k]
 		if n <= hands then
-			plot.growth = math.min(1, plot.growth + Farms.GROW_PER_DAY)
+			plot.growth += Farms.pace(k)
 			plot.tended = day
 			if plot.growth >= 1 then
-				plot.growth = 0
+				plot.growth -= 1 -- the remainder carries over: this is what keeps the fields out of step
 				harvested += 1
 			end
 		else

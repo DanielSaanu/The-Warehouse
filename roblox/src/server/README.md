@@ -5,19 +5,19 @@ Read this first. Update it in the same commit as any move. Sizes are line counts
 | Module | Owns | Lines |
 | --- | --- | --- |
 | `Server.server.lua` | remotes, player join/leave, the movement handler | 190 |
-| `State.lua` | the ground everything stands on: `State.state` (the World Record), tile occupancy, the two remotes, and the client-facing helpers (`notice`, `text`, `hud`, `broadcastEntity/Object`, `restText`) | 90 |
-| `Tiles.lua` | camps and bags, and every runtime write to the map's object layer: `placeCamp`, `dropBag`, `takeBag`, `tick`, `stampAll`/`unstampAll` | 145 |
+| `State.lua` | the ground everything stands on: `State.state` (the World Record), tile occupancy, the two remotes, and the client-facing helpers (`notice`, `text`, `hud`, `broadcastEntity/Object`, `restText`) | 121 |
+| `Tiles.lua` | camps and bags, and every runtime write to the map's object layer: `placeCamp`, `dropBag`, `takeBag`, `tick`, `stampAll`/`unstampAll` | 144 |
 | `Map.lua` | the generated map and `Map.encoded` (what joining clients are sent). Was `World.lua` | 40 |
-| `Persistence.lua` | the ONLY DataStore code: `loadWorld`, `saveWorld`, player keys, autosave, the policy (never write a key you failed to read; one server holds the lease) | 170 |
+| `Persistence.lua` | the ONLY DataStore code: `loadWorld`, `saveWorld`, player keys, autosave, the policy (never write a key you failed to read; one server holds the lease) | 174 |
 | `Goals.lua` | the goal line under the clock: `set`, `clear`, `rebuild`, `tick` (carved verbatim out of Sim when it hit its ceiling) | 65 |
 | `Calendar.lua` | `meta.gameSeconds`, the ONE clock: `now()`, `clock()`, `setDay()`, `skipTo()` (catch-up adds its lump to `meta.gameSeconds` directly, in `Tick.catchUp`) | 60 |
-| `Restore.lua` | `Sim.state` <-> a save: `snapshot()`, and `apply(data, slept)` = the RESTORE constructor (bodies, routes, stamped tiles, overlay, `Map.reencode`) | 150 |
-| `Bands.lua` | groups (caravan, squad, band): making the rows, their transient half, bodies in and out (`materialise`, `collapse`), the 1 Hz tick, turning for home. Abstract movement stays in `shared/Tick.groups` | 175 |
-| `Sim.lua` | everything else, for now: entities, AI, fighting, calamities, the tick loops | 1280 |
+| `Restore.lua` | `Sim.state` <-> a save: `snapshot()`, and `apply(data, slept)` = the RESTORE constructor (bodies, routes, stamped tiles, overlay, `Map.reencode`) | 199 |
+| `Bands.lua` | groups (caravan, squad, band): making the rows, their transient half, bodies in and out (`materialise`, `collapse`), the 1 Hz tick, turning for home. Abstract movement stays in `shared/Tick.groups` | 198 |
+| `Sim.lua` | everything else, for now: entities, AI, fighting, calamities, the tick loops | 1282 |
 | `Sides.lua` | who takes whose side in a fight | 280 |
-| `Villagers.lua` | a villager's day: out to a plot in the morning, home to a hut door at night, home at a run from wolves and strange bandits; scans huts and plots off the map. What the farms YIELD is `shared/Farms.lua` (pure, in `Tick.daily`, saved as `tribes[].plots`) | 130 |
-| `Interact.lua` | the F key: talk, trade, rest, gifts | 340 |
-| `Debug.lua` | the test console (Workspace attribute `Debug`) | 215 |
+| `Villagers.lua` | a villager's day: out to a plot in the morning, home to a hut door at night, home at a run from wolves and strange bandits; scans huts and plots off the map. What the farms YIELD is `shared/Farms.lua` (pure, in `Tick.daily`, saved as `tribes[].plots`) | 152 |
+| `Interact.lua` | the F key: talk, trade, rest, gifts | 344 |
+| `Debug.lua` | the test console (Workspace attribute `Debug`) | 290 |
 
 ## Track A progress (the plan's save-critical steps)
 
@@ -57,6 +57,8 @@ Read this first. Update it in the same commit as any move. Sizes are line counts
       faces on every materialise; a death removes that person and the replacement is somebody new. People on the road are not
       `Families.villagers` (no cap, no pairing, no inheriting). **Save format v2; a v1 world is obsolete by Danzo's choice** (no
       upgrade step). Debug `group <id>` lists the members. Studio: same four hunters across a collapse.
+- [x] **QA loop on all of the above** (2026-09-21): two Opus rounds, 8 then 8.5 against a bar of 8.5 - `docs/qa/track-b1-summary.md`.
+      That loop also covered `State.lua` and `Tiles.lua`, which had been parked without a review.
 - [ ] **B1 (rest)** the calamity half of `Calendar`. Members as `{ player = userId }` is part 4, not here.
 - [ ] **B2** `Bodies`, `Brains`, `Fighting`. **B3** name the owners (R2/R3). **B4** split `WorldGen.lua`.
 
