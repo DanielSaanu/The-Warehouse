@@ -53,7 +53,11 @@ Read this first. Update it in the same commit as any move. Sizes are line counts
       through `bind()`, and it can never form a cycle because it requires only `Map` and `shared/`.
 - [x] **B1 (Bands, the move)** 2026-09-21: `Bands.lua` carved verbatim; `Sim.lua` 1417 → 1278, ceiling 1420 → 1285. Studio: a squad
       materialised, walked its route, collapsed when the player left, and kept moving as a record.
-- [ ] **B1 (rest)** stable members for groups (person ids, not re-rolled specs - part 3 needs it), the calamity half of `Calendar`.
+- [x] **B1 (stable members)** 2026-09-21: group members are PEOPLE (`Tick.enlist`: `members[].person`, `Person.group`), the same
+      faces on every materialise; a death removes that person and the replacement is somebody new. People on the road are not
+      `Families.villagers` (no cap, no pairing, no inheriting). **Save format v2; a v1 world is obsolete by Danzo's choice** (no
+      upgrade step). Debug `group <id>` lists the members. Studio: same four hunters across a collapse.
+- [ ] **B1 (rest)** the calamity half of `Calendar`. Members as `{ player = userId }` is part 4, not here.
 - [ ] **B2** `Bodies`, `Brains`, `Fighting`. **B3** name the owners (R2/R3). **B4** split `WorldGen.lua`.
 
 **Parked on purpose (Danzo, 2026-09-18): do not continue Track B without asking.** What is carved so far is tested

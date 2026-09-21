@@ -159,9 +159,14 @@ function Debug.run(cmd: string, ...): any
 		local carry = {}
 		for item, n in pairs(g.carry or {}) do table.insert(carry, ("%d %s"):format(n, item)) end
 		table.sort(carry)
-		return ("%s at %d,%d dir %d pos %d/%d%s carrying[%s]%s"):format(g.id, p.x, p.y, g.dir, g.pos, #g.route,
+		local who = {} -- the members are people: the same names every time the group is seen
+		for _, m in ipairs(g.members) do
+			local person = m.person and S.people.people[m.person]
+			table.insert(who, if person then ("%d %s %s%s"):format(person.id, person.first, person.last, if person.entity then " " .. person.entity else "") else "?" .. m.kind)
+		end
+		return ("%s at %d,%d dir %d pos %d/%d%s carrying[%s]%s members[%s]"):format(g.id, p.x, p.y, g.dir, g.pos, #g.route,
 			if g.materialised then " visible" else "", table.concat(carry, ", "),
-			if Calendar.now() < (g.retreatUntil or 0) then " RETREATING" else "")
+			if Calendar.now() < (g.retreatUntil or 0) then " RETREATING" else "", table.concat(who, ", "))
 	elseif cmd == "summon" and ps then
 		-- bring a group next to the player
 		local g = S.groups[args[1] or "band"]

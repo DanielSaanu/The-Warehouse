@@ -466,7 +466,9 @@ local function killEntity(e, killer, ctx, byEntity)
 		local g = S.groups[e.group]
 		if g then
 			-- the record loses a member; the tribe replaces them at home after a while
-			table.remove(g.members, #g.members)
+			local gone = #g.members
+			for i, m in ipairs(g.members) do if m.person == e.person then gone = i break end end
+			table.remove(g.members, gone)
 			local now = Calendar.now()
 			g.replenishAt = now + Config.DAY_SECONDS
 			-- A pack breaks when it has lost more than half, not the moment it loses one (Danzo, 2026-09-18:

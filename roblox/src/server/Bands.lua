@@ -51,14 +51,15 @@ function Bands.scratch(g)
 	g.target, g.aggroUntil, g.lastSeen = nil, 0, nil
 end
 
-local function makeGroup(id: string, kind: string, tribeIdx: number, from: WorldGen.Pos, to: WorldGen.Pos, members, pauses)
+local function makeGroup(id: string, kind: string, tribeIdx: number, from: WorldGen.Pos, to: WorldGen.Pos, specs, pauses)
 	-- `route` is derived from `from` and `to` (Tick.rebuildRoute), so `to` is what a save keeps
 	local g = {
 		id = id, kind = kind, tribe = tribeIdx, pos = 1, dir = 1, from = { x = from.x, y = from.y }, to = { x = to.x, y = to.y },
 		pauseUntil = Calendar.now() + rng:int(20, 60), pauses = pauses, speed = 1.5, acc = 0,
-		members = members, fullSize = #members,
+		members = {}, fullSize = #specs, -- members are PEOPLE (Tick.enlist): the same faces every time they materialise
 		carry = {}, retreatUntil = 0,   -- what they are bringing home, and whether they have had enough
 	}
+	for _, spec in ipairs(specs) do Tick.enlist(S, rng, g, spec.kind, spec.role, S.day) end
 	Bands.scratch(g)
 	Tick.rebuildRoute(g, world)
 	S.groups[id] = g
@@ -130,10 +131,13 @@ local function materialise(g)
 	for _, m in ipairs(g.members) do
 		local pos = nearestFree(p.x, p.y, 4)
 		if pos then
-			local fname, lname = Names.person(rng, rng:pick(t.surnames))
+			local person = m.person and S.people.people[m.person]
+			local fname, lname
+			if person then fname, lname = person.first, person.last else fname, lname = Names.person(rng, rng:pick(t.surnames)) end
 			local label = if m.role == "caravan_master" then fname .. " " .. lname elseif m.kind == "bandit" then "bandit" elseif m.kind == "hunter" then fname .. " " .. lname else "caravan guard"
 			local e = newEntity(m.kind, pos.x, pos.y, { tribe = g.tribe, group = g.id, role = m.role or m.kind, name = fname .. " " .. lname, label = label, sprite = if m.kind == "bandit" then "bandit" else nil })
 			e.first, e.last = fname, lname
+			if person then e.person, person.entity = person.id, e.id end
 			g.entities[e.id] = true
 			if first then g.leader = e.id first = false end
 		end
@@ -153,6 +157,8 @@ function Bands.collapse(g)
 	g.pos = bestI
 	for id in pairs(g.entities) do
 		local e = S.entities[id]
+		local person = e and e.person and S.people.people[e.person]
+		if person then person.entity = nil end -- the person goes on; only the body is put away
 		if e then removeEntity(e) end
 	end
 	g.entities = {}

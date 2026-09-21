@@ -45,8 +45,8 @@ world
 ├─ tribes[]    type, villageId, stock{}, population, walled, surnames, news
 ├─ villages[]  id, tribeId                (rung 3 part 3 adds memory; nothing else is stored in v1)
 ├─ groups{}    id, kind, tribe, from, to, pos, dir, acc, speed, pauses, fullSize,
-│              lateTarget, carry{}, members[], pauseUntil, replenishAt, retreatUntil
-├─ people      nextId, rows: the full Families.Person minus `entity`
+│              lateTarget, carry{}, members[] {kind, role, person}, pauseUntil, replenishAt, retreatUntil
+├─ people      nextId, rows: the full Families.Person minus `entity` (`group` = on the road with that group)
 ├─ camps{}     owner, x, y, litUntil, out
 ├─ bags{}      id, x, y, owner, slots, droppedAt, public
 └─ players     a SEPARATE DataStore key per player (DESIGN §14):

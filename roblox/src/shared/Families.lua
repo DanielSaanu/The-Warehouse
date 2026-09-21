@@ -34,6 +34,7 @@ export type Person = {
 	due: number?,                   -- pregnant: the day the baby comes
 	grown: number?,                 -- baby: the day it becomes an adult
 	entity: string?,                -- the live entity id, if any
+	group: string?,                 -- on the road with this group (caravan / squad / band): a person, but not a villager
 }
 export type Registry = { people: { [number]: Person }, nextId: number }
 
@@ -67,11 +68,13 @@ function Families.newAdult(reg: Registry, rng: Rng.Rng, tribe: number, village: 
 	return Families.add(reg, { first = first, last = last, sex = sex or (if rng:chance(0.5) then "m" else "f"), tribe = tribe, village = village, role = role, born = born })
 end
 
---- Everyone alive in a village (optionally only adults).
+--- Everyone alive AT HOME in a village (optionally only adults). People out with a group are of the tribe - they
+--- keep its surnames, and `relatives` finds them - but they are on the road: they do not count toward the village's
+--- cap, pair off, conceive or inherit a post. Without this the squad's four hunters would put Kenstow over its cap.
 function Families.villagers(reg: Registry, tribe: number, adultsOnly: boolean?): { Person }
 	local out: { Person } = {}
 	for _, p in pairs(reg.people) do
-		if p.alive and p.tribe == tribe and (not adultsOnly or p.stage == "adult") then table.insert(out, p) end
+		if p.alive and p.tribe == tribe and not p.group and (not adultsOnly or p.stage == "adult") then table.insert(out, p) end
 	end
 	table.sort(out, function(a: Person, b: Person) return a.id < b.id end)
 	return out

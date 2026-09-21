@@ -107,7 +107,7 @@ local function restoreBodies()
 	local living = {}
 	for _, p in pairs(S.people.people) do
 		p.entity = nil
-		if p.alive then table.insert(living, p) end
+		if p.alive and not p.group then table.insert(living, p) end -- people on the road get their bodies from Bands.materialise
 	end
 	table.sort(living, function(a, b) return a.id < b.id end)
 	local n = 0
