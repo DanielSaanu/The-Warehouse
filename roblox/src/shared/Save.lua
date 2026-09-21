@@ -17,6 +17,7 @@ local Save = {}
 
 Save.VERSION = 2        -- the shape of the world key; bump it with a step in Save.migrate
 Save.PLAYER_VERSION = 1
+Save.MET_CAP = 128        -- remembered faces per player (ids are small numbers: ~0.5 KB at the cap)
 Save.PRUNE_DAYS = 8 * Config.WEEK_DAYS -- the dead keep their full record this long, then only a gravestone
 
 local function pick(src, fields: { string })
@@ -167,6 +168,11 @@ function Save.encodePlayer(ps, day: number)
 	out.version, out.lastSeenDay = Save.PLAYER_VERSION, day
 	out.inv = { coin = ps.inv.coin, slots = copy(ps.inv.slots) }
 	out.rep, out.rest = copy(ps.rep), copy(ps.rest)
+	-- the people this player has met (they see names, not trades): ids, newest kept if the list ever gets long
+	out.met = {}
+	for id in pairs(ps.met or {}) do table.insert(out.met, id) end
+	table.sort(out.met)
+	while #out.met > Save.MET_CAP do table.remove(out.met, 1) end
 	return out
 end
 
@@ -180,6 +186,8 @@ function Save.applyPlayer(ps, data): (number?, number?)
 	ps.inv = { coin = data.inv.coin, slots = copy(data.inv.slots or {}) }
 	for tribe, v in pairs(data.rep) do ps.rep[tribe] = v end
 	ps.rest = copy(data.rest)
+	ps.met = {}
+	for _, id in ipairs(data.met or {}) do ps.met[id] = true end
 	return data.x, data.y
 end
 

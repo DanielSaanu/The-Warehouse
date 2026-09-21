@@ -70,8 +70,31 @@ function State.broadcastObject(x: number, y: number, objectId: number)
 	for _, ps in pairs(S.players) do State.sendState(ps, "object", x, y, objectId) end
 end
 
-function State.spawnPacket(e)
-	return "spawn", e.id, e.sprite, e.x, e.y, e.facing, e.label, e.hp / e.maxHp, e.kind
+-- What a stranger is called. Everyone with a record has a name, but a player only SEES it once they have met that
+-- person (talked to them, hit them, or been hit by them): until then a hunter is "hunter". Fifty full names on
+-- screen was a wall of text, and a name means more when you earned it. The survivor is family: always named.
+local ROLE_LABEL = { caravan_guard = "caravan guard", caravan_master = "caravan master", pregnant = "villager" }
+
+--- The label THIS player sees over entity `e`.
+function State.labelFor(ps, e): string?
+	if not e.person or e.role == "survivor" then return e.label end
+	if ps and ps.met and ps.met[e.person] then return e.name or e.label end
+	return ROLE_LABEL[e.role] or e.role or e.label
+end
+
+--- `ps` has now met `e`: from here on they see the name. Re-sent as leave + spawn, which the client already
+--- understands, rather than a new message for a label.
+function State.meet(ps, e)
+	if not e.person or not ps.met or ps.met[e.person] then return end
+	ps.met[e.person] = true
+	if ps.known[e.id] then
+		State.sendState(ps, "leave", e.id)
+		State.sendState(ps, State.spawnPacket(e, ps))
+	end
+end
+
+function State.spawnPacket(e, ps)
+	return "spawn", e.id, e.sprite, e.x, e.y, e.facing, State.labelFor(ps, e), e.hp / e.maxHp, e.kind
 end
 
 function State.hud(ps)

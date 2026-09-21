@@ -519,6 +519,7 @@ local function hitEntity(e, dmg: number, ax: number, ay: number, attacker, byEnt
 	-- everyone near enough to see it takes a view (docs/RUNG3.md part 1)
 	local striker = if attacker then { ps = attacker } elseif byEntity then { e = byEntity } else nil
 	if striker then Sides.witnessed(striker, { e = e }, e.x, e.y) end
+	if attacker then State.meet(attacker, e) end -- you know the name of somebody you have fought
 	local ctx = fightContext(e, attacker)
 	if attacker and not (e.attacked and e.attacked[attacker.player.UserId]) then
 		e.provokedBy = e.provokedBy or {}
@@ -629,6 +630,7 @@ local function hitPlayer(ps, e)
 	local now = Calendar.now()
 	if ps.dead or now < ps.invulnUntil then return end
 	Sides.witnessed({ e = e }, { ps = ps }, ps.x, ps.y)
+	State.meet(ps, e)
 	local dmg = Combat.damage(e.atk, 0)
 	ps.hp -= dmg
 	ps.invulnUntil = now + Config.HIT_INVULN
@@ -1012,7 +1014,7 @@ local function tickInterest()
 			local visible = math.abs(e.x - ps.x) <= Config.VIEW_DX and math.abs(e.y - ps.y) <= Config.VIEW_DY
 			if visible and not ps.known[id] then
 				ps.known[id] = true
-				sendState(ps, spawnPacket(e))
+				sendState(ps, spawnPacket(e, ps))
 			elseif not visible and ps.known[id] then
 				ps.known[id] = nil
 				sendState(ps, "leave", id)
@@ -1157,7 +1159,7 @@ function Sim.addPlayer(player: Player, x: number, y: number, snapFn, saved)
 		player = player, x = x, y = y, facing = "down", epoch = 0, budget = Movement.newBudget(os.clock()), lastWorldInit = -math.huge,
 		hp = Stats.get("player").hp, maxHp = Stats.get("player").hp, inv = Items.dayOneKit(), rep = Reputation.newTable(),
 		rest = { kind = "village", village = 1 }, restText = "", dead = false, lastAttack = -math.huge, invulnUntil = 0,
-		known = {}, dialogue = nil, snap = snapFn,
+		known = {}, met = {}, dialogue = nil, snap = snapFn,
 		-- the first five minutes: which goal line they are on, whether the survivor has been found, and which
 		-- inventory slot is in hand (all on the record, so rung 3 saves them with everything else)
 		goalStage = 0, goal = nil, goalDone = false, metSurvivor = false, selected = nil,

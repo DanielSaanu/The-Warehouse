@@ -183,6 +183,17 @@ do
 	assert(fresh.hp == 7 and fresh.inv.coin == 12 and Items.count(fresh.inv, "food") == 2 and fresh.rep.hunter == 15, "kit, coin, standing")
 	assert(fresh.rest.village == 2 and fresh.goalStage == 3 and fresh.metSurvivor == true and data.lastSeenDay == 9, "rest, goal, last seen")
 	assert(Save.applyPlayer(fresh, { version = 99 }) == nil, "an unknown player version is ignored, not half-applied")
+	-- the people a player has met (they see names, not trades) travel with the player, capped
+	ps.met = { [7] = true, [43] = true }
+	local d2 = Save.encodePlayer(ps, 9)
+	assert(Save.check(d2) and #d2.met == 2 and d2.met[1] == 7, "met people are saved as a sorted array of ids")
+	Save.applyPlayer(fresh, d2)
+	assert(fresh.met[7] and fresh.met[43] and not fresh.met[8], "and come back as a set")
+	Save.applyPlayer(fresh, data)
+	assert(next(fresh.met) == nil, "a key from before faces were remembered restores as nobody met")
+	for id = 1, Save.MET_CAP + 20 do ps.met[id] = true end
+	local d3 = Save.encodePlayer(ps, 9)
+	assert(#d3.met == Save.MET_CAP and d3.met[#d3.met] == Save.MET_CAP + 20, "the list is capped, keeping the newest ids")
 end
 
 -- The lease: one server writes the world. Pure decisions, so they are tested here and Persistence only obeys them.
