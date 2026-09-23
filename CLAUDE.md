@@ -14,7 +14,8 @@ the UI is hidden state: every action writes a file under `scenes/`, `sprites/`, 
    accident. **Track A is merged (2026-09-18): the world and its players save**, confirmed by Danzo against the real
    DataStore. Studio needs Game Settings → Security → "Enable Studio Access to API Services", or the server runs
    NO-SAVE and says so. `roblox/src/server/README.md` says which steps have landed.
-1. Read `ideas/INBOX.md`. That is the to-do list the human writes in the UI. Work through it.
+1. Read `docs/handoffs.md` (is anything OPEN?), then `ideas/INBOX.md`. The inbox is the to-do list the
+   human writes in the UI. Work through it.
 2. `node bin/warehouse.js scenes` to see what exists. Open the scene JSONs you will touch.
 3. When you change art, render it and LOOK at it: `node bin/warehouse.js render <scene> --scale 8` then Read
    the PNG in `exports/`. For a text view, `node bin/warehouse.js ascii <scene>`.
@@ -71,3 +72,73 @@ the UI is hidden state: every action writes a file under `scenes/`, `sprites/`, 
 rounds of one Opus reviewer, fixes between rounds, a `docs/qa/<goals>-summary.md` at the end. Each PR gets a goals
 file in `docs/qa/` written by the builder before the loop starts. Do not read `docs/qa/archive/` (the verbatim
 round reports) unless asked: they are stale once summarised and would leak old reviews into a build session.
+
+## Model policy and escalation
+
+Following Anthropic's guidance — *for most workloads, start with Opus; use Fable only when Opus at higher
+effort still falls short.*
+
+- **Routine work runs on Opus, default effort.** Every session is a ROUTINE session unless Danzo opens it by
+  saying **"heavy"**.
+- **Escalated work runs on an Opus subagent at HIGH effort** — the `heavy` agent in `.claude/agents/heavy.md`.
+- **Fable is a last resort and is never spawned automatically.** Only after the heavy agent at high effort has
+  made a full attempt and either (a) came back without a confident answer, or (b) the same handoff has bounced
+  back twice, ask: *"Opus at high effort fell short on H`<n>` — use Fable?"* Proceed only on "use fable".
+  (The Fable allowance is reserved for personal projects, and this is one — but it is still the last rung.)
+
+A routine session must **not** attempt the work itself when an escalation trigger fires. Instead:
+
+1. Append an entry to `docs/handoffs.md` using its template.
+2. Tell Danzo in one line: `Escalate: <what> — spawning heavy agent`.
+3. Spawn the `heavy` agent with the handoff entry **verbatim** as its brief.
+4. Relay its report in a line or two and carry on with the routine work.
+5. If it needs a decision, bring the question to Danzo and **resume the same agent** with the answer — do not
+   re-spawn.
+
+A session opened with "heavy" does the escalated work directly, on whatever model it is running.
+
+### Escalation triggers
+
+1. An architecture or design decision with more than one reasonable option — anything that would add to,
+   reinterpret or undo `docs/ARCHITECTURE.md` (especially the six decisions in §9) or `docs/DESIGN.md`.
+2. A change to a shared or core system: anything in `roblox/src/shared/`, `src/render.js`, or the sprite and
+   scene file formats (`src/pixels.js`, `src/scene.js`) that other files already depend on.
+3. **Anything touching save data** — the save format version, `Save.lua`, `Restore.lua`, `Persistence.lua`, or
+   the DataStore. A format change strands the world Danzo is already playing.
+4. A failing test, a `lint:luau` error, or a line in the Studio Output window that the routine session cannot
+   explain after one honest attempt.
+5. A toolchain or dependency change: Rojo, `rokit.toml`, the `luau` binaries, node deps, or the Studio MCP setup.
+6. A performance or memory tradeoff in the tick loop, WorldGen, or the renderer.
+7. Any hard-to-reverse action: force-push, history rewrite, deleting a branch, deleting sprites or scenes, or
+   hand-editing `roblox/src/shared/Sprites.lua` / `roblox/assets.lock.json`.
+8. Anything in `ideas/INBOX.md` that conflicts with what the docs say.
+
+Uploading is not a trigger — it is simply not Claude's to do. Only Danzo runs `roblox build --upload`.
+
+## The docs are the memory
+
+Chats are disposable; the files are the source of truth. No session depends on another session's history —
+if a later session needs it, it has to be written down. Four layers:
+
+| Layer | File | Role |
+|---|---|---|
+| **Orientation** | `CLAUDE.md` | how to work here, the loop, this policy |
+| **To-do** | `ideas/INBOX.md` | what Danzo wants next, and where things stand |
+| **Rulebooks** | `docs/learnings.md` (how to build here) · `docs/PRINCIPLES.md` (what makes a good game) | generalised rules with stable IDs |
+| **Detail** | `docs/ARCHITECTURE.md`, `docs/DESIGN.md`, `docs/RUNG3.md`, `docs/qa/*`, `roblox/src/server/README.md` | the full reasoning |
+
+- Only rules that **generalise** earn a line in `docs/learnings.md`. Cite them by ID (e.g. "→ S2") from QA
+  reports, handoffs and commit messages; the rule carries the date and branch that paid for it.
+- Every resolved handoff should leave a doc richer — a recorded decision, a new rule — so the same case never
+  escalates twice.
+- `docs/handoffs.md` stays small: trim a resolved entry to its heading plus one line once the real doc holds
+  the detail.
+
+## How to talk to Danzo
+
+- Short, plain, direct. No walls of text.
+- Multi-item explanations → one small card per item with labelled lines (what, where, the problem, the fix,
+  who does it, the ask).
+- Commands he has to run himself → exact text to paste, one paste at a time.
+- Flag uncertainty instead of guessing. Say when something is a guess.
+- Never claim a render, a test or a Studio run passed without having actually looked at the output.
