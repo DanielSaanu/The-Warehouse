@@ -15,6 +15,7 @@ local Families = require(script.Parent.Families)
 local Trade = require(script.Parent.Trade)
 local Farms = require(script.Parent.Farms)
 local Headlines = require(script.Parent.Headlines)
+local Gossip = require(script.Parent.Gossip)
 
 local Tick = {}
 
@@ -82,6 +83,7 @@ function Tick.daily(w, rng, day: number, now: number)
 			g.replenishAt = nil
 		end
 	end
+	Gossip.dropStale(w, day) -- old news stops travelling
 	ev.totals = Ecology.totals(w.regions)
 	return ev
 end
@@ -122,6 +124,9 @@ function Tick.groupTurn(w, g, now: number, events)
 		local ev = deposit(w, g)
 		if ev and events then table.insert(events, ev) end
 	end
+	-- Gossip's main channel (docs/RUNG3.md part 3): they are standing at one end of their route, so the holder there
+	-- is known without a search. The bandit tells his band, the caravan tells the village it just reached.
+	Gossip.arrive(w, g)
 	g.dir = -g.dir
 	g.pauseUntil = now + (if g.dir == 1 then g.pauses[1] else g.pauses[2])
 end
@@ -131,6 +136,9 @@ end
 function Tick.groups(w, world, now: number)
 	local events = {}
 	local day = DayCycle.fromSeconds(now)
+	-- Meeting on the road. Gated on a slot computed from `now` alone, so n live seconds and catchUp(n) produce the
+	-- identical sequence of exchanges - it is a schedule, NOT a second movement granularity (ARCHITECTURE §9).
+	Gossip.meet(w, now)
 	local floodOn = w.calamity.active and w.calamity.kind == "flood"
 	for _, g in pairs(w.groups) do
 		if not g.materialised then

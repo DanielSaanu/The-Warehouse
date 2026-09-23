@@ -22,6 +22,7 @@ local Map = require(script.Parent:WaitForChild("Map"))
 local Calendar = require(script.Parent:WaitForChild("Calendar"))
 local Tiles = require(script.Parent:WaitForChild("Tiles"))
 local Villagers = require(script.Parent:WaitForChild("Villagers"))
+local Standing = require(script.Parent:WaitForChild("Standing"))
 
 local Restore = {}
 
@@ -59,16 +60,17 @@ function Restore.player(ps, saved, x: number, y: number): (number, number)
 	local lastSeen = saved.lastSeenDay or S.day
 	ps.lastSeenDay = lastSeen -- kept so a player who leaves before seeing the welcome is still 'away since then'
 	local away = math.max(0, S.day - lastSeen)
-	if away > 0 then
-		for tribe, v in pairs(ps.rep) do ps.rep[tribe] = Reputation.fade(v, away) end
-	end
+	-- a v2 key is keyed by tribe TYPE: move each onto that tribe's village holder before anything reads it
+	Standing.rekey(ps)
+	-- fade for the days that passed, THEN apply what the world learned about them while they were gone
+	Standing.away(ps, away)
 	-- "You were gone eleven days": the world's headlines since they left, from the tribes that would tell them -
 	-- the village they sleep in, and anyone who is not wary of them. The server sends it once the client can show it.
 	local names = {}
 	for i, t in ipairs(S.tribes) do names[i] = Map.village(t.villageId).name end
 	ps.welcome = Headlines.welcome(S.meta, S.people, lastSeen, S.day, function(tribe: number): boolean
 		if ps.rest.kind == "village" and ps.rest.village == tribe then return true end
-		return Reputation.allowsRest(ps.rep[S.tribes[tribe].tribeType] or 0)
+		return Reputation.allowsRest(Standing.tribe(ps, tribe))
 	end, names)
 	return x, y
 end
@@ -157,6 +159,7 @@ function Restore.apply(data, slept: number?): (boolean, string?)
 	for _, r in ipairs(regions.list) do r.live, r.tide = { deer = 0, boar = 0, wolf = 0 }, false end
 	S.meta, S.calamity, S.regions, S.tribes = rec.meta, rec.calamity, regions, rec.tribes
 	S.people, S.groups, S.camps, S.bags = rec.people, rec.groups, rec.camps, rec.bags
+	S.villages, S.rumours = rec.villages, rec.rumours -- gossip: a v2 save migrated in with everybody knowing nothing
 	Calendar.bind(S.meta)
 	S.meta.worldId = S.meta.worldId or Restore.newWorldId() -- a world saved before worlds had ids gets one now
 	Villagers.reset() -- the tribe rows are new tables: rescan, and give a save from before farms its plot rows

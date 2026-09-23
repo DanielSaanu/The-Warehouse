@@ -11,8 +11,10 @@ local Config = require(Shared:WaitForChild("Config"))
 local WorldGen = require(Shared:WaitForChild("WorldGen"))
 local Witness = require(Shared:WaitForChild("Witness"))
 local Combat = require(Shared:WaitForChild("Combat"))
+local Gossip = require(Shared:WaitForChild("Gossip"))
 local Calendar = require(script.Parent:WaitForChild("Calendar"))
 local Map = require(script.Parent:WaitForChild("Map"))
+local Standing = require(script.Parent:WaitForChild("Standing"))
 
 local Sides = {}
 
@@ -54,8 +56,9 @@ end
 --- A player as one side of a fight, seen by `e`: what matters is what *this* witness's tribe thinks of them,
 --- which is why the same event reads differently in two villages.
 local function playerParty(ps, e)
-	local t = e.tribe and S.tribes[e.tribe]
-	return { player = true, rep = if t then ps.rep[t.tribeType] else 0 }
+	-- Part 3: the number this witness holds is their GROUP's if they are on the road with one, else their village's.
+	-- Witness.lua needs no change at all - `Party.rep` was always just "what this witness thinks", and now it is.
+	return { player = true, rep = if e.tribe then Standing.of(ps, e) else 0 }
 end
 
 local function seerOf(e)
@@ -184,20 +187,30 @@ end
 
 --- Everybody who can see a fight decides what to do about it (docs/RUNG3.md part 1). Called on every blow that
 --- lands, which is also how a fight that moves through a village gets re-read by the people it passes.
+--- Everybody who can see a fight decides what to do about it, and everybody who can see it REMEMBERS it. The two
+--- sets are deliberately different sizes: the join cap limits who wades in, never who carries the story, and a
+--- fleeing unarmed villager still counts - part 1 promised they "carry what they saw" and this is that hook.
+--- Animals and babies weigh nothing either way.
 function Sides.witnessed(att, vic, x: number, y: number)
 	local now = Calendar.now()
 	local joined = 0
 	local ps, role = playerIn(att, vic)
 	local forYou, againstYou, watched, alarmed, where = 0, 0, 0, 0, nil
+	-- collected in the sweep below rather than in a second one; the victim keeps it so a fatal blow knows who saw it
+	local holders = {}
+	if vic.e then vic.e.seenBy = holders end
 	for _, e in pairs(S.entities) do
-		if joined >= Sides.WITNESS_JOIN then break end
 		local involved = (att.e == e) or (vic.e == e)
+		if not involved and not e.species and e.kind ~= "baby" and cheb(e.x, e.y, x, y) <= Sides.WITNESS_RANGE then
+			local h = Gossip.holderOf(e)
+			if h then holders[h] = true end
+		end
 		-- Animals do not weigh a fight, they hunt (see pickNpcTarget): without this a wolf watching a guard beat
 		-- another wolf sides with the guard, because it dislikes wolves. A baby cannot act on any verdict either.
 		-- `flee` counts as busy so a villager already running is not re-armed by every later blow.
 		local busy = e.species ~= nil or e.kind == "baby" or e.broken
 			or e.state == "chase" or e.state == "hunt" or e.state == "alarm" or e.state == "flee"
-		if not involved and not busy and now >= (e.nextWitnessAt or 0) and cheb(e.x, e.y, x, y) <= Sides.WITNESS_RANGE then
+		if joined < Sides.WITNESS_JOIN and not involved and not busy and now >= (e.nextWitnessAt or 0) and cheb(e.x, e.y, x, y) <= Sides.WITNESS_RANGE then
 			e.nextWitnessAt = now + Sides.WITNESS_EVERY
 			local verdict = Sides.applyVerdict(e, att, vic, x, y, now)
 			local helped = if verdict == "help_victim" then "victim" elseif verdict == "help_attacker" then "attacker" else nil

@@ -23,6 +23,7 @@ local DayCycle = require(Shared:WaitForChild("DayCycle"))
 local Families = require(Shared:WaitForChild("Families"))
 local Tick = require(Shared:WaitForChild("Tick"))
 local Headlines = require(Shared:WaitForChild("Headlines"))
+local Standing = require(script.Parent:WaitForChild("Standing"))
 local Sides = require(script.Parent:WaitForChild("Sides"))
 local Debug = require(script.Parent:WaitForChild("Debug"))
 local Restore = require(script.Parent:WaitForChild("Restore"))
@@ -281,7 +282,7 @@ local function initTribes()
 			surnames = { Names.last(rng), Names.last(rng), Names.last(rng) },
 			guard = nil, merchant = nil, survivor = nil, news = nil,
 		}
-		S.tribes[i] = t
+		S.tribes[i], S.villages[i] = t, { id = i, knows = {} } -- a new village has heard nothing yet
 		local sprite = VILLAGE_SPRITE[v.tribeType]
 		-- guard just inside the first gate (or by the road for open villages)
 		local gx, gy = v.spawn.x + 2, v.spawn.y - 1
@@ -401,19 +402,6 @@ local function lootTo(ps, loot)
 	if #got > 0 then Sim.text(ps, "You take " .. table.concat(got, ", ") .. ".") end
 end
 
-local function applyRep(ps, deltas)
-	local changed = false
-	for tribe, d in pairs(deltas) do
-		local before = ps.rep[tribe]
-		Reputation.apply(ps.rep, { [tribe] = d })
-		if Reputation.word(before) ~= Reputation.word(ps.rep[tribe]) then
-			changed = true
-			Sim.text(ps, ("The %ss now think of you as %s."):format(tribe, Reputation.word(ps.rep[tribe])), "rep")
-		end
-	end
-	return changed
-end
-
 local function killEntity(e, killer, ctx, byEntity)
 	-- An NPC kill used to produce nothing. Now it goes into the killer's group to be carried home, and the
 	-- killer stops being hungry for a while, which is what stops a hunt being a slaughter.
@@ -431,18 +419,24 @@ local function killEntity(e, killer, ctx, byEntity)
 			end
 		end
 	end
+	-- who was close enough to see the fatal blow (Sides.witnessed stashed it on the victim). Nobody means nobody:
+	-- no rumour, no standing change anywhere, and no name on the headline below (docs/RUNG3.md part 3).
+	local seen = e.seenBy or {}
+	local sawIt = next(seen) ~= nil
 	if killer then
 		lootTo(killer, Combat.loot(e.kind, rng))
-		applyRep(killer, Reputation.deltas("kill", e.kind, Sim.tribeOf(e), ctx))
+		Standing.event(killer, "kill", e.kind, e.tribe, ctx, seen)
 		if e.tribe and not e.species then
 			S.tribes[e.tribe].population = math.max(0, S.tribes[e.tribe].population - 1)
 		end
+		if not e.species then Standing.sawIt(killer, sawIt) end
 		Sim.hud(killer)
 	end
 	-- the family tree keeps the dead, and a role passes to a relative
 	if e.person then
 		local p = S.people.people[e.person]
-		local by = if killer then killer.player.Name else "the wild"
+		-- an unwitnessed killing has no name on it: the tribe knows Tam is dead, not who did it
+		local by = if killer then (if sawIt then killer.player.Name else nil) else "the wild"
 		Families.die(S.people, e.person, S.day, "killed", by)
 		if p and e.tribe then Headlines.push(S.meta, { day = S.day, kind = "died", tribe = e.tribe, id = p.id }) end
 		local t = e.tribe and S.tribes[e.tribe]
@@ -546,7 +540,7 @@ local function hitEntity(e, dmg: number, ax: number, ay: number, attacker, byEnt
 		e.state, e.target, e.aggroUntil = "chase", attacker.player.UserId, now + 12
 	end
 	if attacker and e.tribe and not e.species then
-		applyRep(attacker, Reputation.deltas("hit", e.kind, Sim.tribeOf(e), ctx))
+		Standing.eventAt(attacker, "hit", e, ctx)
 		-- Who comes for you is decided by the witness rule above, not by a hard-coded guard: a village that is
 		-- family to you still answers for its own, and one that is wary of you may watch.
 	end
@@ -568,11 +562,10 @@ function Sim.playerRestPoint(ps): (WorldGen.Pos, string?)
 		ps.rest = { kind = "village", village = 1 }
 	end
 	local v = world.villages[ps.rest.village or 1]
-	local t = S.tribes[ps.rest.village or 1]
-	if not Reputation.allowsRest(ps.rep[t.tribeType]) then
+	if not Reputation.allowsRest(Standing.tribe(ps, ps.rest.village or 1)) then
 		why = ("%s will not have you any more."):format(v.name)
-		for i, tt in ipairs(S.tribes) do
-			if Reputation.allowsRest(ps.rep[tt.tribeType]) then
+		for i in ipairs(S.tribes) do
+			if Reputation.allowsRest(Standing.tribe(ps, i)) then
 				ps.rest = { kind = "village", village = i }
 				v = world.villages[i]
 				break
@@ -592,8 +585,7 @@ local function killPlayer(ps, killer)
 	print(("[Sim] %s died to %s"):format(ps.player.Name, if killer then killer.kind .. " " .. tostring(killer.id) else "nothing"))
 	ps.dead = true
 	ps.hp = 0
-	local tribe = killer and Sim.tribeOf(killer)
-	if tribe then applyRep(ps, Reputation.deltas("died_to", killer.kind, tribe)) end
+	if killer and killer.tribe then Standing.eventAt(ps, "died_to", killer, nil) end -- being killed costs nothing
 	dropBag(ps)
 	local by = if killer then (killer.label or killer.kind) else "something"
 	notice(ps, "died", { by = by, seconds = Config.RESPAWN_SECONDS, at = Sim.restText(ps) })
@@ -705,7 +697,7 @@ local function grantMercy(e)
 	local ps = S.players[uid]
 	e.mercyGiven = true
 	if ps and e.tribe and not e.species then
-		applyRep(ps, Reputation.deltas("mercy", e.kind, Sim.tribeOf(e)))
+		Standing.eventAt(ps, "mercy", e, nil) -- the one who got away is the one who tells it
 		Sim.text(ps, ("%s got away. Word of that will travel."):format(e.label or e.kind), "rep")
 		Sim.hud(ps)
 	end
@@ -744,7 +736,7 @@ local function chaseStep(e, now: number)
 			e.escapeGiven = e.escapeGiven or {}
 			if not e.escapeGiven[e.target] then
 				e.escapeGiven[e.target] = true
-				applyRep(ps, Reputation.deltas("escape", e.kind, Sim.tribeOf(e)))
+				Standing.eventAt(ps, "escape", e, nil) -- the band that lost you is the band that tells it
 				Sim.hud(ps)
 			end
 		end
@@ -801,7 +793,7 @@ local function pickTarget(e, now: number, nearerThan: number?)
 		if e.kind == "bandit" then
 			local g = e.group and S.groups[e.group]
 			if g and now < (g.retreatUntil or 0) then return false end
-			return ps.rep.plunderer < -10 and not Sides.sheltered(ps, e)
+			return Standing.of(ps, e) < -10 and not Sides.sheltered(ps, e) -- THIS band's view, not the tribe's
 		end
 		if e.tribe then return Sides.hostileToPlayer(e, ps) end
 		return false
@@ -1144,9 +1136,7 @@ local function dailyTick()
 	local ev = Tick.daily(S, rng, S.day, Calendar.now())
 	applyFamilyEvents(ev)
 	Villagers.harvested(ev.harvests)
-	for _, ps in pairs(S.players) do
-		for tribe, v in pairs(ps.rep) do ps.rep[tribe] = Reputation.fade(v, 1) end
-	end
+	Standing.fadeDaily() -- standing drifts back to neutral in a month, a grudge halves in a year
 	print(("[Sim] day %d: deer %d boar %d wolf %d"):format(S.day, ev.totals.deer, ev.totals.boar, ev.totals.wolf))
 end
 
@@ -1156,7 +1146,7 @@ function Sim.addPlayer(player: Player, x: number, y: number, snapFn, saved)
 	local uid = player.UserId
 	local ps = {
 		player = player, x = x, y = y, facing = "down", epoch = 0, budget = Movement.newBudget(os.clock()), lastWorldInit = -math.huge,
-		hp = Stats.get("player").hp, maxHp = Stats.get("player").hp, inv = Items.dayOneKit(), rep = Reputation.newTable(),
+		hp = Stats.get("player").hp, maxHp = Stats.get("player").hp, inv = Items.dayOneKit(), rep = Standing.newRep(),
 		rest = { kind = "village", village = 1 }, restText = "", dead = false, lastAttack = -math.huge, invulnUntil = 0,
 		known = {}, met = {}, dialogue = nil, snap = snapFn,
 		-- the first five minutes: which goal line they are on, whether the survivor has been found, and which
@@ -1199,6 +1189,8 @@ function Sim.init(saved, slept: number?): (boolean, string?)
 	S.people = Families.new()
 	S.regions = Ecology.init(world, rng:fork(1))
 	for _, r in ipairs(S.regions.list) do r.live = { deer = 0, boar = 0, wolf = 0 } end
+	-- before Sides, which reads standing to pick sides. repFor keeps the HUD's three-key { farmer, hunter, plunderer }
+	Standing.bind({ S = S, text = Sim.text, hud = Sim.hud }) State.repFor = Standing.hudRep
 	Sides.bind({ state = S, world = world, faceEntity = faceEntity, markAggression = markAggression, pathTo = pathTo,
 		text = Sim.text })
 	Debug.bind({ Sim = Sim, S = S, world = world, cheb = cheb, collapse = Bands.collapse, endCalamity = endCalamity,

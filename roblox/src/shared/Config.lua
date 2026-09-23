@@ -66,6 +66,10 @@ Config.GRACE_DAYS = 2
 
 -- Reputation
 Config.REP_FADE_DAYS = 30      -- half the distance to neutral every this many in-game days
+-- A grudge is the scar, not the mood: it halves in an in-game YEAR (about 61 real hours of play), where standing
+-- halves in a month. Both are closed forms over a day count, never per-tick decrements - which is what lets a decay
+-- this long survive a world that slept past Tick.CATCHUP_CAP (docs/RUNG3.md part 3).
+Config.GRUDGE_FADE_DAYS = 364
 
 -- UI
 Config.BANNER_SECONDS = 3

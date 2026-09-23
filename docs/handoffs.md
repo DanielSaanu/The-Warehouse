@@ -31,4 +31,14 @@ Resolution (added by the heavy agent under the same entry):
 
 ## Resolved
 
-*(none yet)*
+### H1 — Rung 3 part 3: where gossip memory lives, and what it does to Reputation — 2026-09-23 16:54 — RESOLVED
+- **Resolved 2026-09-23 (heavy):** reputation stays **stored**, but is re-keyed from tribe type to **holder** (a
+  village or a group) — derived-from-memory was rejected because memory has to be capped and a reputation derived
+  from a capped list *heals when the cap evicts*. Memory is a bounded world-level ring of rumour rows plus a
+  `knows[]` of ids per holder: measured at **+9.6 KB** worst case today and **+22.2 KB** at DESIGN §4's caps,
+  against **216 KB** for the per-(holder, player) shape §5 had assumed. Save `VERSION` 2 → 3 migrates **in place
+  with nothing lost and no world reset**; the player key does **not** bump (a bump discards it). All six questions
+  answered → the buildable spec (records with field names, the tick and catch-up hooks, the save step, the 24-site
+  edit list, a testable done-when) is in `docs/RUNG3.md` §"Part 3 — Gossip and grudges"; the architectural half is
+  in `docs/ARCHITECTURE.md` §11, plus §2's tree, R2's owner table and §5's memory budget. New rules: learnings
+  S1, S2, P1, P2, P3, T1. **None of ARCHITECTURE §9's six decisions is touched.**

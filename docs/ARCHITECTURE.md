@@ -39,18 +39,20 @@ One **World Record**: plain data. No functions, no Instances, no cycles, no obje
 ```
 world
 ├─ meta        version, genVersion, seed, gameSeconds, savedAt, rngState,
-│              nextBagId, lastDailyTick, headlines[]
+│              nextBagId, nextRumourId, lastDailyTick, headlines[]
 ├─ calendar    calamity { kind, active, day, warnedDay }
 ├─ regions[]   per 16x16: grass, deer, boar, wolf                 36 rows, fixed
 ├─ tribes[]    type, villageId, stock{}, population, walled, surnames, news
-├─ villages[]  id, tribeId                (rung 3 part 3 adds memory; nothing else is stored in v1)
-├─ groups{}    id, kind, tribe, from, to, pos, dir, acc, speed, pauses, fullSize,
+├─ villages[]  id, knows[]                (rung 3 part 3: knows[] is what this village has heard. tribeId derived)
+├─ rumours[]   id, about, event, victim, victimPerson, tribe, day, hops, mult   (part 3: a 64-row ring)
+├─ groups{}    id, kind, tribe, from, to, pos, dir, acc, speed, pauses, fullSize, knows[],
 │              lateTarget, carry{}, members[] {kind, role, person}, pauseUntil, replenishAt, retreatUntil
 ├─ people      nextId, rows: the full Families.Person minus `entity` (`group` = on the road with that group)
 ├─ camps{}     owner, x, y, litUntil, out
 ├─ bags{}      id, x, y, owner, slots, droppedAt, public
 └─ players     a SEPARATE DataStore key per player (DESIGN §14):
-               version, pos, inv, coin, rep{}, grudges{}, rest, goalStage, flags, lastSeenDay, lastGroupId
+               version, pos, inv, coin, rep{}, grudge{}, rest, goalStage, flags, lastSeenDay, lastGroupId
+               rep{} is keyed by HOLDER ("v1".."v3", or a group id), grudge{} by tribe type (RUNG3.md part 3)
 ```
 
 **What is deliberately *not* in the tree** — each of these is in memory today, and saving any of them is a bug:
@@ -112,7 +114,8 @@ function, `budget` and `-math.huge` in the same flat table as `inv` and `rep`. I
 | `meta.version`, `.genVersion`, `.seed`, `.savedAt`, `.rngState` | `Save` (stamped at encode; `rngState` is a snapshot of the one `Rng`) |
 | `meta.nextBagId`, `camps`, `bags`, their tiles on the map | `Tiles` |
 | `meta.headlines`, `tribes[].news`, `.population`, `.surnames`, `people` | `Population` |
-| `tribes[].type`, `.walled`, `.villageId`, `villages[]` | written once by `generate` (A4), never after |
+| `tribes[].type`, `.walled`, `.villageId`, `villages[].id` | written once by `generate` (A4), never after |
+| `villages[].knows`, `groups[].knows`, `rumours[]`, `meta.nextRumourId` | `Standing` (rung 3 part 3; the rule is `shared/Gossip.lua`) |
 | `tribes[].stock`, player `inv`, `coin` | `Economy` |
 | `regions[]` counts | `Ecology` (exists, pure) |
 | `groups{}` | `Bands` |
@@ -153,6 +156,7 @@ something else in the tree plus the seed?* Then it is not in the tree.
 shared/  (pure Luau — the only code `npm test` can run; `test/luau/run.js:12`)
   Save.lua         encode / decode / migrate / shape-check the tree            ~200   NEW (A4)
   Tick.lua         Tick.daily, Tick.groups, Tick.catchUp — pure over the tree   ~200   NEW (A2)
+  Gossip.lua       rumours, who knows what, standing per holder, grudge        ~200   NEW (rung 3 part 3)
   Calamity.lua     + applyOverlay / the one-time half as data                 (exists)
   DayCycle.lua     + day/fraction from gameSeconds                            (exists)
   WorldGen.lua     877 → generate / query / encode                              (B4)
@@ -208,9 +212,18 @@ adapters print, notify and spawn.**
 **The 4 MB key.** `Families.MAX_PEOPLE` (per tribe type: 18 / 15 / 14; it was a flat 9) caps the *living per tribe*, so the registry grows at the death rate.
 A full person record is ~274 B of JSON, pruned ~71 B: 4 MiB ÷ 274 ≈ 15,300 records ≈ 106 real days of continuous
 simulation at one death per in-game day (the real rate is ≤ 0.9). **People are not the thing to watch. Memory per
-holder, per player, is** (part 3): 43 holders × 5 entries × 60 B ≈ 13 KB per player ever seen; 300 players ≈
-3.9 MB. So holder memory is capped per (holder, player) — ~3 entries, LRU over ~32 players per holder ≈ 242 KB —
-and per-player standing lives in the player's own key.
+holder, per player, was**, and that estimate is what part 3's shape was chosen to avoid: 43 holders × 5 entries ×
+60 B ≈ 13 KB per player ever seen; 300 players ≈ 3.9 MB. Measured, a per-(holder, player) shape at 43 holders × 32
+players × 3 entries really is **216 KB** — so it was rejected.
+
+**Superseded by measurement, 2026-09-23 (rung 3 part 3, `docs/RUNG3.md`).** Holder memory is **not** per (holder,
+player). It is **one world-level ring of rumour rows** (`rumours[]`, 64 rows × 117 B) plus a dense array of rumour
+ids per holder (`knows[]`). The whole of it **does not grow with the number of players**: 300 players make the
+same 64-row ring. Measured worst case, every holder knowing every rumour: **+9.6 KB** at today's 6 holders,
+**+22.2 KB** at DESIGN §4's cap of 43 — about 1.4% of the key, against a world key measured at 15.7 KB on day 1
+and 32.0 KB at day 120 with 110 dead. `knows[]` needs no cap of its own: a holder can know at most every rumour in
+the ring, and an eviction compacts that id out of every holder in the same call. Per-player standing
+(`rep` per holder, `grudge` per tribe type) stays in the player's own key: 449 B at its own worst case.
 
 **Pruning is a rule from the first save.** A person dead longer than `PRUNE_DAYS` keeps `id, first, last, died,
 cause, killer` and loses the rest; never deleted, because the living point at them. A pure function in
@@ -460,3 +473,45 @@ Written after building it, because a plan that is not corrected by its own imple
 8. **Catch-up at the cap costs 3 ms**, measured in `tick.test.luau`. No slicing needed.
 9. **`headlines[]` was carried by the format with no writer; it has one now** (`shared/Headlines.lua`, branch
    `headlines`): births from the pure tick, deaths and calamities from Sim, read once on join.
+
+---
+
+## 11. Rung 3 part 3: gossip, and what it does to this document (decided 2026-09-23)
+
+Written by the heavy session for handoff H1. The full spec is `docs/RUNG3.md` §"Part 3 — Gossip and grudges";
+only what is *architectural* is here, so this document stays the one place the shape of the data is stated.
+
+1. **Reputation stays stored, and is re-keyed from tribe type to holder.** A "holder" is a village or a group —
+   the two things that can know something and can meet each other. `ps.rep` is keyed `"v1".."v3"` (villages) and
+   by group id, sparse, with a fallback chain holder → its village → `Reputation.START[tribeType]`. It is **not**
+   derived from memory: memory is capped, and a reputation recomputed from capped memory heals when the cap
+   evicts, which is the opposite of what DESIGN §7 asks for. **Memory is the transport; rep and grudge are the
+   ledger.** The read path therefore stays one table lookup per read — no scan, no cache.
+2. **Three new nodes, and their tier** (§2's tree is updated): `rumours[]` at the world (a ring: it is news in
+   flight, true of nobody in particular), `knows[]` on each **village** row and each **group** row. Village memory
+   is on `villages[]`, *not* on the tribe row, because §8.4 settles that villages are their own tier — "what this
+   village heard" is not true of the whole tribe. This is the first writer `villages[]` has ever had, which §2
+   reserved for exactly this.
+3. **A rumour stores the event, not its consequences** (R4): `Reputation.deltas` is re-derived at the moment the
+   rumour is applied, so a saved rumour can never disagree with the rule, and the row is smaller.
+4. **`knows[]` is both the memory and the dedupe set.** Appending a rumour id *is* applying it, so double-booking
+   is impossible by construction rather than by a flag.
+5. **Nothing decays by ticking, and this is now a rule (learnings P2).** Grudge "decays over years" while catch-up
+   caps at four in-game weeks; there is no conflict because decay is a **closed form over a day count**, the way
+   `Reputation.fade(v, days)` already is at `Restore.player`. Every span is in **in-game days**, and a world
+   nobody plays does not age.
+6. **Gossip spreads during catch-up, on a schedule derived from `gameSeconds`.** This does **not** reopen §9's
+   "one stated granularity": *movement* stays 1 Hz. Contact is evaluated when `math.floor(now / Gossip.EVERY)`
+   increments, which is a pure function of game time, so n live seconds and `catchUp(n)` produce the identical
+   sequence of exchanges — and A2's existing invariant test is extended to assert it.
+7. **The save step is the first in-place migration**: world `VERSION` 2 → 3, adding empty nodes, losing nothing,
+   resetting no world. `WorldGen.GEN_VERSION` is **not** touched (bumping it discards the world). The **player**
+   key does **not** bump: `Save.applyPlayer` discards the whole record on a version mismatch, so player-key changes
+   must always be additive-optional (learnings P1).
+8. **R2 is unchanged and pre-satisfied**: `Standing` was already named the owner of "memory on villages and
+   groups, player `rep`, `grudges`". Part 3 builds `server/Standing.lua` and moves `Sim`'s `applyRep` into it,
+   which is B3's first step arriving early — and it is not optional, because `Sim.lua` is 1282 lines against a
+   1285 ratchet that may only shrink.
+
+**None of §9's six decisions is touched.** Item 6 above is the only one that even brushes against the §9 rider on
+granularity, and it is compatible for the reason given there.

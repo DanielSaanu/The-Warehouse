@@ -20,9 +20,12 @@ State.remotes = {} :: { EntityState: RemoteEvent, Notice: RemoteEvent }
 
 -- ---------- state ----------
 State.state = {
-	meta = { gameSeconds = 0, lastDailyTick = 1, nextBagId = 0 }, -- the one clock (Calendar owns it); `day` below is derived, a cache
+	meta = { gameSeconds = 0, lastDailyTick = 1, nextBagId = 0, nextRumourId = 0, lastContactSlot = -1 }, -- the one clock (Calendar owns it); `day` below is derived, a cache
 	day = 1,
 	tribes = {},      -- [i] = { villageId, tribeType, stock, population, walled, surnames, news }
+	villages = {},    -- [i] = { id, knows } : what THIS village has heard about each player (rung 3 part 3).
+	                  -- Its own tier, not a field on the tribe row, because rung 4 gives a tribe several villages.
+	rumours = {},     -- the ring of what is travelling: Gossip.MAX_RUMOURS of them, oldest evicted
 	people = nil,     -- Families.Registry: everyone who was ever born in this world
 	regions = nil,    -- Ecology.Regions (+ live counts)
 	groups = {},      -- [id] = group record
@@ -106,7 +109,7 @@ function State.hud(ps)
 	-- what was in hand may have been eaten, sold or dropped since it was picked up
 	if ps.selected and not ps.inv.slots[ps.selected] then ps.selected = nil end
 	State.notice(ps, "hud", {
-		hp = ps.hp, maxHp = ps.maxHp, inv = Items.snapshot(ps.inv), rep = ps.rep,
+		hp = ps.hp, maxHp = ps.maxHp, inv = Items.snapshot(ps.inv), rep = if State.repFor then State.repFor(ps) else ps.rep,
 		rest = ps.restText, dead = ps.dead,
 		goal = ps.goal, metSurvivor = ps.metSurvivor, selected = ps.selected,
 	})

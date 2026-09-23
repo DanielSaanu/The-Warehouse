@@ -161,23 +161,248 @@ name are all still there, and the calendar moved on.
 today is instant and global: hit a hunter and every hunter in the world knows at once. That is a placeholder.
 What §7 describes is information that has to **travel**.
 
-- **Memory per group and village**: what they personally saw you do, with a day stamp. This is also what §4's
-  data budget demands — memory belongs to the place and the party, never to each villager separately. Gossip
-  travels by caravans and bands, not by a thousand independent diaries.
-- **Exchange on contact**: when two groups, or a group and a village, are on the same or adjacent tile, they
-  trade memories. Each hop loses weight and detail. Caravans are the big spreaders; a lone bandit tells his band
-  when he gets home; a hunter squad tells the caravan it is guarding.
-- **Grudge**: the scar. Only from serious harm, decays over years, and **multiplies** the damage of the next bad
-  act against the same people. Harm done as part of a group spreads thin; the same harm done alone lands entirely
-  on you — which §7 wrote with riding with a band in mind, and part 4 makes real.
-- **Amends**: gifts, paying back what you took, doing a job. Time alone barely helps.
-- The payoff a player can feel: you can outrun your reputation for a while, and a tribe on the far side of the
-  map may not know you yet.
+**Decided 2026-09-23** (heavy session, handoff H1). The fork the routine session found — does `Reputation` stay
+the stored truth with gossip feeding deltas, or become derived from per-holder memory — is answered **neither**:
+reputation stays **stored**, but it is **re-keyed from tribe type to holder**. The rest of this section is the
+spec to build; nothing below needs re-deriving.
 
-**Depends on:** part 2 (a grudge that resets nightly is not a grudge).
+### The decision, and why it is not "derived"
 
-**Done when:** kill a hunter where only one person sees it, walk the other way, and watch the news reach their
-village over the next in-game day — and reach the far tribe later still, weaker and vaguer.
+- **Derived-from-memory is unsound here, not merely expensive.** Memory has to be capped (§4's data budget), and a
+  reputation recomputed from capped memory *heals when the cap evicts*. §7 wants the opposite: "you can be
+  forgiven, but if you come back and do it again without ever making amends, they remember everything at once."
+  A capped list cannot be a ledger. Memory is the **transport**; reputation and grudge are the **ledger**.
+- **A ledger keyed by tribe type cannot express the thing part 3 is for.** `ps.rep` is keyed by `"farmer" |
+  "hunter" | "plunderer"` today (`Reputation.START`), so the moment a hunter *squad on the road* learns something,
+  `ps.rep.hunter` moves and their village knows too. The "done when" below is then impossible.
+- So `ps.rep` is keyed by **holder**: `"v1" | "v2" | "v3"` for the three villages, and the group id
+  (`"caravan" | "squad" | "band"`, already strings) for groups. A holder is *anything that can know something and
+  can meet another holder*: a village or a group. 6 today, at most 43 at DESIGN §4's caps (40 groups + 3 villages).
+- **`ps.rep` stays sparse.** `Gossip.standing(w, ps, holderKey)` falls back holder → that holder's village →
+  `Reputation.START[tribeType]`, so a key only exists once that holder's opinion has actually *diverged*. A player
+  who has only ever traded has three keys, not forty-three.
+- **The read path does not change shape.** Every hot caller still reads one number out of one table by one key.
+  There is no scan, no derivation and no cache anywhere in `Sides`, `Witness`, `Talk` or `Trade`.
+  **`shared/Witness.lua` needs no edit at all** — `Witness.Party.rep` is already just "the number this witness
+  holds", so part 1 survives untouched.
+
+### The records
+
+Three durable things. Nothing else is added.
+
+**1. `ps.rep[holderKey]: number`** (player's own key) — unchanged in every way but its key. -100..100,
+`Reputation.word`, `Reputation.fade`, the daily fade loop and `Restore.player`'s away-fade all work verbatim.
+
+**2. `ps.grudge[tribeType]: number`** (player's own key, NEW, optional) — 0..`Gossip.GRUDGE_MAX`. The scar, and it
+is **tribe-wide, not per holder**: a scar is what a people carry, and keying it per holder would let it dilute by
+eviction. Damage multiplier: a negative delta becomes `delta * (1 + grudge)`.
+
+**3. Holder memory**, on the records, at the tier the tier-rule puts it:
+
+```
+world
+├─ rumours[]    NEW top-level node: a bounded ring of what is travelling
+│               { id: number, about: number (UserId), event: string, victim: string?,
+│                 victimPerson: number?, tribe: number?, day: number, hops: number,
+│                 mult: number, aggressor: boolean?, fleeing: boolean? }
+├─ villages[]   NEW node (ARCHITECTURE §2 reserved it for exactly this): { id: number, knows: {number} }
+├─ groups{}     + knows: {number}
+└─ meta         + nextRumourId: number
+```
+
+- A rumour stores **the event, not its consequences**: `Reputation.deltas(event, victim, tribeType, ctx)` is
+  re-derived at the moment it is applied. That is R4, it is 117 B instead of 138 B, and it makes it impossible for
+  a saved rumour to disagree with the rule.
+- `mult` is the grudge multiplier **frozen at creation**: what you did is judged by the grudge you had when you did
+  it, not by the grudge you have when the news lands days later.
+- `knows[]` is a dense array of rumour ids — that is the per-holder memory, *and* it is the dedupe set:
+  **appending to `knows` is what applies the rumour**, so no rumour can ever be booked twice at one holder.
+- **Village memory goes on a `villages[]` node, not on the tribe row.** ARCHITECTURE §8.4 settled that villages
+  are their own tier because rung 4 gives a tribe several of them, and "what this village heard" is not true of
+  the whole tribe. This adds `State.state.villages` (`{ [i] = { id = i, knows = {} } }`); `tribeId` is derived
+  from the tribe rows and is not stored.
+
+### What travels and what does not
+
+| Event | Behaviour | Why |
+| --- | --- | --- |
+| `kill`, `mercy`, `escape`, `gift` | a **rumour**: seeded at every witness holder, then carried | these are stories. §7: "they come home with a story, and a story is what gossip carries" |
+| `hit`, `trade`, `rest`, `died_to` | **instant and local**: applied to the holders present, no rumour | a -1 slap and a two-coin trade are not news. It also keeps one long fight's blows from filling the ring |
+
+**No witness, no rumour, no reputation change.** That is the feature ("you can outrun your reputation"), and it
+has one consequence to build deliberately: when nobody saw a kill, `killEntity` passes **no killer name** to
+`Families.die`, so the headline reads "Tam Ashdown of Kenstow was killed." with no "by". The tribe genuinely does
+not know who. One line each way on the player's HUD — "Nobody saw that." / "Someone saw that." — is what makes the
+whole mechanic legible; without it part 3 is invisible.
+
+Witnesses are collected **in the loop `Sides.witnessed` already runs** (one sweep per blow, not two): every entity
+within `Sides.WITNESS_RANGE` that is not an animal and not a baby, mapped through `Gossip.holderOf(e)` — its group
+if it has one, else its village. A fleeing unarmed villager counts: part 1 promised they "carry what they saw",
+and this is that hook. The victim counts too, if they lived.
+
+### How it spreads
+
+Two contact rules, both O(number of groups), both driven only by `gameSeconds`:
+
+1. **Arrival.** `Tick.groupTurn` already fires exactly when a group reaches either end of its route, and `from`
+   and `to` are stored — so the holder at that end is known without a search. The group and that village exchange
+   every rumour neither has. This is the main channel and it is free: "a lone bandit tells his band when he gets
+   home", the caravan arrives, the squad comes back.
+2. **Meeting on the road.** When `math.floor(now / Gossip.EVERY)` increments, groups are bucketed by
+   `math.floor(tile / 2)` of their current route tile and everything in a bucket exchanges. Bucketing makes it
+   O(n), not O(n²) — a pairwise sweep at 1 Hz would be 13 million comparisons over a full catch-up.
+
+An exchange is `Gossip.tell(w, ps, holder, id)` per rumour in the other holder's `knows`. Rumour rows are shared,
+so `hops` lives on the row and means "how many exchanges this rumour has been through": it is incremented once per
+successful `tell` that is not the seeding one. Strength is `Gossip.HOP_FADE ^ hops`, so the far tribe gets a
+weaker, vaguer version — which is exactly the "done when".
+
+### Does gossip spread during catch-up?
+
+**Yes, and at the same granularity as live play**, which is the point. Movement stays 1 Hz (ARCHITECTURE §9's
+"one stated granularity" — an hourly lump moves a group one leg where live ticking moves it eleven). Contact is
+*not* a second movement granularity: it is a schedule computed from `gameSeconds` only, so `Tick.groups` run live
+for n seconds and `Tick.catchUp(n)` produce the identical sequence of exchanges. A2's existing invariant test
+("`catchUp(n)` equals n live steps of the same pure functions") is extended to cover `knows` and `rep`, and that
+test is the guard against anyone lumping it later.
+
+### Decay, and the four-week catch-up cap
+
+Grudges "decay over years" and catch-up stops at four in-game weeks. There is no conflict, because **nothing
+decays by ticking.** Reputation already proves the pattern: `Reputation.fade(v, days)` is a closed form, applied
+once per day online and once by `day - lastSeenDay` on join (`Restore.player`). Grudge does the same with its own
+half-life: `Config.GRUDGE_FADE_DAYS = 364` — one in-game year to halve, about 61 real hours of play.
+
+The world that slept past the cap is not a special case either: `S.day` only advances by what was replayed, and
+every decay is measured in **in-game days**. A world nobody plays does not age, and there is nothing to
+reconcile. The rule, stated once: *anything that decays over a span longer than the catch-up cap is a closed form
+over a day count, never a per-tick decrement.*
+
+Rumour rows do not fade with age — only with hops (§7 says hops). Age decides **staleness**: a rumour older than
+`Gossip.STALE_DAYS` leaves the ring at the daily tick. Old news stops travelling.
+
+### The module layout
+
+```
+shared/Gossip.lua     NEW, pure, ~200 lines. The whole rule: holderOf, standing, witnessed, tell, contact,
+                      exchange, grudge gain / amends / fade, the ring and its compaction. test:luau covers it.
+shared/Reputation.lua unchanged except `newTable` takes the holder keys to seed. deltas/word/fade/clamp untouched.
+shared/Tick.lua       + the two contact hooks (in groupTurn and on the EVERY schedule) and the stale drop in daily.
+shared/Save.lua       + villages / rumours / knows / nextRumourId; VERSION 2 -> 3 with a real migrate step.
+shared/Talk.lua       + Context.heard: what this village has heard about you, from its newest rumour.
+server/Standing.lua   NEW adapter, ~120 lines. R2 already names `Standing` as the owner of "memory on villages and
+                      groups, player rep, grudges". Sim's `applyRep` MOVES here.
+server/Sides.lua      collects witness holders in the sweep it already runs; playerParty asks Standing.
+server/Debug.lua      + a `gossip` command (the ring, and who knows what). Part 3 cannot be QA'd without it.
+```
+
+**`Sim.lua` must not grow.** It is 1282 lines against an allow-list ratchet of 1285 in `test/structure.test.js`
+that *may only shrink* — three lines of headroom. This is why the adapter is a new module and why `applyRep` moves
+out of Sim rather than growing there. Moving it buys headroom instead of spending it.
+
+### The save step
+
+**World key: `Save.VERSION` 2 → 3, with the first real in-place migration** (the v1→v2 comment asked for exactly
+this: "The next format change should upgrade in place"). **Nothing is lost and no world is reset.**
+
+```lua
+if v == 2 then
+    data.villages = {}                                -- one row per tribe row, from tribes[i].villageId
+    for i, t in ipairs(data.tribes) do data.villages[i] = { id = t.villageId or i, knows = {} } end
+    data.rumours, data.meta.nextRumourId = {}, 0
+    for _, g in ipairs(data.groups) do g.knows = {} end
+    data.meta.version = 3
+    v = 3
+end
+```
+
+A v2 world comes back with everybody having heard nothing yet, which is the correct starting state.
+**Do not touch `WorldGen.GEN_VERSION`** — part 3 changes no map generation, and bumping it would discard the world
+Danzo is playing (`Save.decode`'s genVersion check).
+
+**Player key: `Save.PLAYER_VERSION` stays 1.** `Save.applyPlayer` *discards the whole record* on a version
+mismatch (`if data.version ~= Save.PLAYER_VERSION then return nil, nil end`), so a bump would wipe every player's
+coin, inventory and standing. `grudge` is therefore an **additive optional field** with an empty default, and the
+`rep` re-key happens in `Restore.player` after `applyPlayer`: a key that is a tribe type is copied onto that
+tribe's village holder, any other key is copied as-is. Lossless, no bump, and it runs once.
+
+### The numbers, measured
+
+Every figure below is `HttpService:JSONEncode`-equivalent bytes, counted by encoding the real records (three
+tribes at their `Families.cap`, 36 regions, three full groups, a full headline ring):
+
+| | bytes |
+| --- | --- |
+| the world key today (day 1 / day 30 / day 120 with 110 dead) | 15.7 K / 20.1 K / 32.0 K |
+| one rumour row | **117 B** |
+| gossip, today's 6 holders, ring full, **every holder knows every rumour** | **+9.6 K** |
+| gossip, DESIGN §4's cap of 43 holders, ring 64, everybody knows everything | **+22.2 K** |
+| gossip, realistic (6 rumours in flight) | +1.2 K |
+| `ps.rep` re-keyed, all 46 holders diverged, in the player's own key | 449 B (40 B today) |
+| for contrast: per-(holder, player) memory, 43 holders × 32 players × 3 entries | **216 K** — rejected |
+
+So the worst case is about **1.4% of the 4 MB key**, and the decisive property is that **the ring does not grow
+with the number of players**: 300 players make the same 64-row ring, where ARCHITECTURE §5's per-(holder, player)
+shape was headed for 3.9 MB. §5's memory budget is superseded by these numbers.
+
+`knows` never needs a cap of its own: a holder can know at most every rumour in the ring, and when the ring evicts
+a row, `Gossip.push` compacts that id out of all 43 holders in the same call — so no dangling ids can reach
+`Save.check`, and the bound is exact.
+
+### Numbers to tune
+
+`Gossip.MAX_RUMOURS = 64` (the same as `Headlines.MAX`, one number to remember) · `HOP_FADE = 0.75` ·
+`STALE_DAYS = 14` · `EVERY = 60` game seconds (a tenth of an in-game day) · `GRUDGE_MAX = 3` · grudge gained: 0.5
+for murder of a runner, 0.3 for any other killing of a person, 0.2 for a bandit · `GRUDGE_GROUP = 0.25` (the share
+that lands on you for harm done while riding with a group — §7's "spreads thin"; dormant until part 4 passes
+`ctx.withGroup`) · `AMEND_GIFT = 0.1` per gift · `Config.GRUDGE_FADE_DAYS = 364`.
+
+### What this costs in edits
+
+`ps.rep` is touched at 28 places across six server files. Four need nothing: the two fade loops
+(`Sim.lua:1148`, `Restore.lua:63`) work verbatim on holder keys, `Sim.lua:1159` is `Reputation.newTable`, and
+`State.lua:109` becomes the three-key aggregate. **The other 24 are mechanical**, and each resolves to one of
+three calls:
+
+- `Standing.at(ps, holderKey)` — where an *entity* has the opinion: `Sides.lua:58`, `Interact.lua:105,165`,
+  `Sim.lua:804`.
+- `Standing.tribe(ps, tribeIdx)` — the tribe's seat, i.e. its village: `Interact.lua:51,57,89,98,139,285`,
+  `Sim.lua:572,575`, `Restore.lua:71`, `Debug.lua:75,77`.
+- `Standing.apply(ps, holderKey, deltas)` — every write: `Interact.lua:146,171,300,312,323`,
+  `Sim.lua:407-411` (the body of `applyRep`, which moves into `Standing`), `436,549,596,708,747`.
+
+**The wire format does not change and the client is not touched.** `State.hud` sends the same three-key
+`{ farmer, hunter, plunderer }` it sends today, built from the three village holders — which is what
+`Hud.toggleStanding` (`Hud.lua:986-996`) and `Client.client.lua:105` already expect.
+Two assertions in `test/luau/sim.test.luau:54-55` are about `Reputation.newTable()`'s keys and must be **updated,
+not removed**: the new assertion is that every holder key is seeded from its tribe type's `START`.
+
+**Depends on:** part 2 (a grudge that resets nightly is not a grudge) and track-b1's named group members (a rumour
+about a person needs that person to still be the same person).
+
+**Not in part 3.** `tribes[].news` is **not deleted**. `docs/qa/track-b1-summary.md:58` says "gossip replaces
+news", and what it replaces is the *sticky-single-string pattern* for things said about the player. `news` keeps
+its real job — the village's own family news, read by `Talk.Context.familyNews` — and gossip is a second,
+separate channel (`Context.heard`). Collapsing the two is a job for part 7's full talk system.
+Also not in part 3: the ledger key becoming the **village id** rather than one holder key per village. Today
+village ↔ tribe type is 1:1, so "the village knows, the tribe does not" is not observable until rung 4 gives a
+tribe several villages; when it does, that is a change of key inside `Gossip.standing`'s fallback chain and
+nothing else.
+
+**Done when:**
+
+- `npm run test:luau` passes a new `test/luau/gossip.test.luau`: a rumour seeded at the squad does not move the
+  hunter village's number, and does after one contact — **once**, and not again on the next contact; strength
+  falls with hops; a holder never applies a rumour twice, including across a ring eviction and compaction; grudge
+  multiplies the next kill and a gift reduces it; grudge halves in `GRUDGE_FADE_DAYS`; `catchUp(n)` equals n live
+  seconds *including* every exchange; and the worst case above is asserted in bytes, so a future shape change has
+  to argue with a number.
+- `npm test` passes `save.test.luau`: `Save.check(encode)` with the gossip nodes, `decode(encode)` deep-equal, and
+  a v2 fixture migrating in place with every group and village getting an empty `knows` and nothing else changed.
+- In Studio: kill a hunter where exactly one person sees it, walk the other way, and watch the news reach their
+  village over the next in-game day — and reach the far tribe later still, weaker and vaguer. Kill one where
+  nobody at all sees it, and watch nothing happen, to you or to the headline. Then go back and do it again, and
+  watch the grudge make the second one cost far more than the first.
 
 ---
 

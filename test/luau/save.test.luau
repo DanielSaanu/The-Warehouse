@@ -201,6 +201,60 @@ do
 	assert(#d3.met == Save.MET_CAP and d3.met[#d3.met] == Save.MET_CAP + 20, "the list is capped, keeping the newest ids")
 end
 
+-- v2 -> v3 (rung 3 part 3, gossip): the first real IN-PLACE migration. Nothing is lost and no world is reset - a v2
+-- world comes back with everybody having heard nothing yet, which is the correct starting state.
+do
+	local w = livedIn()
+	local data = Save.encode(w, { seed = 1, rngState = 7, savedAt = 1790000000 })
+	-- forge a v2 key: the version it was written at, and none of the nodes v3 adds
+	data.meta.version = 2
+	data.villages, data.rumours, data.meta.nextRumourId = nil, nil, nil
+	for _, g in ipairs(data.groups) do g.knows = nil end
+	local before = { tribes = #data.tribes, groups = #data.groups, people = #data.people.rows, day = data.meta.gameSeconds }
+
+	local rec, why, obsolete = Save.decode(data)
+	assert(rec ~= nil, "a v2 world upgrades in place: " .. tostring(why))
+	assert(not obsolete, "it is NOT obsolete - nobody has to start again")
+	assert(data.meta.version == 3, "and it is stamped v3")
+	assert(#rec.tribes == before.tribes, "every tribe row came through")
+	assert(rec.meta.gameSeconds == before.day, "the clock is untouched")
+	assert(rec.meta.nextRumourId == 0, "the ring starts empty")
+	assert(#rec.rumours == 0, "nothing is travelling yet")
+	local villages = 0
+	for i, v in ipairs(rec.villages) do
+		villages += 1
+		assert(v.knows ~= nil and #v.knows == 0, ("village %d has heard nothing"):format(i))
+	end
+	assert(villages == before.tribes, "one village row per tribe row")
+	for id, g in pairs(rec.groups) do assert(#g.knows == 0, "group " .. tostring(id) .. " has heard nothing") end
+	local living = 0
+	for _, p in pairs(rec.people.people) do if p.alive then living += 1 end end
+	assert(living > 0, "the people came through")
+	-- `migrate` upgraded the key in place, so the key ITSELF is now a valid v3 one: JSON-safe, with the new nodes.
+	-- (The decoded record is not re-encodable here for the same reason the round-trip test above does not do it:
+	-- `regions` decodes to bare rows, and the caller lays them over a fresh Ecology.init.)
+	local ok2, why2 = Save.check(data)
+	assert(ok2, "the migrated key is JSON-safe: " .. tostring(why2))
+	assert(#data.villages == before.tribes and data.rumours ~= nil, "as v3, with its village rows and an empty ring")
+	assert(#data.groups == before.groups and #data.people.rows == before.people, "and it lost nothing on the way")
+end
+
+-- The PLAYER key must not bump: applyPlayer discards a record whose version differs, so gossip's fields are additive.
+do
+	local ps = { player = newproxy(), x = 40, y = 41, hp = 7, maxHp = 10, inv = Items.dayOneKit(),
+		rep = Reputation.newTable(), rest = { kind = "village", village = 2 }, goalStage = 3 }
+	ps.inv.coin = 31
+	local data = Save.encodePlayer(ps, 9, "1-100-7")
+	assert(data.version == 1, "part 3 did NOT bump PLAYER_VERSION")
+	data.grudge, data.heard = nil, nil -- a key written before grudges existed
+	local fresh = { x = 1, y = 1, hp = 10, inv = Items.dayOneKit(), rep = {}, rest = { kind = "village", village = 1 }, goalStage = 0 }
+	local x, y = Save.applyPlayer(fresh, data, "1-100-7")
+	assert(x ~= nil, "an older player key still restores, coin and standing intact")
+	assert(fresh.inv.coin == ps.inv.coin, "their coin survived")
+	assert(type(fresh.grudge) == "table" and next(fresh.grudge) == nil, "no grudge, not a nil field")
+	assert(type(fresh.heard) == "table", "and an empty heard set")
+end
+
 -- The lease: one server writes the world. Pure decisions, so they are tested here and Persistence only obeys them.
 do
 	local now = 1790000000

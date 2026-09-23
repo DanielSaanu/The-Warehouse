@@ -15,9 +15,11 @@ local Ecology = require(Shared:WaitForChild("Ecology"))
 local Calamity = require(Shared:WaitForChild("Calamity"))
 local Talk = require(Shared:WaitForChild("Talk"))
 local Rng = require(Shared:WaitForChild("Rng"))
+local Gossip = require(Shared:WaitForChild("Gossip"))
 local Sim = require(script.Parent:WaitForChild("Sim"))
 local Map = require(script.Parent:WaitForChild("Map"))
 local State = require(script.Parent:WaitForChild("State"))
+local Standing = require(script.Parent:WaitForChild("Standing"))
 
 local Interact = {}
 local S = Sim.state
@@ -48,13 +50,14 @@ function Interact.context(ps, tribeIdx: number): Talk.Context
 		bandHint = if where == "right here" then "The bandits are right outside. Keep your knife close."
 			else ("There are bandits afoot: the band was last seen %s of here, on the road."):format(where)
 	end
-	local quotes = Trade.quotes(t.stock, t.tribeType, Reputation.priceMult(ps.rep[t.tribeType]) or 1.3)
+	local quotes = Trade.quotes(t.stock, t.tribeType, Reputation.priceMult(Standing.tribe(ps, tribeIdx)) or 1.3)
 	local parts = {}
 	for _, q in ipairs(quotes) do table.insert(parts, ("%s %d"):format(q.label, q.buy)) end
 	local survivor = t.survivor and S.entities[t.survivor]
 	return {
 		village = v.name, tribeType = t.tribeType, tribeName = v.tribeName,
-		repWord = Reputation.word(ps.rep[t.tribeType]),
+		repWord = Reputation.word(Standing.tribe(ps, tribeIdx)),
+		heard = Standing.heard(ps, Gossip.villageKey(tribeIdx)),
 		warning = Sim.calamityWarning(),
 		calamity = if S.calamity.active then Calamity.notice(S.calamity.kind) else nil,
 		wildlife = Ecology.describe(Ecology.at(S.regions, world, v.cx, v.cy)),
@@ -86,7 +89,7 @@ end
 
 local function openTrade(ps, tribeIdx: number, line: string?)
 	local t = S.tribes[tribeIdx]
-	local mult = Reputation.priceMult(ps.rep[t.tribeType])
+	local mult = Reputation.priceMult(Standing.tribe(ps, tribeIdx))
 	if not mult then
 		Sim.text(ps, "The merchant will not deal with you.", "warn")
 		return
@@ -95,14 +98,14 @@ local function openTrade(ps, tribeIdx: number, line: string?)
 	Sim.notice(ps, "trade", {
 		village = Map.village(t.villageId).name, tribeType = t.tribeType, quotes = Trade.quotes(t.stock, t.tribeType, mult),
 		camper = Trade.camperPrice(t.tribeType, mult), camperOwned = Items.count(ps.inv, "camper_set"),
-		coin = ps.inv.coin, inv = Items.snapshot(ps.inv), line = line, standing = Reputation.word(ps.rep[t.tribeType]),
+		coin = ps.inv.coin, inv = Items.snapshot(ps.inv), line = line, standing = Reputation.word(Standing.tribe(ps, tribeIdx)),
 	})
 end
 
 local function talkTo(ps, e)
 	local tribeIdx = e.tribe
 	local ctx = Interact.context(ps, tribeIdx or 1)
-	local rep = ps.rep[ctx.tribeType]
+	local rep = Standing.of(ps, e)
 	Sim.faceEntity(e, Combat.dirTo(e.x, e.y, ps.x, ps.y))
 	State.meet(ps, e) -- from now on this player sees their name, not their trade
 	if e.role == "survivor" then
@@ -136,14 +139,14 @@ end
 
 local function restAt(ps, tribeIdx: number)
 	local t = S.tribes[tribeIdx]
-	if not Reputation.allowsRest(ps.rep[t.tribeType]) then
+	if not Reputation.allowsRest(Standing.tribe(ps, tribeIdx)) then
 		Sim.text(ps, "They won't let you stay.", "warn")
 		return
 	end
 	ps.rest = { kind = "village", village = tribeIdx }
 	ps.restText = Sim.restText(ps)
 	ps.hp = ps.maxHp
-	Reputation.apply(ps.rep, Reputation.deltas("rest", nil, t.tribeType))
+	Standing.event(ps, "rest", nil, tribeIdx, nil, { [Gossip.villageKey(tribeIdx)] = true })
 	Sim.text(ps, ("You rest. If the worst happens you will wake in %s."):format(Map.village(t.villageId).name), "good")
 	Sim.hud(ps)
 end
@@ -162,13 +165,14 @@ local function giveTo(ps, e, good: string): boolean
 	local ti = e.tribe
 	local t = ti and S.tribes[ti]
 	if not t then return false end
-	if not Reputation.willTalk(ps.rep[t.tribeType]) then
+	if not Reputation.willTalk(Standing.of(ps, e)) then
 		Sim.text(ps, "They will not take anything from you.", "warn")
 		return true
 	end
 	if not Items.remove(ps.inv, good, 1) then return false end
 	t.stock[good] = (t.stock[good] or 0) + 1
-	Reputation.apply(ps.rep, Reputation.deltas("gift", e.kind, t.tribeType))
+	Standing.eventAt(ps, "gift", e, nil)
+	Standing.amend(ps, ti) -- a gift is amends as well as a story: it chips at the scar
 	Sim.faceEntity(e, Combat.dirTo(e.x, e.y, ps.x, ps.y))
 	Sim.text(ps, ("You give %s your %s. A gift. They remember that."):format(e.first or e.label or "them", Items.def(good).label), "rep")
 	Sim.hud(ps)
@@ -282,7 +286,7 @@ function Interact.trade(ps, op: string, good: string?, n: number?)
 	local ti = ps.trading
 	if not ti or ps.dead then return end
 	local t = S.tribes[ti]
-	local mult = Reputation.priceMult(ps.rep[t.tribeType])
+	local mult = Reputation.priceMult(Standing.tribe(ps, ti))
 	if not mult then ps.trading = nil return end
 	local count = math.clamp(math.floor(tonumber(n) or 1), 1, 10)
 	if op == "buy" and good and table.find(Items.GOODS, good) then
@@ -297,7 +301,7 @@ function Interact.trade(ps, op: string, good: string?, n: number?)
 			Items.add(ps.inv, good, 1)
 			done += 1
 		end
-		if done > 0 then Reputation.apply(ps.rep, Reputation.deltas("trade", nil, t.tribeType)) end
+		if done > 0 then Standing.event(ps, "trade", nil, ti, nil, { [Gossip.villageKey(ti)] = true }) end
 	elseif op == "sell" and good and table.find(Items.GOODS, good) then
 		local done = 0
 		for _ = 1, count do
@@ -309,7 +313,7 @@ function Interact.trade(ps, op: string, good: string?, n: number?)
 			done += 1
 		end
 		if done > 0 then
-			Reputation.apply(ps.rep, Reputation.deltas("trade", nil, t.tribeType))
+			Standing.event(ps, "trade", nil, ti, nil, { [Gossip.villageKey(ti)] = true })
 			if ps.goalStage <= 4 then Sim.setGoal(ps, 5) end -- the first thing you ever sold
 		end
 	elseif op == "camper" then
@@ -320,7 +324,7 @@ function Interact.trade(ps, op: string, good: string?, n: number?)
 		else
 			ps.inv.coin -= price
 			Items.add(ps.inv, "camper_set", 1)
-			Reputation.apply(ps.rep, Reputation.deltas("trade", nil, t.tribeType))
+			Standing.event(ps, "trade", nil, ti, nil, { [Gossip.villageKey(ti)] = true })
 			Sim.text(ps, "A bedroll and a flint. Somewhere to sleep that is yours.", "good")
 		end
 	end

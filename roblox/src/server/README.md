@@ -46,6 +46,23 @@ Read this first. Update it in the same commit as any move. Sizes are line counts
       too), the walk is a projection (`Villagers.lua`), plot growth is saved, plot positions are derived. Debug `farms` reports.
       Smoke-tested in Studio (work by day, home at night, a harvest, a flood); **no QA reviewer has looked at it.**
 
+## Rung 3 part 3 — gossip and grudges
+
+- [x] **Part 3 built** (2026-09-23, branch `rung3-part3-gossip`). Reputation used to be instant and global; now it
+      TRAVELS. The decision behind it (handoff H1, heavy session): memory is the transport, reputation and grudge are
+      the ledger - a rep derived from capped memory would HEAL on eviction, which is the opposite of DESIGN §7. So
+      `ps.rep` is still stored, but keyed by **holder** (`v1`..`v3` for villages, the group id for groups) instead of
+      by tribe type. `shared/Gossip.lua` is the whole rule and is pure; `server/Standing.lua` is the adapter and
+      `Sim.applyRep` moved into it (`Sim.lua` 1282 → 1275, ceiling 1285 → 1275).
+      Two new world nodes: `villages[]` (its own tier - rung 4 gives a tribe several) and `rumours[]` (a 64 ring).
+      **Save v2 → v3, upgraded IN PLACE: nothing lost, no world reset** - and `PLAYER_VERSION` deliberately stays 1,
+      because `applyPlayer` discards a record whose version differs. `shared/Witness.lua` needed no change at all.
+      Studio: **Danzo's real saved world migrated v2 → v3 on load** (day 13, 30 living, 3 groups, 1 camp, 3 bags, the
+      welcome line, no errors), and the gossip path ran under real Roblox - a kill seen only by a squad moved the
+      squad's number and not their village's, and moved the village's by exactly `HOP_FADE` once they walked home.
+      Debug `gossip` dumps the ring and who knows what. **No QA reviewer has looked at it**: goals in
+      `docs/qa/rung3-part3.md`, and the play-through at the bottom of it is still unticked.
+
 ## Track B (carving Sim.lua) — started, then parked
 
 - [x] **B1 (part)** `State.lua` and `Tiles.lua` carved out verbatim; `Sim.lua` 1570 → 1410, its ceiling 1580 → 1420.

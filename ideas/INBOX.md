@@ -25,8 +25,12 @@
   per tribe type: 18 / 15 / 14); **Track B restarted at Danzo's word** - `Bands.lua` carved, groups are made of named
   PEOPLE who stay the same people (save format v2, the old world reset by choice); strangers show a trade or nothing until
   met; the squad no longer walks through Wild's Rest. QA loop: 8 then **8.5** (`docs/qa/track-b1-summary.md`).
-- **Next, Danzo's call:** merge the stack to main, then **rung 3 part 3, gossip** - stable group members were the thing it
-  was waiting for. The rest of Track B (Calendar's calamity half, B2-B4) can wait. One small question is open in the QA
+- ~~**Next, Danzo's call:** merge the stack to main, then rung 3 part 3, gossip~~ **The stack is merged, and part 3 is
+  BUILT (2026-09-23, branch `rung3-part3-gossip`).** Reputation travels now: `ps.rep` is keyed by holder (village or
+  group) instead of tribe type, `shared/Gossip.lua` is the rule, `server/Standing.lua` the adapter, save v2 -> v3
+  upgraded in place. Danzo's real world migrated on load in Studio. **It has had no QA loop** - goals are written:
+  `/qa-loop docs/qa/rung3-part3.md`. The one thing left for Danzo is the play-through at the bottom of that file.
+  After part 3: part 4 (belonging) is what `GRUDGE_GROUP` is waiting for. The rest of Track B (Calendar's calamity half, B2-B4) can wait. One small question is open in the QA
   summary: how long a dropped bag should last (`Tiles.lua` says 6 in-game days, its comment says an hour).
 - ~~One decision waiting on Danzo: `Families.MAX_PEOPLE = 9`~~ **Settled 2026-09-21: the cap is per tribe type**
   (farmer 18, hunter 15, plunderer 14 - above every starting roster, farmers biggest). People are born again.
