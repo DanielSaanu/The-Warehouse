@@ -69,7 +69,7 @@ function Tiles.tick(now: number)
 			end
 		end
 	end
-	-- bags go public after a while and vanish after an hour
+	-- a dropped bag is private for half an in-game day, then anyone may take it, and it is gone at a full day
 	for id, b in pairs(S.bags) do
 		local age = now - b.droppedAt
 		if age > Config.BAG_PRIVATE_SECONDS and not b.public then
@@ -78,7 +78,7 @@ function Tiles.tick(now: number)
 				if ps.player.UserId ~= b.owner then State.sendState(ps, "object", b.x, b.y, O.bag.id) end
 			end
 		end
-		if age > 3600 then
+		if age > Config.BAG_LIFETIME_SECONDS then
 			S.bags[id] = nil
 			Map.get().object[State.tidx(b.x, b.y)] = 0
 			State.broadcastObject(b.x, b.y, 0)

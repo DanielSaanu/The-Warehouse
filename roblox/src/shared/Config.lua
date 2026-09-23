@@ -34,7 +34,11 @@ Config.ATTACK_COOLDOWN = 0.4   -- seconds between player swings
 Config.HIT_INVULN = 0.6        -- seconds of invulnerability after being hit
 Config.TELEGRAPH = 0.5         -- seconds an NPC winds up before its swing lands
 Config.RESPAWN_SECONDS = 3
-Config.BAG_PRIVATE_SECONDS = 600 -- a dropped bag is only visible to its owner for this long
+-- Dropped bags. Both are GAME seconds, and game seconds are real seconds (Calendar.now folds wall time in 1:1),
+-- so DAY_SECONDS of 600 means one in-game day is ten real minutes. These are the only two timers in the game set
+-- in player-session time rather than world time: you should be able to walk back for your own bag.
+Config.BAG_PRIVATE_SECONDS = Config.DAY_SECONDS / 2 -- half an in-game day (5 real min): yours alone until then
+Config.BAG_LIFETIME_SECONDS = Config.DAY_SECONDS    -- one in-game day (10 real min): then it is gone
 
 -- Interest management: entities are replicated to a player within this many tiles (dx, dy).
 Config.VIEW_DX = 13

@@ -156,5 +156,6 @@ Art:
 - [x] The food icon reads as a sponge. Make it a turkey leg or a loaf with a crust. (Turkey leg.)
 - [x] Rivers look like a blue carpet: water and river now have two frames each and animate like the campfire.
       Shore edge tiles were left out of part 4 on purpose; they are still worth doing.
-- [ ] He offered to draw sprites. Sprite files are plain text in `sprites/` (one character per pixel); the UI at
-      `npm start` edits them live. Any of his get used.
+- ~~He offered to draw sprites.~~ **Closed 2026-09-23: he is not doing them.** The offer stands if he changes
+      his mind - sprite files are plain text in `sprites/`, one character per pixel, and the UI at `npm start`
+      edits them live.
