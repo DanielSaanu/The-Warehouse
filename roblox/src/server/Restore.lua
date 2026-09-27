@@ -8,6 +8,7 @@
 -- built by exactly one of the two - run both and every boot adds 39 duplicate villagers to the registry.
 --   local data = Restore.snapshot()          -- a JSON-safe table (Save.check passes)
 --   local ok, why = Restore.apply(data)      -- the running world becomes the saved one
+-- Required by: Server.server, Sim, Debug. Returns the Restore table (snapshot, apply, player).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Rng = require(Shared:WaitForChild("Rng"))

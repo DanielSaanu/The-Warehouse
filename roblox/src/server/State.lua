@@ -7,6 +7,7 @@
 -- Does NOT hold behaviour: nothing here ticks, thinks, fights or saves. Carved verbatim out of Sim.lua (Track B).
 --   local S = State.state                       -- S.tribes, S.people, S.groups, S.entities, S.players, ...
 --   State.text(ps, "Your fire has gone out.")   -- one line on one player's HUD
+-- Required by: Sim, Interact, Bands, Tiles, Villagers, Persistence. Returns the State table (state, remotes, notice, hud, ...).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local WorldGen = require(Shared:WaitForChild("WorldGen"))

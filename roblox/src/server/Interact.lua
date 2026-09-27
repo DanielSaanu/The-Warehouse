@@ -3,6 +3,7 @@
 -- Talk (villager line, guard topics, survivor script, caravan master), trade at a merchant or stall, rest at a
 -- bed or camp, place a camp on a free tile outside a village, pick up a bag. The client shows a prompt built from
 -- the same rules (Client.client.lua promptFor), the server is the authority.
+-- Required by: Server.server. Returns the Interact table (interact, topic, trade, select, close).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local WorldGen = require(Shared:WaitForChild("WorldGen"))

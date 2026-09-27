@@ -1,6 +1,7 @@
 --!strict
 -- Trade: four goods and coin. Prices are per village, move with stock, and take a multiplier from the player's
 -- standing there (DESIGN.md §6). Each tribe type overproduces one good and needs another.
+-- Required by: Sim, Interact, Tick. Returns the Trade table.
 local Items = require(script.Parent.Items)
 
 local Trade = {}

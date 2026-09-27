@@ -1,4 +1,5 @@
 -- Game tuning. Safe to edit by hand. See docs/DESIGN.md for what these mean.
+-- Required by: nearly everything, server and client. Returns the Config table of constants.
 local Config = {}
 
 -- Viewport: how many tiles are on screen. ROWS is fixed; COLS grows with the screen's aspect ratio between

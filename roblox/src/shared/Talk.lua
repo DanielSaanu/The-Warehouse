@@ -2,6 +2,7 @@
 -- Talking: how the player learns anything (DESIGN.md §8). Villagers give one random line from their village's
 -- knowledge bank; role NPCs answer topics. The bank is built by the server from live state and passed in as `ctx`.
 -- Pure Luau so every line can be checked outside Studio.
+-- Required by: Interact, Goals. Returns the Talk table.
 local Rng = require(script.Parent.Rng)
 
 local Talk = {}

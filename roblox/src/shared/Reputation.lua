@@ -4,6 +4,7 @@
 --
 -- Reputation is a record of your conduct, never of your luck (DESIGN.md §7): who drew first is the story, mercy
 -- is worth more than a kill, murder of a runner is the worst, and being killed costs nothing.
+-- Required by: Standing, Gossip, Witness, Sim, Interact, Restore, Hud. Returns the Reputation table.
 local Config = require(script.Parent.Config)
 
 local Reputation = {}

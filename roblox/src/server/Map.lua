@@ -3,6 +3,7 @@
 -- Owns: the WorldGen.World table and `Map.encoded`. Does NOT own the World Record (tribes, people, groups...): that is
 -- Sim.state, and docs/ARCHITECTURE.md §2. It was called World.lua until the record needed the word.
 --   local world = Map.get()   -- everywhere else on the server
+-- Required by: nearly every server module. Returns the Map table (init, get, reencode, village, encoded).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))

@@ -1,5 +1,6 @@
 --!strict
 -- Tile definitions. Ground is one layer, objects sit on top. Ids are small integers so a map serialises to one byte per tile.
+-- Required by: WorldGen, Movement, Ecology, Farms, server and client. Returns the TileTypes table.
 local TileTypes = {}
 
 export type GroundDef = { id: number, name: string, sprite: string, walk: boolean, speed: number, hides: boolean }

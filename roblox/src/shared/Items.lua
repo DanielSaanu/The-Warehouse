@@ -1,5 +1,6 @@
 --!strict
 -- Items and the 10-slot inventory. Goods stack; coin is a counter, not a slot. Pure Luau.
+-- Required by: Sim, Interact, State, Tiles, Trade, Debug, Client, Hud. Returns the Items table.
 local Items = {}
 
 export type Def = { name: string, label: string, sprite: string, stack: number, atk: number?, good: boolean?, price: number? }

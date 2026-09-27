@@ -4,6 +4,7 @@
 -- once a week; the mother is `pregnant` for a week; the `baby` exists for two weeks; then an adult villager who
 -- can take a role. Villages refill by births only. Pure Luau: the server (Sim.lua) calls these on its clock and
 -- turns the results into entities. Deterministic given an Rng.
+-- Required by: Sim, Tick, Debug. Returns the Families table.
 local Rng = require(script.Parent.Rng)
 local Names = require(script.Parent.Names)
 

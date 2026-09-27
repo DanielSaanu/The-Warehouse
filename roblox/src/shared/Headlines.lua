@@ -8,6 +8,7 @@
 -- the registry, so a gravestone still has a name and nothing stale is ever saved.
 --   Headlines.push(w.meta, { day = day, kind = "born", tribe = 1, id = baby.id })
 --   local welcome = Headlines.welcome(w.meta, w.people, lastSeenDay, today, function(tribe) return true end, villageNames)
+-- Required by: Sim, Tick, Restore, Debug. Returns the Headlines table.
 local Headlines = {}
 
 Headlines.MAX = 64      -- ~40 B each in JSON: 2.5 KB of the world key, for ever

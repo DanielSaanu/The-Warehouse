@@ -6,6 +6,7 @@
 -- Does NOT decide where a bag lands (the caller finds the free tile) or who may rest (Interact).
 -- Carved verbatim out of Sim.lua (Track B1); timers are game time (Calendar.now()), so they survive a save.
 --   Tiles.placeCamp(ps, x, y)      Tiles.dropBag(ps, pos)      Tiles.tick(now)   -- 1 Hz
+-- Required by: Sim, Restore. Returns the Tiles table (placeCamp, dropBag, takeBag, tick, stampAll).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))

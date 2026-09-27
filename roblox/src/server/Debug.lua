@@ -6,6 +6,7 @@
 -- It lives outside Sim.lua for two reasons: it is test-only code that has no business inflating a production
 -- module, and Sim.lua had reached Luau's type-inference budget, which this block alone was enough to exceed.
 -- It does not `require` Sim; Sim binds itself in during init, so the two never form a require cycle.
+-- Required by: Sim (which binds itself in at init). Returns the Debug table (bind, run).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))

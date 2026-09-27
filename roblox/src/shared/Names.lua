@@ -1,6 +1,7 @@
 --!strict
 -- Random names for people and places. Deterministic given an Rng. Children keep the father's last name
 -- (handled by whoever creates the child: pass the surname through).
+-- Required by: WorldGen, Families, Sim, Bands. Returns the Names table.
 local Rng = require(script.Parent.Rng)
 
 local Names = {}
