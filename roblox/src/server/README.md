@@ -1,5 +1,8 @@
 # server/ — one line per module (docs/ARCHITECTURE.md H6)
 
+Syncs to `ServerScriptService.Server`: `Server.server.lua` is the `Server` Script, and every other file is a
+ModuleScript. Who requires each module and how the systems fit together: [`docs/systems/`](../../../docs/systems/README.md).
+
 Read this first. Update it in the same commit as any move. Sizes are line counts, rounded.
 
 | Module | Owns | Lines |
