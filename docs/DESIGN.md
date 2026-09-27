@@ -10,7 +10,8 @@ Source of truth for gameplay decisions. `ideas/INBOX.md` is the scratchpad; thin
 
 This file is the hub and keeps its path, so every citation of the form `DESIGN.md §7` (in Luau comments, tests and
 other docs) still starts here. The text moved verbatim into `docs/design/`; section numbers are unchanged. Open only
-the file the § points at.
+the file the § points at. Grouping: contiguous § runs that are read together, one topic per file, each well under
+the ~300-line cap; no Luau comment changed, because every citation still lands on this hub (→ learnings G3).
 
 | § | What | File |
 | --- | --- | --- |

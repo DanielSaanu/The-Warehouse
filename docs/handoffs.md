@@ -27,31 +27,15 @@ Resolution (added by the heavy agent under the same entry):
 
 ## Open
 
-### H2 — Split docs/ARCHITECTURE.md and docs/DESIGN.md into hub + per-section files — 2026-09-27 — OPEN
-- **Trigger:** 1 (reorganises `docs/ARCHITECTURE.md`, incl. §9's six decisions, and `docs/DESIGN.md`)
-- **Doc:** `docs/ARCHITECTURE.md` (517 lines), `docs/DESIGN.md` (597 lines); rule in `CLAUDE.md` "Reading and editing"
-- **Observed:** The AI-friendly refactor (branch `refactor/ai-friendly`, `docs/REFACTOR-SURVEY.md`) caps docs at
-  ~300 lines: past that, a folder with a README hub plus one file per item. Danzo, 2026-09-27: "split architecture
-  and design but leave rung3".
-- **Evidence:** `wc -l docs/*.md`; section headings: `grep -n "^## " docs/ARCHITECTURE.md docs/DESIGN.md`. Many
-  references point INTO these docs by section: Luau header comments (`docs/ARCHITECTURE.md R5`, `A5`, `H9`, `§2`;
-  `DESIGN.md §7`, `§20`, ...), `CLAUDE.md`, `INDEX.md`, `docs/systems/*.md`, `docs/learnings.md`, `docs/RUNG3.md`,
-  `docs/qa/*`, `roblox/src/server/README.md`, `test/structure.test.js` messages.
-- **Routine session's read (a guess):** keep `docs/ARCHITECTURE.md` and `docs/DESIGN.md` at their paths as the hubs
-  (so the dozens of `ARCHITECTURE.md R5` / `DESIGN.md §7` citations, including those in Luau comments, still land),
-  each with a table mapping every § / rule ID (R1–R5, A0–A5, H1–H9, B1–B4, §1–§20) to its new file. Put the
-  sections in `docs/architecture/` and `docs/design/` (lower-case folders do not collide with the upper-case .md
-  files — only same-name-different-case does, → G2). Move text VERBATIM: lose nothing, keep § numbers in headings.
-- **Decision needed:** the split layout (which sections group into which file, each ≤ ~300 lines), then do it.
-- **Constraints:** docs only, no Luau edits (a comment edit in `shared/` would be trigger 2 for no gain if the hubs
-  keep the paths). Don't touch `docs/RUNG3.md` or `docs/qa/archive/`. Do it on `refactor/ai-friendly`, small commits,
-  commit messages ending with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Update `INDEX.md`,
-  `CLAUDE.md` and `docs/systems/README.md` links to point at the hubs or the new files; run a relative-link check
-  over all tracked `.md` (skip `docs/qa/archive/`) with 0 broken; every new file ≤ ~300 lines; add a line to
-  `docs/worklog.md`. Do not push.
-- **Blocked routine work:** the draft PR description waits for this.
+_None._
 
 ## Resolved
+
+### H2 — Split docs/ARCHITECTURE.md and docs/DESIGN.md into hub + per-section files — 2026-09-27 — RESOLVED
+- **Resolved 2026-09-27 (heavy):** both kept at their paths as hubs with a § / rule-ID → file table; text moved
+  verbatim into `docs/architecture/` (5 files, §1–§11) and `docs/design/` (9 files, §1–§20), largest 155 lines;
+  0 of 941 non-blank lines lost (script check), 0 broken relative links, `npm test` green, no Luau touched.
+  → recorded in the hubs `docs/ARCHITECTURE.md` / `docs/DESIGN.md` "Where each … lives", rule learnings G3.
 
 ### H1 — Rung 3 part 3: where gossip memory lives, and what it does to Reputation — 2026-09-23 16:54 — RESOLVED
 - **Resolved 2026-09-23 (heavy):** reputation stays **stored**, but is re-keyed from tribe type to **holder** (a

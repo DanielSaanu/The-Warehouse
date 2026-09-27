@@ -19,7 +19,9 @@ place, or several, whatever works, and the systems that rely on it are not direc
 
 This file is the hub and keeps its path, so every citation of the form `ARCHITECTURE.md R5`, `§2` or `A5` (in
 Luau comments, tests and other docs) still starts here. The text moved verbatim into `docs/architecture/`; section
-numbers and rule IDs are unchanged. Open only the file the ID points at.
+numbers and rule IDs are unchanged. Open only the file the ID points at. Grouping: contiguous § runs that are
+read together, one topic per file, each well under the ~300-line cap; no Luau comment changed, because every
+citation still lands on this hub (→ learnings G3).
 
 | § | What | Rule IDs | File |
 | --- | --- | --- | --- |

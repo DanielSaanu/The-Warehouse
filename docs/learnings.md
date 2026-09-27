@@ -115,6 +115,13 @@ files in `src/` are ignored by Rojo. Also: Windows paths are case-insensitive, s
 `docs/ARCHITECTURE.md` here. Never create a file that differs from an existing one only by case.
 *(2026-09-27, `refactor/ai-friendly`.)*
 
+**G3 — A doc that other files cite by section is an API too: split it behind a hub at the old path.** Luau
+comments, tests and other docs say `ARCHITECTURE.md R5` or `DESIGN.md §7`; moving that text strands every one of
+them, and editing the Luau ones is a trigger for no gain. So keep the old file as a hub with a table mapping every §
+and rule ID to its new file, keep the § numbers in the moved headings, and move by LINE RANGE with a script (never
+retype). Prove "lose nothing" mechanically: every non-blank line of the old file (`git show <ref>:<path>`) must be in
+the multiset of hub + new files; then a relative-link check over all tracked `.md`. *(2026-09-27, handoff H2.)*
+
 ## Q — QA loop and review
 
 **Q1 — A pure test suite cannot see a missing side effect.** Every gossip rule passed `test:luau` while the player
