@@ -33,8 +33,8 @@ The directive was a generic template (parkour, PvP, rounds). It was adapted to t
 | `WorldInit` | C→S then S→C | C→S: nothing (rate-limited request). S→C: `encodedMap, me{x,y,facing,epoch}, others, clock{day,frac}, sheetIds, calamity, welcome` | `Client.client.lua:358,529`, `Server.server.lua:90,123` |
 | `Move` | C→S | `epoch, tx, ty, facing` (the tile being stepped onto; protocol in `shared/Movement.lua`) | `Client.client.lua:198,234`, `Server.server.lua:141` |
 | `Action` | C→S | `kind, a, b, c`, where kind is `attack`, `interact`, `topic`, `trade` (`op, good, n`), `select` (slot) or `close` | `Client.client.lua:295-371`, `Server.server.lua:168` |
-| `EntityState` | S→C | `kind, id, ...`, where kind is `spawn`, `move`, `leave`, `die`, `hit`, `attack`, `telegraph`, `object` or `snap` | `Server.server.lua:58,75`, `State.lua:53`, `Client.client.lua:400` |
-| `Notice` | S→C | `kind, data`, where kind is `hud`, `text`, `dialogue`, `trade`, `calamity`, `flood`, `welcome` or `died` | `State.lua:57`, `Client.client.lua:482` |
+| `EntityState` | S→C | `kind, id, ...`, where kind is `spawn`, `move`, `leave`, `die`, `hit`, `attack`, `telegraph`, `object` or `snap` | `Server.server.lua:58,75`, `State.lua:54`, `Client.client.lua:400` |
+| `Notice` | S→C | `kind, data`, where kind is `hud`, `text`, `dialogue`, `trade`, `calamity`, `flood`, `welcome` or `died` | `State.lua:58`, `Client.client.lua:482` |
 | `Clock` | S→C (all) | `day, frac` | `Server.server.lua:192`, `Client.client.lua:534` |
 
 ## Other names code looks up at runtime (never rename)
@@ -44,7 +44,7 @@ The directive was a generic template (parkour, PvP, rounds). It was adapted to t
 - `ServerStorage.Debug` (a BindableFunction made at runtime by `Server.server.lua:207`); the Workspace attributes
   `Debug` / `DebugResult`.
 - Player attributes: `TileX`, `TileY`, `MoveEpoch`, `Hp` (server) and `PredictedX/Y/Facing/Epoch`, `InputBlocked` (client).
-- DataStore `Lowlands_v1`, keys `world` and `player_<userId>` (`server/Persistence.lua:27`).
+- DataStore `Lowlands_v1`, keys `world` and `player_<userId>` (`server/Persistence.lua:28`).
 
 ## Secrets check
 
@@ -72,7 +72,7 @@ and `roblox/src/server/README.md`, which are extended.
 
 ## Baseline (before any change)
 
-`rojo sourcemap roblox/default.project.json` and `rojo build` both succeeded (scratchpad `before.json`,
+Line counts below are the baseline, before the header lines added one line to 34 modules. `rojo sourcemap roblox/default.project.json` and `rojo build` both succeeded (scratchpad `before.json`,
 `before.rbxlx`). The tree:
 
 ### Instance tree
@@ -183,3 +183,12 @@ wc -l roblox/src/*/*.lua
 grep -n "require(" roblox/src/*/*.lua
 grep -nE "Remotes:WaitForChild|:Fire(Server|Client|AllClients)|OnServerEvent|OnClientEvent" roblox/src/*/*.lua
 ```
+
+## Verification (after the refactor, 2026-09-27)
+
+- **Rojo tree: IDENTICAL.** Names, classNames and nesting of `before.json` and `after.json` compared as a stripped
+  tree: 49 instances, no difference. The READMEs added under `roblox/src/` are ignored by Rojo.
+- `rojo build roblox/default.project.json` succeeded.
+- `npm test`: 13/13 node tests (including the H1 line ceilings and the R5 one-clock rule) and all 10 Luau suites pass.
+- `npm run lint:luau`: every file `ok`, as before. selene and StyLua aren't used in this repo.
+- Gameplay code: the only change is one `-- Required by: ...` comment line in 34 modules.
