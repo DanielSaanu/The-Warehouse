@@ -6,6 +6,9 @@ the UI is hidden state: every action writes a file under `scenes/`, `sprites/`, 
 
 ## Start of every session
 
+**Read [`INDEX.md`](INDEX.md) first**: one line per doc and source folder, and when to read each. Then open only
+the files the task needs. For game code, start at `docs/systems/README.md`.
+
 0. **Read `docs/ARCHITECTURE.md` before writing any server code.** It is the plan for where the data lives, and
    it is being built: **Track A** (save-critical: one game clock, pure ticks in `shared/`, records instead of
    live references, `Save.lua`, then `Persistence.lua` = rung 3 part 2) and **Track B** (optional: carving
@@ -19,6 +22,35 @@ the UI is hidden state: every action writes a file under `scenes/`, `sprites/`, 
 2. `node bin/warehouse.js scenes` to see what exists. Open the scene JSONs you will touch.
 3. When you change art, render it and LOOK at it: `node bin/warehouse.js render <scene> --scale 8` then Read
    the PNG in `exports/`. For a text view, `node bin/warehouse.js ascii <scene>`.
+
+## Reading and editing
+
+- **Read small.** Use `grep` and line ranges; don't load a whole large file (`ARCHITECTURE`, `DESIGN`, `RUNG3`,
+  `Sim.lua`, `WorldGen.lua`, `Hud.lua`) when a section will do.
+- **Edit in place.** Change only the lines that need changing. Don't reflow or rewrite around them.
+- **Keep new docs under ~300 lines.** When one grows past that, split it into a folder with a `README.md` hub plus one
+  file per item (`docs/systems/` is the model). Splitting an existing detail doc is trigger 1: propose it, don't do it.
+- **Never create a file that differs from an existing one only by case.** Windows is case-insensitive (→ G2).
+- **Before finishing any block of work:** run the verification below, add one dated line to `docs/worklog.md`, and
+  cite `docs/learnings.md` rule IDs when you document a slip-up.
+
+## Rojo rules (the instance tree is an API, → G2)
+
+- `roblox/default.project.json` is the source of truth for the instance tree. Don't move, rename or re-nest any
+  `.lua` file or folder unless the resulting tree stays IDENTICAL: the same names, parents and classes (`.server.lua`
+  is a Script, `.client.lua` a LocalScript, anything else a ModuleScript).
+- Never change a `require()` target, a RemoteEvent name (`WorldInit`, `Move`, `Action`, `EntityState`, `Notice`,
+  `Clock`) or any instance name code finds with `WaitForChild`/`FindFirstChild`. If a move would force that, don't
+  make it; propose it instead.
+- Moving Luau code is also trigger 2 (shared/) and is bound by the line ceilings in `test/structure.test.js` (→ T1, T4).
+
+## Verification (before any commit that touches `roblox/` or docs)
+
+1. `./rojo.exe sourcemap roblox/default.project.json -o <scratch>/after.json`, then compare names, classNames and
+   nesting with a sourcemap taken before the change. Paths may differ; the tree must not.
+2. `./rojo.exe build roblox/default.project.json -o <scratch>/test.rbxlx` succeeds.
+3. `npm test` (node and Luau tests, including the line ceilings) and `npm run lint:luau` show no new errors.
+4. Every relative link in the `.md` files you touched resolves, and no new doc is over ~300 lines.
 
 ## The loop
 
@@ -122,10 +154,11 @@ if a later session needs it, it has to be written down. Four layers:
 
 | Layer | File | Role |
 |---|---|---|
-| **Orientation** | `CLAUDE.md` | how to work here, the loop, this policy |
+| **Orientation** | `CLAUDE.md` · `INDEX.md` | how to work here, the loop, this policy · what every file is and when to read it |
 | **To-do** | `ideas/INBOX.md` | what Danzo wants next, and where things stand |
 | **Rulebooks** | `docs/learnings.md` (how to build here) · `docs/PRINCIPLES.md` (what makes a good game) | generalised rules with stable IDs |
-| **Detail** | `docs/ARCHITECTURE.md`, `docs/DESIGN.md`, `docs/RUNG3.md`, `docs/qa/*`, `roblox/src/server/README.md` | the full reasoning |
+| **Detail** | `docs/systems/*`, `docs/ARCHITECTURE.md`, `docs/DESIGN.md`, `docs/RUNG3.md`, `docs/qa/*`, `roblox/src/*/README.md` | the full reasoning |
+| **Timeline** | `docs/worklog.md` | one dated line per block of work |
 
 - Only rules that **generalise** earn a line in `docs/learnings.md`. Cite them by ID (e.g. "→ S2") from QA
   reports, handoffs and commit messages; the rule carries the date and branch that paid for it.
