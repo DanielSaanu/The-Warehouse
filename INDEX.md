@@ -16,11 +16,11 @@ to (`roblox/default.project.json`).
 - [`docs/learnings.md`](docs/learnings.md): how to build here, with ID'd rules (A/S/P/T/G/Q). Before a similar task; cite IDs.
 - [`docs/PRINCIPLES.md`](docs/PRINCIPLES.md): what makes a good game. Before a design fork.
 
-## Detail (large; read by section with grep and line ranges)
+## Detail (read by section: the two hubs below map each § to a small file; RUNG3 by grep and line ranges)
 
 - [`docs/systems/README.md`](docs/systems/README.md): how the game fits together, server vs client, the remotes list, one file per system. Before any game-code task.
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): where the data lives, rules R1–R5, Tracks A/B, §9's six decisions. Before writing server code.
-- [`docs/DESIGN.md`](docs/DESIGN.md): what the game is (pillars, tribes, reputation, calamities, rungs). Before gameplay changes.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): hub for where the data lives: maps §1–§11, R1–R5, H1–H9, A0–A5, B1–B4 to the files in [`docs/architecture/`](docs/architecture/data-model.md); names §9's six decisions. Before writing server code.
+- [`docs/DESIGN.md`](docs/DESIGN.md): hub for what the game is: maps §1–§20 (pillars, tribes, reputation, calamities, rungs) to the files in [`docs/design/`](docs/design/pillars.md). Before gameplay changes.
 - [`docs/RUNG3.md`](docs/RUNG3.md): the rung 3 build plan, parts 1–7 (part 3 = gossip spec). Before rung 3 work.
 - [`docs/ROBLOX_SETUP.md`](docs/ROBLOX_SETUP.md): installing Rojo, connecting Studio, Open Cloud key, uploading. Setup or toolchain problems.
 - [`docs/PUBLISH.md`](docs/PUBLISH.md): making the game public, credits owed, the post-sprite-change routine. Before publishing.

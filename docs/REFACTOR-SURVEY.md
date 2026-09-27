@@ -13,7 +13,9 @@ The directive was a generic template (parkour, PvP, rounds). It was adapted to t
 - **Keep the learnings IDs** A/S/P/T/G/Q. `R1`–`R5` already mean the five architecture rules in ARCHITECTURE §3.
 - **Move no Luau file.** The Rojo tree is identical by construction, and the sourcemap diff proves it.
 - **Don't split docs over 300 lines** (`ARCHITECTURE.md`, `DESIGN.md`, `RUNG3.md`) in this pass. Splitting
-  them is escalation trigger 1, so they're listed as proposals in the PR.
+  them is escalation trigger 1, so they're listed as proposals in the PR. *Update: Danzo asked for ARCHITECTURE
+  and DESIGN to be split, not RUNG3; handoff H2 did it (hubs kept at their paths, sections in `docs/architecture/`
+  and `docs/design/`).*
 - **No module header comments.** "Who requires it / what it returns" lives in the folder READMEs, where one
   table can be kept current; per-file copies would go stale untested. `Sim`, `WorldGen`, `Hud`, `Viewport` and
   `Client` could not take a line anyway (→ T4). `Sprites.lua` is generated: never hand-edit it.

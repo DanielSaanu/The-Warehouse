@@ -1,7 +1,9 @@
 # How the game fits together
 
 **Created:** 2026-09-27. This is the short overview. The full reasoning, and the rules R1–R5 it cites, are in
-[`../ARCHITECTURE.md`](../ARCHITECTURE.md). What the game is meant to *be* is in [`../DESIGN.md`](../DESIGN.md).
+[`../ARCHITECTURE.md`](../ARCHITECTURE.md). What the game is meant to *be* is in [`../DESIGN.md`](../DESIGN.md). Both are
+hubs whose table maps each § or rule ID to one small file ([R1–R5](../architecture/data-model.md),
+[DESIGN §4](../design/world-and-tribes.md)).
 
 ## Server vs client
 

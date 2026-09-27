@@ -9,7 +9,8 @@ the UI is hidden state: every action writes a file under `scenes/`, `sprites/`, 
 **Read [`INDEX.md`](INDEX.md) first**: one line per doc and source folder, and when to read each. Then open only
 the files the task needs. For game code, start at `docs/systems/README.md`.
 
-0. **Read `docs/ARCHITECTURE.md` before writing any server code.** It is the plan for where the data lives, and
+0. **Read `docs/ARCHITECTURE.md` before writing any server code** (a hub: its table sends each § and rule ID to one
+   file in `docs/architecture/`). It is the plan for where the data lives, and
    it is being built: **Track A** (save-critical: one game clock, pure ticks in `shared/`, records instead of
    live references, `Save.lua`, then `Persistence.lua` = rung 3 part 2) and **Track B** (optional: carving
    `Sim.lua` up for the reader). It was reviewed for five Opus rounds (7 → 9.0, `docs/qa/architecture-summary.md`)
@@ -25,8 +26,9 @@ the files the task needs. For game code, start at `docs/systems/README.md`.
 
 ## Reading and editing
 
-- **Read small.** Use `grep` and line ranges; don't load a whole large file (`ARCHITECTURE`, `DESIGN`, `RUNG3`,
-  `Sim.lua`, `WorldGen.lua`, `Hud.lua`) when a section will do.
+- **Read small.** Use `grep` and line ranges; don't load a whole large file (`RUNG3`, `Sim.lua`,
+  `WorldGen.lua`, `Hud.lua`) when a section will do. `docs/ARCHITECTURE.md` and `docs/DESIGN.md` are hubs: read
+  the map, then open the one file in `docs/architecture/` or `docs/design/` that holds the § you need.
 - **Edit in place.** Change only the lines that need changing. Don't reflow or rewrite around them.
 - **Keep new docs under ~300 lines.** When one grows past that, split it into a folder with a `README.md` hub plus one
   file per item (`docs/systems/` is the model). Splitting an existing detail doc is trigger 1: propose it, don't do it.
@@ -161,7 +163,7 @@ if a later session needs it, it has to be written down. Five layers:
 | **Orientation** | `CLAUDE.md` · `INDEX.md` | how to work here, the loop, this policy · what every file is and when to read it |
 | **To-do** | `ideas/INBOX.md` | what Danzo wants next, and where things stand |
 | **Rulebooks** | `docs/learnings.md` (how to build here) · `docs/PRINCIPLES.md` (what makes a good game) | generalised rules with stable IDs |
-| **Detail** | `docs/systems/*`, `docs/ARCHITECTURE.md`, `docs/DESIGN.md`, `docs/RUNG3.md`, `docs/qa/*`, `roblox/src/*/README.md` | the full reasoning |
+| **Detail** | `docs/systems/*`, `docs/ARCHITECTURE.md` + `docs/architecture/*`, `docs/DESIGN.md` + `docs/design/*`, `docs/RUNG3.md`, `docs/qa/*`, `roblox/src/*/README.md` | the full reasoning |
 | **Timeline** | `docs/worklog.md` | one dated line per block of work |
 
 - Only rules that **generalise** earn a line in `docs/learnings.md`. Cite them by ID (e.g. "→ S2") from QA
