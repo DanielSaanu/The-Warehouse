@@ -1,6 +1,6 @@
 # Learnings
 
-**Created:** 2026-09-23 · **Last updated:** 2026-09-23
+**Created:** 2026-09-23 · **Last updated:** 2026-09-27
 
 Rules that **generalise** — things a session got wrong once and should never get wrong again. One-off typos and
 trivia stay in the QA goals file or the commit message; they do not earn a line here.
@@ -92,9 +92,28 @@ is not available: new server behaviour goes in a new module, and the cheapest wa
 existing function out of Sim at the same time. Check the headroom **before** planning where code goes.
 *(2026-09-23, handoff H1 — why rung 3 part 3 builds `server/Standing.lua` instead of growing Sim.)*
 
+**T4 — Comments count against the line ceilings too.** `test/structure.test.js` counts every line, comments
+included. `Sim`, `WorldGen`, `Hud`, `Viewport` and `Client.client` sit 1–3 lines under ceilings that may only
+shrink, so even a documentation pass cannot add a header line to them. Put that information in the folder README
+instead. Check headroom (`wc -l` against `ALLOWED`) before adding anything to a big file.
+*(2026-09-27, `refactor/ai-friendly`.)*
+
 ## G — Git and generated files
 
-*(none yet)*
+**G1 — Generated files are regenerated, never edited, and only Danzo uploads.** `roblox/src/shared/Sprites.lua`
+and `roblox/assets.lock.json` come from `node bin/warehouse.js roblox build`. Claude runs the
+build (it keeps the old asset id and prints CHANGED); Danzo runs `--upload` and commits the pair. On the PC, if
+those two are locally modified, `git checkout -- roblox/src/shared/Sprites.lua roblox/assets.lock.json` before
+`git pull`. *(From CLAUDE.md, restated as a rule 2026-09-27.)*
+
+**G2 — The Rojo instance tree is an API: prove it unchanged with a sourcemap diff.** Code finds modules by name
+(`Shared:WaitForChild("Gossip")`, `script.Parent:WaitForChild("Map")`) and remotes by name
+(`Remotes:WaitForChild("Move")`), so any file move, rename or re-nest must leave the tree identical: the same names,
+parents and classes (`.server.lua` Script, `.client.lua` LocalScript, `.lua` ModuleScript). Run
+`rojo sourcemap roblox/default.project.json` before and after, and compare names, classNames and nesting. `.md`
+files in `src/` are ignored by Rojo. Also: Windows paths are case-insensitive, so `docs/architecture.md` IS
+`docs/ARCHITECTURE.md` here. Never create a file that differs from an existing one only by case.
+*(2026-09-27, `refactor/ai-friendly`.)*
 
 ## Q — QA loop and review
 
