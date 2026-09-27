@@ -10,7 +10,6 @@
 --   local data = Save.encode(Sim.state, { seed = world.seed, rngState = rng.s, savedAt = os.time() })
 --   assert(Save.check(data))                      -- JSON-safe: what comes back is what went in
 --   local record = Save.decode(data)              -- then Sim.restore(record)
--- Required by: Persistence, Restore, Debug. Returns the Save table.
 local Config = require(script.Parent.Config)
 local WorldGen = require(script.Parent.WorldGen)
 

@@ -5,7 +5,6 @@
 -- It deliberately does not `require` Sim: Sim requires this and calls `Sides.bind` once the world exists, so the
 -- two never form a require cycle. It also keeps Sim.lua's type inference inside Luau's budget, which a 1800-line
 -- module had already reached.
--- Required by: Sim (which binds itself in at init). Returns the Sides table (witnessed, alarmStep, canFight, ...).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))

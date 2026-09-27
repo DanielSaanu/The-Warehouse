@@ -8,7 +8,6 @@
 -- Does NOT move anybody, touch the map, or print. Returns events; the adapter tells people.
 --   Farms.ensure(t, #site.plots)                -- an old save, or a new world: give the tribe its plot rows
 --   local ev = Farms.daily(w, i, day)           -- { harvested = 2, food = 6 } or nil
--- Required by: Tick, Villagers. Returns the Farms table.
 local WorldGen = require(script.Parent.WorldGen)
 local TileTypes = require(script.Parent.TileTypes)
 

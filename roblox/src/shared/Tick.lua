@@ -7,7 +7,6 @@
 -- Does NOT materialise or collapse groups, spawn anything, or fade player reputation: those are the adapter's.
 --   local ev = Tick.daily(S, rng, day, now)     -- then the server morphs the mothers in ev.born, if they have bodies
 --   Tick.catchUp(S, world, rng, 3600)           -- an hour passed while nobody was here
--- Required by: Sim, Bands, Restore. Returns the Tick table.
 local Config = require(script.Parent.Config)
 local WorldGen = require(script.Parent.WorldGen)
 local DayCycle = require(script.Parent.DayCycle)

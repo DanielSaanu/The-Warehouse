@@ -13,7 +13,6 @@
 -- In Studio without "Enable Studio Access to API Services" every call errors, which is rule 1: the game still runs.
 --   local boot = Persistence.loadWorld()   -- { mode = "new"|"loaded"|"contending"|"nosave", data = table?, slept = seconds, why = string? }
 --   Persistence.start(Restore.snapshot)    -- autosave + save on shutdown
--- Required by: Server.server, Debug. Returns the Persistence table (loadWorld, saveWorld, loadPlayer, savePlayer, start).
 local DataStoreService = game:GetService("DataStoreService")
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")

@@ -1,7 +1,6 @@
 --!strict
 -- The weekly clock (DESIGN.md §10). One calamity per in-game week, on the last day of the week, with a warning the
 -- day before. Rung 2 has two: flood and beast tide. Pure Luau.
--- Required by: Sim, Interact, Restore. Returns the Calamity table.
 local Config = require(script.Parent.Config)
 local Rng = require(script.Parent.Rng)
 local WorldGen = require(script.Parent.WorldGen)

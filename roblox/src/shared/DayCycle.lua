@@ -1,7 +1,6 @@
 --!strict
 -- Day/night maths shared by the server clock and the client tint. `frac` is 0..1 through one day; night is the
 -- last NIGHT_FRACTION of it. Pure Luau so the ramps are tested.
--- Required by: Calendar, Sim, Tick, Client. Returns the DayCycle table.
 local Config = require(script.Parent.Config)
 
 local DayCycle = {}

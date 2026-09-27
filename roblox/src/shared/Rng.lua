@@ -1,6 +1,5 @@
 --!strict
 -- Seeded xorshift32. Pure Luau (no Roblox APIs) so world generation is reproducible and testable outside Studio.
--- Required by: anything random on the server and in shared/. Returns the Rng class (Rng.new(seed)).
 local Rng = {}
 Rng.__index = Rng
 

@@ -8,7 +8,6 @@
 -- Does NOT own calamities yet (Track B moves them here).
 --   local now = Calendar.now()            -- stamp or compare a timer
 --   local day, frac = Calendar.clock()    -- the calendar, derived
--- Required by: Sim, Bands, Tiles, Sides, Restore, Debug. Returns the Calendar table (now, clock, setDay, skipTo).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local DayCycle = require(Shared:WaitForChild("DayCycle"))

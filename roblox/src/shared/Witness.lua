@@ -10,7 +10,6 @@
 -- merely neutral about you will help you against someone it hates; a village that is wary of you will stand and
 -- watch you die in its own square. No threshold on a single number can say that, which is why the decision takes
 -- both parties at once.
--- Required by: Sides. Returns the Witness table.
 local Reputation = require(script.Parent.Reputation)
 
 local Witness = {}

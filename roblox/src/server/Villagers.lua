@@ -9,7 +9,6 @@
 -- Bound, not required, for pathTo / wanderStep / isNight, which still live in Sim (Track B2 moves them).
 --   if e.role == "villager" or e.role == "pregnant" then Villagers.step(e, now) return end   -- Sim's think, idle
 --   Villagers.flooded()                                                  -- from startCalamity("flood")
--- Required by: Sim, Restore, Debug. Returns the Villagers table (bind, step, report, ...).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local WorldGen = require(Shared:WaitForChild("WorldGen"))

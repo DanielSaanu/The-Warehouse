@@ -1,7 +1,6 @@
 --!strict
 -- Creature kinds: the same stat block for players, people and animals, so "hunters are the strongest one on one"
 -- is just numbers (DESIGN.md §11). `sprite` is the base name; the client appends _<facing>_<frame>.
--- Required by: Sim, Debug. Returns the Stats table (Stats.get(kind)).
 local Stats = {}
 
 export type Kind = {

@@ -4,7 +4,6 @@
 -- (goalStage and goalDone are saved with the player; the sentence is rebuilt from the stage, never saved).
 -- Carved verbatim out of Sim.lua when Sim hit its line ceiling. It does not require Sim: Sim passes its `hud` in.
 --   Goals.set(ps, 3)        -- never backwards, never after it is done
--- Required by: Sim. Returns the Goals table (set, clear, rebuild, tick).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))

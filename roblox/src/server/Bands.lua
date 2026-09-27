@@ -9,7 +9,6 @@
 -- Bound, not required, for the entity constructors, which still live in Sim (B2 moves them to Bodies).
 --   Bands.init()                                 -- a new world: the three groups
 --   local p = Bands.pos(g)                       -- where it is, bodies or not
--- Required by: Sim. Returns the Bands table (bind, init, tick, collapse, turn).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))

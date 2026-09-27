@@ -3,7 +3,6 @@
 -- makes herbivores eat and breed, predators eat herbivores, starving populations shrink, a little drifts to the
 -- neighbours, and the map edges breathe: wolves push in from the north, deer drift south ahead of them, boar fill
 -- what the deer leave. Pure Luau, deterministic given an Rng.
--- Required by: Sim, Tick, Calamity, Interact, Restore, Debug. Returns the Ecology table.
 local Rng = require(script.Parent.Rng)
 local WorldGen = require(script.Parent.WorldGen)
 local TileTypes = require(script.Parent.TileTypes)

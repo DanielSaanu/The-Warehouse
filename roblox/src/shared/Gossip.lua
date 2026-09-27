@@ -15,7 +15,6 @@
 --   Gossip.seed(w, uid, "kill", "hunter", 2, ctx, day, { v2 = true, squad = true })
 --   Gossip.arrive(w, g)                      -- a group reached an end of its route: it and that village swap
 --   Gossip.meet(w, now)                      -- the EVERY schedule: groups sharing a stretch of road swap
--- Required by: Standing, Sides, Interact, Tick, Debug. Returns the Gossip table.
 local Config = require(script.Parent.Config)
 local Reputation = require(script.Parent.Reputation)
 

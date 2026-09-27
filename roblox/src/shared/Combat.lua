@@ -1,6 +1,5 @@
 --!strict
 -- Combat maths shared by the server (authority) and the client (feel). Pure Luau.
--- Required by: Sim, Sides, Interact, Client. Returns the Combat table.
 local Config = require(script.Parent.Config)
 local Rng = require(script.Parent.Rng)
 

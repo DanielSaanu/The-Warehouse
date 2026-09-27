@@ -11,7 +11,6 @@
 --
 -- It deliberately does not `require` Sim: Sim binds it, like Sides / Debug / Restore. `applyRep` MOVED here out of
 -- Sim.lua, which was three lines under its allow-list ratchet - moving it bought headroom instead of spending it.
--- Required by: Sim, Interact, Sides, Restore, Debug. Returns the Standing table (at, apply, event, fadeDaily, ...).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Reputation = require(Shared:WaitForChild("Reputation"))

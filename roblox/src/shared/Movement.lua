@@ -9,7 +9,6 @@
 -- Pace: a step is charged the step time of the tile the player is LEAVING. The client's slide onto a tile lasts
 -- that tile's step time and the next step cannot start before it ends, so the real gap between two moves is the
 -- step time of the tile in between. Charging the tile being entered instead only agrees on uniform ground.
--- Required by: Server.server, Sim, Client. Returns the Movement table.
 local Config = require(script.Parent.Config)
 local TileTypes = require(script.Parent.TileTypes)
 local WorldGen = require(script.Parent.WorldGen)
