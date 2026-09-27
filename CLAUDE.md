@@ -31,8 +31,8 @@ the files the task needs. For game code, start at `docs/systems/README.md`.
 - **Keep new docs under ~300 lines.** When one grows past that, split it into a folder with a `README.md` hub plus one
   file per item (`docs/systems/` is the model). Splitting an existing detail doc is trigger 1: propose it, don't do it.
 - **Never create a file that differs from an existing one only by case.** Windows is case-insensitive (→ G2).
-- **Before finishing any block of work:** run the verification below, add one dated line to `docs/worklog.md`, and
-  cite `docs/learnings.md` rule IDs when you document a slip-up.
+- **Before finishing any block of work:** add one dated line to `docs/worklog.md`, and cite `docs/learnings.md`
+  rule IDs when you document a slip-up. Run the verification below only when the block touched what it names.
 
 ## Rojo rules (the instance tree is an API, → G2)
 
@@ -44,7 +44,11 @@ the files the task needs. For game code, start at `docs/systems/README.md`.
   make it; propose it instead.
 - Moving Luau code is also trigger 2 (shared/) and is bound by the line ceilings in `test/structure.test.js` (→ T1, T4).
 
-## Verification (before any commit that touches `roblox/` or docs)
+## Verification (scaled to what changed)
+
+- **Art only** (`sprites/`, `scenes/`): the loop's own checks are enough: render and LOOK, then `roblox build`.
+- **Docs only**: step 4.
+- **Luau renamed, moved or added** under `roblox/`: steps 1–4. **Luau edited in place**: steps 3–4.
 
 1. `./rojo.exe sourcemap roblox/default.project.json -o <scratch>/after.json`, then compare names, classNames and
    nesting with a sourcemap taken before the change. Paths may differ; the tree must not.
