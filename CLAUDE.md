@@ -150,7 +150,7 @@ Uploading is not a trigger — it is simply not Claude's to do. Only Danzo runs 
 ## The docs are the memory
 
 Chats are disposable; the files are the source of truth. No session depends on another session's history —
-if a later session needs it, it has to be written down. Four layers:
+if a later session needs it, it has to be written down. Five layers:
 
 | Layer | File | Role |
 |---|---|---|
