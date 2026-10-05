@@ -15,8 +15,8 @@ Read this first. Update it in the same commit as any move. Sizes are line counts
 | `Goals.lua` | the goal line under the clock: `set`, `clear`, `rebuild`, `tick` (carved verbatim out of Sim when it hit its ceiling) | 65 |
 | `Calendar.lua` | `meta.gameSeconds`, the ONE clock: `now()`, `clock()`, `setDay()`, `skipTo()` (catch-up adds its lump to `meta.gameSeconds` directly, in `Tick.catchUp`) | 60 |
 | `Restore.lua` | `Sim.state` <-> a save: `snapshot()`, and `apply(data, slept)` = the RESTORE constructor (bodies, routes, stamped tiles, overlay, `Map.reencode`) | 199 |
-| `Bands.lua` | groups (caravan, squad, band): making the rows, their transient half, bodies in and out (`materialise`, `collapse`), the 1 Hz tick, turning for home. Abstract movement stays in `shared/Tick.groups` | 198 |
-| `Sim.lua` | everything else, for now: entities, AI, fighting, calamities, the tick loops | 1282 |
+| `Bands.lua` | groups (caravan, squad, band): making the rows, their transient half, bodies in and out (`materialise`, `collapse`), the 1 Hz tick, turning for home, what a fight does to a group (`carryKill`, `lose`). Abstract movement stays in `shared/Tick.groups` | 232 |
+| `Sim.lua` | everything else, for now: entities, AI, fighting, calamities, the tick loops | 1224 |
 | `Sides.lua` | who takes whose side in a fight | 280 |
 | `Villagers.lua` | a villager's day: out to a plot in the morning, home to a hut door at night, home at a run from wolves and strange bandits; scans huts and plots off the map. What the farms YIELD is `shared/Farms.lua` (pure, in `Tick.daily`, saved as `tribes[].plots`) | 152 |
 | `Interact.lua` | the F key: talk, trade, rest, gifts | 344 |

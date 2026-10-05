@@ -36,3 +36,5 @@ paid for. The detail belongs in commits and the docs; this is the timeline.
 - 2026-10-05 · `dev` (heavy): part 4 phase 0. `killEntity`'s two group halves moved verbatim to `Bands.carryKill` /
   `Bands.lose`; `Sim.lua` 1255 → 1225 (ceiling kept at 1255 for phase 1), `Bands.lua` 194 → 233. Tree identical, tests +
   lint green; Studio (DevMode): band broke at 3 of 4 lost, squad laden at 9 turned home and banked, band refilled.
+- 2026-10-05 · `dev`: QA loop on part 4 phase 0, one round, **9/10** (`docs/qa/rung3-part4-p0-room-summary.md`). Fixed
+  the server README sizes and the Bands row, Bands' header lists `carryKill`/`lose`, data-model notes Restore's bulk write.

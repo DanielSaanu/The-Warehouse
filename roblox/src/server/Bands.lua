@@ -10,6 +10,8 @@
 -- Bound, not required, for the entity constructors, which still live in Sim (B2 moves them to Bodies).
 --   Bands.init()                                 -- a new world: the three groups
 --   local p = Bands.pos(g)                       -- where it is, bodies or not
+--   Bands.carryKill(g, e)                        -- a member of g killed e: loot to the pot, laden squad turns home
+--   Bands.lose(e)                                -- group member e died: row out, replenish, band breaks at half
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
