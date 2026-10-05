@@ -34,6 +34,13 @@
   summary: how long a dropped bag should last (`Tiles.lua` says 6 in-game days, its comment says an hour).
 - ~~One decision waiting on Danzo: `Families.MAX_PEOPLE = 9`~~ **Settled 2026-09-21: the cap is per tribe type**
   (farmer 18, hunter 15, plunderer 14 - above every starting roster, farmers biggest). People are born again.
+- **2026-10-05, Danzo:** the project is in **DEVELOPMENT mode**. Danzo's own save, character and progression are
+  disposable. A switch is wanted for easy testing that turns off with one change for an ordinary-player test (handoff H4).
+- **2026-10-05, Danzo: the big expansion comes later.** Once the backbone systems are in, the map, the number of
+  villages, the NPC count and what NPCs do will all grow a lot, and every system must scale with it. **To do after the
+  gossip QA loop:** agents go through each `docs/systems/*.md` and add an "Expansion: deficits at scale" section
+  covering hard caps, linear scans, fixed ids, byte budgets and per-tick costs, each with file:line. Gossip's list
+  comes from QA round 3.
 
 This file is the shared scratchpad. Type here in the UI (bottom pane) or in any editor. Claude reads it 
 the start of a session and works through it. Cross things out or delete them when done.

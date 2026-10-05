@@ -14,3 +14,6 @@ paid for. The detail belongs in commits and the docs; this is the timeline.
   Grudge split out of Gossip (400-line ceiling). New rules S4, S5, Q2.
 - 2026-10-05 · `refactor/ai-friendly` (heavy, H5): gossip QA round 2. A group's arrival tells the village at the
   end it reached, not its own; owed sums clamped; saw-it line before the standing line; rekey → `Save.rekeyRep`. Rule Q3.
+- 2026-10-05 · `refactor/ai-friendly`: gossip QA loop, three rounds, 6 → 7 → 7 (`docs/qa/rung3-part3-summary.md`).
+  Fixes via H3/H5 (heavy), save v3 → v4. Open: a materialised group walks its route index while its bodies stay put.
+  Danzo set DEVELOPMENT mode (H4 open) and asked for expansion notes per system (`ideas/INBOX.md`).
