@@ -19,3 +19,5 @@ paid for. The detail belongs in commits and the docs; this is the timeline.
   Danzo set DEVELOPMENT mode (H4 open) and asked for expansion notes per system (`ideas/INBOX.md`).
 - 2026-10-05 · `refactor/ai-friendly` (heavy, H6): a materialised group's `pos` follows its bodies (`Tick.leaderStep`
   out of Sim, which drops to 1255 lines and the ratchet with it); `arrive` checks the leader is in the village. Rule S6.
+- 2026-10-05 · `docs/expansion-notes`: "Expansion: deficits at scale" added to all nine `docs/systems/` files (four
+  agents, notes only, no code). Systems hub points at them. CLAUDE.md: `Grid.lua` → `client/Viewport.lua` (Grid was removed in rung 2 part 1).

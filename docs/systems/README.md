@@ -5,6 +5,9 @@
 hubs whose table maps each § or rule ID to one small file ([R1–R5](../architecture/data-model.md),
 [DESIGN §4](../design/world-and-tribes.md)).
 
+Every system file ends with **Expansion: deficits at scale** (2026-10-05): what breaks when the map, the villages
+and the NPC count grow. Read it before you build anything that assumes today's numbers.
+
 ## Server vs client
 
 - **The server owns the world** (`roblox/src/server`, which syncs to `ServerScriptService.Server`). It generates the
