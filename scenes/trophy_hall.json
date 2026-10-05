@@ -1,0 +1,16 @@
+{
+  "name": "trophy_hall",
+  "width": 32,
+  "height": 32,
+  "background": "transparent",
+  "pixelated": true,
+  "export": false,
+  "layers": [
+    {
+      "id": "t",
+      "name": "trophy_hall",
+      "type": "image",
+      "src": "sprites/trophy_hall.txt"
+    }
+  ]
+}

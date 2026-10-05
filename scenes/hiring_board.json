@@ -1,0 +1,25 @@
+{
+  "name": "hiring_board",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "export": false,
+  "notes": "Borrowed: Mini World Sprites by Shade, CC0. MWQ (1,0).",
+  "layers": [
+    {
+      "id": "t",
+      "name": "hiring_board",
+      "type": "image",
+      "src": "library/local/mw/Miscellaneous__QuestBoard.png",
+      "crop": {
+        "x": 16,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "x": 0,
+      "y": 0
+    }
+  ]
+}

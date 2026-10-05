@@ -1,0 +1,29 @@
+{
+  "name": "bookshelf",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "export": false,
+  "notes": "Borrowed: Kenney Roguelike RPG Pack, CC0. RPG (45,12).",
+  "layers": [
+    {
+      "id": "t",
+      "name": "bookshelf",
+      "type": "image",
+      "src": "library/kenney/roguelike-rpg-pack/Spritesheet__roguelikeSheet_transparent.png",
+      "crop": {
+        "x": 765,
+        "y": 204,
+        "w": 16,
+        "h": 16
+      },
+      "x": 0,
+      "y": 0,
+      "outline": {
+        "color": "#3d212d",
+        "size": 1
+      }
+    }
+  ]
+}

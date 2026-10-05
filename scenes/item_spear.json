@@ -1,0 +1,25 @@
+{
+  "name": "item_spear",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "export": false,
+  "notes": "Borrowed: 16x16 RPG Item Pack by Alex, CC0. ALX (0,1).",
+  "layers": [
+    {
+      "id": "t",
+      "name": "item_spear",
+      "type": "image",
+      "src": "library/local/alx/16x16_RPG_Item_Pack__Sheet.png",
+      "crop": {
+        "x": 0,
+        "y": 16,
+        "w": 16,
+        "h": 16
+      },
+      "x": 0,
+      "y": 0
+    }
+  ]
+}

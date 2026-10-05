@@ -1,0 +1,16 @@
+{
+  "name": "bridge_planks",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "export": false,
+  "layers": [
+    {
+      "id": "t",
+      "name": "bridge_planks",
+      "type": "image",
+      "src": "sprites/bridge_planks.txt"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+# name: cage
+# palette: . = transparent, S = #51607d, W = #773833, d = #3a1b29, o = #3d212d, t = #8c9cb5, w = #be6c49
+................
+................
+.WWWWWWWWWWWWWW.
+.wwwwwwwwwwwwww.
+.odStdStdStdSto.
+.odStdStdStdSto.
+.odStdStdStdSto.
+.odStdStdStdSto.
+.odStdoodStdSto.
+.odStdStoStdSto.
+.odStdStdStdSto.
+.odStdStdStdSto.
+.odStdStdStdSto.
+.wwwwwwwwwwwwww.
+.oooooooooooooo.
+................

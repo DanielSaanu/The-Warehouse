@@ -1,0 +1,25 @@
+{
+  "name": "dead_tree",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "export": false,
+  "notes": "Borrowed: Mini World Sprites by Shade, CC0. MWD (2,0).",
+  "layers": [
+    {
+      "id": "t",
+      "name": "dead_tree",
+      "type": "image",
+      "src": "library/local/mw/Nature__DeadTrees.png",
+      "crop": {
+        "x": 32,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "x": 0,
+      "y": 0
+    }
+  ]
+}

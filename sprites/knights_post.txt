@@ -1,0 +1,34 @@
+# name: knights_post
+# palette: . = transparent, R = #f28562, S = #51607d, T = #c1ccdd, Y = #fdbf52, b = #ab281e, c = #5a6989, d = #3a1b29, o = #3d212d, r = #c44a32, t = #8c9cb5, w = #be6c49
+......ooo.......
+......owwoooooo.
+......owwccccco.
+......owwcccco..
+......owwccccco.
+......owwoooooo.
+......owo.......
+......owo.......
+......owo.......
+......owo.......
+oooooorrRooooooo
+orrrbrrrbrrrbrro
+obbbbbbbbbbbbbbo
+orRrrrRrrrRrrrRo
+orbrrrbrrrbrrrbo
+obbbbbbbbbbbbbbo
+oooooooooooooooo
+.oTttttSTttttSo.
+.otttttStttttSo.
+.otttttStttttSo.
+.oSSSSSSSSSSSSo.
+.ottddddddddtto.
+.ottdoooooodtto.
+.ottdoccYcodtto.
+.oSSdoYYYYodSSo.
+.oTtdoccYcodtSo.
+.ottddocYoddtSo.
+.ottdddoodddtSo.
+.oSSddddddddSSo.
+.ottddddddddtto.
+.oooooooooooooo.
+................

@@ -1,0 +1,16 @@
+{
+  "name": "lookout_tree",
+  "width": 32,
+  "height": 48,
+  "background": "transparent",
+  "pixelated": true,
+  "export": false,
+  "layers": [
+    {
+      "id": "t",
+      "name": "lookout_tree",
+      "type": "image",
+      "src": "sprites/lookout_tree.txt"
+    }
+  ]
+}

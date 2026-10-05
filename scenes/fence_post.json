@@ -1,0 +1,25 @@
+{
+  "name": "fence_post",
+  "width": 16,
+  "height": 48,
+  "background": "transparent",
+  "pixelated": true,
+  "export": false,
+  "notes": "Borrowed: Kenney Tiny Town, CC0. TT (11,3).",
+  "layers": [
+    {
+      "id": "t",
+      "name": "fence_post",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 176,
+        "y": 48,
+        "w": 16,
+        "h": 48
+      },
+      "x": 0,
+      "y": 0
+    }
+  ]
+}

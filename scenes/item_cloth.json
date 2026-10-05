@@ -1,0 +1,16 @@
+{
+  "name": "item_cloth",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "export": false,
+  "layers": [
+    {
+      "id": "t",
+      "name": "item_cloth",
+      "type": "image",
+      "src": "sprites/item_cloth.txt"
+    }
+  ]
+}

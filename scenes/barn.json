@@ -1,0 +1,25 @@
+{
+  "name": "barn",
+  "width": 48,
+  "height": 64,
+  "background": "transparent",
+  "pixelated": true,
+  "export": false,
+  "notes": "Borrowed: Kenney Tiny Farm, CC0. TF (6,7).",
+  "layers": [
+    {
+      "id": "t",
+      "name": "barn",
+      "type": "image",
+      "src": "library/kenney/tiny-farm/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 96,
+        "y": 112,
+        "w": 48,
+        "h": 64
+      },
+      "x": 0,
+      "y": 0
+    }
+  ]
+}
