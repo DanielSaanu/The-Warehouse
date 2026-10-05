@@ -68,6 +68,13 @@ while the bodies stood in the forest, and everything keyed on the record (gossip
 believed it. Update the mirror from the outcome (a path found, a step taken, the leader on the tile), and when the
 two have drifted, re-anchor the record to the body. *(2026-10-05, handoff H6.)*
 
+**S7 — Before putting a new kind of thing into an existing list, find every reader that counts or walks it.**
+ARCHITECTURE planned a joining player as one more `g.members` row (`{ player = userId }`). Three rules read that
+list as people: `materialise` makes a body per row, `Tick.daily` refills by counting rows, the band breaks at
+`#members * 2 < fullSize`; and the list is saved. A player row would have spawned an NPC double, blocked
+replacements, skewed the break and sat in the world key after they left. Grep the list's name, read every loop and
+`#`, and if any reader assumes the old kind, give the new kind its own field (`g.riders`). *(2026-10-05, handoff H7.)*
+
 ## P — Persistence
 
 **P1 — A change to the PLAYER key is additive-optional, never a version bump.**

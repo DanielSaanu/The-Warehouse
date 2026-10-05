@@ -26,3 +26,7 @@ paid for. The detail belongs in commits and the docs; this is the timeline.
   `server/Dev.lua`, gated in Persistence, Debug and Server. Studio-checked both ways. ARCHITECTURE §12, learnings P4.
 - 2026-10-05 · `dev`: three research agents for rung 3 part 4 (belonging): `docs/research/belonging-joining.md`,
   `-guidance.md`, `-activities.md` (other games, what worked and why, shortcomings, sources). Plan → heavy (H7).
+- 2026-10-05 · `dev` (heavy, H7): rung 3 part 4 plan, no code: `docs/plans/rung3-part4-belonging.md`. Ask the
+  leader (7 checks, pure `Belong.ask`), riders as scratch not `members` (no save change), pay at each arrival from a
+  pot cut by losses, graded leaving, barks + "what now", then "first to spot it". Phases 0–4; phase 0 un-parks one
+  Track B slice. H7 stays OPEN on Q1–Q4. Learnings S7.
