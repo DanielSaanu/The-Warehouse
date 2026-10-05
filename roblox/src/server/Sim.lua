@@ -33,6 +33,7 @@ local State = require(script.Parent:WaitForChild("State"))
 local Tiles = require(script.Parent:WaitForChild("Tiles"))
 local Villagers = require(script.Parent:WaitForChild("Villagers"))
 local Bands = require(script.Parent:WaitForChild("Bands"))
+local Ride = require(script.Parent:WaitForChild("Ride"))
 local Calendar = require(script.Parent:WaitForChild("Calendar"))
 
 local Sim = {}
@@ -409,22 +410,14 @@ local function killEntity(e, killer, ctx, byEntity)
 		local now = Calendar.now()
 		byEntity.fedUntil = now + (if byEntity.species then Config.FED_SECONDS else Config.FED_HUNTER)
 		local g = byEntity.group and S.groups[byEntity.group]
-		if g then
-			for item, n in pairs(Combat.loot(e.kind, rng)) do
-				if item ~= "coin" then g.carry[item] = (g.carry[item] or 0) + n end
-			end
-			-- laden: turn for home rather than keep killing
-			if g.dir == 1 and Bands.carryTotal(g) >= Config.SQUAD_LOAD then
-				g.dir, g.pauseUntil = -1, 0
-			end
-		end
+		if g then Bands.carryKill(g, e) end
 	end
 	-- who was close enough to see the fatal blow (Sides.witnessed stashed it on the victim). Nobody means nobody:
 	-- no rumour, no standing change anywhere, and no name on the headline below (docs/RUNG3.md part 3).
 	local seen = e.seenBy or {}
 	local sawIt = next(seen) ~= nil
 	if killer then
-		lootTo(killer, Combat.loot(e.kind, rng))
+		lootTo(killer, Ride.pot(killer, Combat.loot(e.kind, rng))) -- riding along, the goods go into the pot
 		if not e.species then Standing.sawIt(killer, sawIt) end -- the verdict first, then what it costs you
 		Standing.event(killer, "kill", e.kind, e.tribe, ctx, seen)
 		if e.tribe and not e.species then
@@ -456,29 +449,7 @@ local function killEntity(e, killer, ctx, byEntity)
 		local r = S.regions.list[e.region]
 		r[e.species] = math.max(0, r[e.species] - 1)
 	end
-	if e.group then
-		local g = S.groups[e.group]
-		if g then
-			-- the record loses a member; the tribe replaces them at home after a while
-			for i, m in ipairs(g.members) do if m.person == e.person then table.remove(g.members, i) break end end
-			local now = Calendar.now()
-			g.replenishAt = now + Config.DAY_SECONDS
-			-- A pack breaks when it has lost more than half, not the moment it loses one (Danzo, 2026-09-18:
-			-- "if u encounter a bandit group and kill more than half the rest run away like with wolf packs but
-			-- they shouldnt abort instantly once one dies"). Until then they fight, and they are still
-			-- individually capable of breaking at their own hp threshold.
-			if g.kind == "band" and #g.members * 2 < (g.fullSize or #g.members) and now >= (g.retreatUntil or 0) then
-				g.retreatUntil = now + Config.BAND_RETREAT
-				g.target, g.aggroUntil, g.pauseUntil = nil, 0, 0
-				g.dir = -1
-				for id in pairs(g.entities) do
-					local m = S.entities[id]
-					if m and m ~= e then m.state, m.target, m.npcTarget, m.windupAt = "idle", nil, nil, nil end
-				end
-				print("[Sim] the band has broken off and is running for home")
-			end
-		end
-	end
+	if e.group then Bands.lose(e) end
 	local t = e.tribe and S.tribes[e.tribe]
 	if t then
 		if t.guard == e.id then t.guard = nil end
@@ -655,7 +626,7 @@ function Sim.attack(ps, facing: string)
 	end
 	local id = Sim.occupied[tidx(tx, ty)]
 	local e = id and S.entities[id]
-	if not e then return end
+	if not e or Ride.blocks(ps, e) then return end
 	local dmg = Combat.damage(Stats.get("player").atk + Items.weaponAtk(ps.inv), e.def)
 	hitEntity(e, dmg, ps.x, ps.y, ps)
 end
@@ -881,6 +852,7 @@ local function groupStep(e, g, now: number)
 		return
 	end
 	if e.id == g.leader then
+		if Ride.holds(g) then return end -- part 4: waiting for a rider who fell behind (Ride.tick faces them)
 		if now < g.pauseUntil or (S.calamity.active and S.calamity.kind == "flood" and g.kind == "caravan") then
 			wanderStep(e, now)
 			return
@@ -888,7 +860,7 @@ local function groupStep(e, g, now: number)
 		-- the route rule is Tick.leaderStep (pure, tested): `pos` moves only when the bodies do (H6)
 		local act = Tick.leaderStep(g, e.x, e.y, e.path ~= nil, { free = freeTile, step = function(r) setPath(e, { r }) end,
 			path = function(x, y, budget) return pathTo(e, x, y, budget, true) end })
-		if act == "turn" then Bands.turn(g) elseif act == "lost" then Bands.collapse(g) end
+		if act == "turn" then Ride.arrive(g) Bands.turn(g) elseif act == "lost" then Bands.collapse(g) end
 	else
 		local leader = S.entities[g.leader]
 		if not leader then
@@ -1179,6 +1151,7 @@ function Sim.init(saved, slept: number?): (boolean, string?)
 	Restore.bind({ playerRestPoint = Sim.playerRestPoint, notice = notice, S = S, world = world, spawnPerson = spawnPerson, removeEntity = removeEntity,
 		groupScratch = Bands.scratch, getRng = function() return rng end })
 	Bands.bind({ world = world, rng = rng, newEntity = newEntity, removeEntity = removeEntity, nearestFree = nearestFree, anyPlayerWithin = anyPlayerWithin })
+	Ride.face = faceEntity
 	Villagers.bind({ pathTo = pathTo, wanderStep = wanderStep, isNight = Sim.isNight })
 	if saved then
 		local ok, why = Restore.apply(saved, slept)
@@ -1228,7 +1201,7 @@ function Sim.start()
 			task.wait(1)
 			local now = Calendar.now()
 			local day = Sim.clock()
-			for _, f in ipairs({ Bands.tick, tickCamps, tickCalamity, tickGoals }) do
+			for _, f in ipairs({ Bands.tick, Ride.tick, tickCamps, tickCalamity, tickGoals }) do
 				local ok, err = pcall(f, now)
 				if not ok then warn("[Sim] tick: " .. tostring(err)) end
 			end

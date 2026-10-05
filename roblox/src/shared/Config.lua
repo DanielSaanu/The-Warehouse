@@ -64,6 +64,10 @@ Config.BAND_RETREAT = 120
 -- farmers, so a new player's first walk cannot end in an ambush they had no way to see coming.
 Config.GRACE_DAYS = 2
 
+-- Riding along (rung 3 part 4, Q2): at most this many players ride with one group. There is one caravan, one squad
+-- and one band per world, so a busy server queues ("We're full up") rather than swamping a three-person caravan.
+Config.RIDERS_MAX = 2
+
 -- Reputation
 Config.REP_FADE_DAYS = 30      -- half the distance to neutral every this many in-game days
 -- A grudge is the scar, not the mood: it halves in an in-game YEAR (about 61 real hours of play), where standing

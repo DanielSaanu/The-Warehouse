@@ -68,6 +68,13 @@ while the bodies stood in the forest, and everything keyed on the record (gossip
 believed it. Update the mirror from the outcome (a path found, a step taken, the leader on the tile), and when the
 two have drifted, re-anchor the record to the body. *(2026-10-05, handoff H6.)*
 
+**S7 — Before putting a new kind of thing into an existing list, find every reader that counts or walks it.**
+ARCHITECTURE planned a joining player as one more `g.members` row (`{ player = userId }`). Three rules read that
+list as people: `materialise` makes a body per row, `Tick.daily` refills by counting rows, the band breaks at
+`#members * 2 < fullSize`; and the list is saved. A player row would have spawned an NPC double, blocked
+replacements, skewed the break and sat in the world key after they left. Grep the list's name, read every loop and
+`#`, and if any reader assumes the old kind, give the new kind its own field (`g.riders`). *(2026-10-05, handoff H7.)*
+
 ## P — Persistence
 
 **P1 — A change to the PLAYER key is additive-optional, never a version bump.**
@@ -91,6 +98,12 @@ the map the records were made on. A save-format change bumps `Save.VERSION`; a g
 `GEN_VERSION` and means a new world. Confusing the two silently deletes the world Danzo is playing.
 *(2026-09-23, handoff H1.)*
 
+**P4 — A mode that must never touch the real save is gated where the store is OPENED, and read once at boot.**
+Returning early from `loadWorld` is not enough on its own: a later code path (a test hook, a new feature) that
+calls the store directly would still reach the real data. So dev mode also makes `getStore()` refuse, and the flag
+is read once, because a mode that flips mid-session puts a throwaway world on the path to the real key. Default the
+mode to the side that cannot lose data. *(2026-10-05, handoff H4.)*
+
 ## T — Tooling
 
 **T2 — Rojo does NOT sync into a Studio session that is already in Play, and a Studio `require` cache is per
@@ -103,6 +116,12 @@ module under test instead. *(2026-09-23, rung 3 part 3.)*
 **T3 — `Map.village` throws unless `Map.init` has run**, so it is not safe in a code path that might run before
 the world is built. A cosmetic label is never worth an error: look it up in a `pcall` and word the line the plain
 way if it fails. *(2026-09-23, rung 3 part 3 - the standing-change line.)*
+
+**T5 — A Studio test harness that moves the player is part of the experiment: put it where a player would
+stand.** Following the caravan by teleporting onto the tile beside the leader parked a body on the leader's next
+step, and the leader stalled; read as "the caravan is broken" it cost three Play restarts. Follow from BEHIND
+(the side the route came from), at a distance, and before blaming the code, move the harness away and see whether
+the fault goes with it. *(2026-10-05, handoff H8.)*
 
 **T1 — The line ceiling in `test/structure.test.js` is a design input, not a lint you notice at the end.**
 `ALLOWED` is a ratchet that *may only shrink*, and `server/Sim.lua` sits at 1282 against 1285. So "add it to Sim"

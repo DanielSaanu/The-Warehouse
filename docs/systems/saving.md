@@ -16,12 +16,18 @@ plus a few headlines.
 
 **Tunables:** `SAVE_WORLD` and `AUTOSAVE_SECONDS` in Config.
 
+**Development mode** ([ARCHITECTURE §12](../architecture/as-built.md)). In Studio, `Workspace.DevMode` ticked (or
+not set) = no DataStore read or write at all: a fresh world every Play, Debug on, a DEV line on join. Unticked = the
+real save, no Debug. Outside Studio it is always off. Read once at boot (`server/Dev.lua`, rule in `shared/DevMode.lua`);
+`Persistence.getStore` refuses the real store in dev mode, so `savetest`'s in-memory store is the only one it sees.
+
 **Gotchas.** This is escalation trigger 3: anything here goes to the heavy agent.
 - Never bump `PLAYER_VERSION`: `applyPlayer` discards a record whose version differs (→ P1). A world-shape change
   bumps `Save.VERSION` and adds a step in `Save.migrate`.
 - Studio needs Game Settings → Security → "Enable Studio Access to API Services". Without it the server runs
   NO-SAVE and says so.
-- Server Debug commands `reload [s]` and `savetest [s]` exercise the whole path without a real DataStore.
+- Server Debug commands `reload [s]` and `savetest [s]` exercise the whole path without a real DataStore. They exist
+  only in dev mode, so testing the real save end to end means unticking `DevMode` and playing it straight.
 
 ## Expansion: deficits at scale
 

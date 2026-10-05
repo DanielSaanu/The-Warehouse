@@ -21,6 +21,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Save = require(Shared:WaitForChild("Save"))
 local State = require(script.Parent:WaitForChild("State")) -- only for the id of the running world (meta.worldId)
+local Dev = require(script.Parent:WaitForChild("Dev")) -- DEV mode never opens the real DataStore (handoff H4)
 
 local Persistence = {}
 
@@ -32,6 +33,7 @@ Persistence.why = "loadWorld has not run"
 
 local store
 local function getStore()
+	if not store and Dev.on then error("DEV mode never opens the real DataStore") end -- the last line of defence
 	if not store then store = DataStoreService:GetDataStore(STORE) end
 	return store
 end
@@ -75,6 +77,7 @@ end
 --- Read the world key and decide what kind of server this is. Yields. Call once, before anything else exists.
 function Persistence.loadWorld()
 	if not Config.SAVE_WORLD then return noSave("Config.SAVE_WORLD is off") end
+	if Dev.on and not store then return noSave("DEV mode: no DataStore reads or writes, this is a throwaway world") end
 	local ok, data = attempt("reading the world", function() return getStore():GetAsync(WORLD_KEY) end)
 	if not ok then return noSave("the world could not be read, so it will not be written: " .. tostring(data)) end
 	if data == nil then

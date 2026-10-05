@@ -107,7 +107,7 @@ function, `budget` and `-math.huge` in the same flat table as `inv` and `rep`. I
 | `villages[].knows`, `groups[].knows`, `rumours[]`, `meta.nextRumourId` | `Standing` (rung 3 part 3; the rule is `shared/Gossip.lua`) |
 | `tribes[].stock`, player `inv`, `coin` | `Economy` |
 | `regions[]` counts | `Ecology` (exists, pure) |
-| `groups{}` | `Bands` |
+| `groups{}` | `Bands` (and `Restore`, which assigns the whole table on load) |
 | memory on villages and groups (part 3), player `rep`, `grudges`, `goalStage`, `flags`, `lastSeenDay` | `Standing` |
 | entities, occupancy, player `pos`, `rest` | `Bodies` |
 

@@ -468,6 +468,10 @@ Detail: `docs/qa/rung3-part3-summary.md` "Open after round 3".
 
 ## Part 4 — Belonging: party up, ride along, join
 
+**The build plan is [`docs/plans/rung3-part4-belonging.md`](plans/rung3-part4-belonging.md)** (H7, 2026-10-05):
+phases 0–4, where the code goes, the save (nothing new), and Danzo's open questions. This section stays the what
+and the done-when.
+
 **What it is.** The rule above the others, built. This turns the player from a visitor into a participant, and it
 is the biggest single win available in rung 3.
 

@@ -155,6 +155,9 @@ function Tick.leaderStep(g, ex: number, ey: number, walking: boolean, ops): stri
 			local after = g.route[nextI + g.dir]
 			if g.stuck > 3 and after and ops.path(after.x, after.y, Tick.LEADER_BUDGET) then
 				g.pos, g.stuck = nextI + g.dir, 0
+			elseif g.stuck > 3 and not after then
+				-- the END tile is taken (another group's member waits on the same spawn): beside it is arrived (part 4)
+				g.pos, g.stuck = nextI, 0
 			end
 		end
 		g.lost = 0

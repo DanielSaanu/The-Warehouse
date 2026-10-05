@@ -171,6 +171,7 @@ local SAID = {
 	mercy = "They say you let someone live.",
 	escape = "They say the bandits could not catch you.",
 	gift = "They say you gave freely.",
+	rode = "They say you've been on the road with a crew.", -- part 4: a leg ridden with a group
 }
 
 --- The newest thing this holder has heard about the player, as a line for Talk.Context.heard. A rumour that has been

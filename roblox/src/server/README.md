@@ -15,12 +15,14 @@ Read this first. Update it in the same commit as any move. Sizes are line counts
 | `Goals.lua` | the goal line under the clock: `set`, `clear`, `rebuild`, `tick` (carved verbatim out of Sim when it hit its ceiling) | 65 |
 | `Calendar.lua` | `meta.gameSeconds`, the ONE clock: `now()`, `clock()`, `setDay()`, `skipTo()` (catch-up adds its lump to `meta.gameSeconds` directly, in `Tick.catchUp`) | 60 |
 | `Restore.lua` | `Sim.state` <-> a save: `snapshot()`, and `apply(data, slept)` = the RESTORE constructor (bodies, routes, stamped tiles, overlay, `Map.reencode`) | 199 |
-| `Bands.lua` | groups (caravan, squad, band): making the rows, their transient half, bodies in and out (`materialise`, `collapse`), the 1 Hz tick, turning for home. Abstract movement stays in `shared/Tick.groups` | 198 |
-| `Sim.lua` | everything else, for now: entities, AI, fighting, calamities, the tick loops | 1282 |
-| `Sides.lua` | who takes whose side in a fight | 280 |
+| `Bands.lua` | groups (caravan, squad, band): making the rows, their transient half, bodies in and out (`materialise`, `collapse`), the 1 Hz tick, turning for home, what a fight does to a group (`carryKill`, `lose`, `addCarry`). Abstract movement stays in `shared/Tick.groups` | 241 |
+| `Ride.lua` | rung 3 part 4: a player riding with a group. The ask (`topic`), riders as scratch (`g.riders`, `ps.ride`, never saved), the 1 Hz rider tick (walked, lag and the leader's wait, walking off), pay and the `rode` rumour at an arrival, blocked blows, kill goods into the pot. Rules are pure in `shared/Belong.lua` | 249 |
+| `Sim.lua` | everything else, for now: entities, AI, fighting, calamities, the tick loops | 1227 |
+| `Sides.lua` | who takes whose side in a fight (your own group never goes for you while you ride) | 294 |
 | `Villagers.lua` | a villager's day: out to a plot in the morning, home to a hut door at night, home at a run from wolves and strange bandits; scans huts and plots off the map. What the farms YIELD is `shared/Farms.lua` (pure, in `Tick.daily`, saved as `tribes[].plots`) | 152 |
-| `Interact.lua` | the F key: talk, trade, rest, gifts | 344 |
-| `Debug.lua` | the test console (Workspace attribute `Debug`) | 290 |
+| `Interact.lua` | the F key: talk, trade, rest, gifts; a group leader's `ride` / `leave` topics go to `Ride` | 357 |
+| `Debug.lua` | the test console (Workspace attribute `Debug`); DEV mode only. `arrive <group>` forces an arrival through Ride and Bands | 334 |
+| `Dev.lua` | development mode, read once at boot: `Dev.on` (Studio, and `Workspace.DevMode` not unticked; rule in `shared/DevMode.lua`) | 16 |
 
 ## Track A progress (the plan's save-critical steps)
 
@@ -82,5 +84,19 @@ Read this first. Update it in the same commit as any move. Sizes are line counts
 - [ ] **B1 (rest)** the calamity half of `Calendar`. Members as `{ player = userId }` is part 4, not here.
 - [ ] **B2** `Bodies`, `Brains`, `Fighting`. **B3** name the owners (R2/R3). **B4** split `WorldGen.lua`.
 
+- [x] **Part 4 phase 0 (un-parked by Danzo, 2026-10-05, H7 Q4; built 2026-10-05, `Sim.lua` 1255 → 1225, ceiling kept at
+      1255 until phase 1 lands; no QA loop yet):** move "what a fight does to a group" (`killEntity`'s
+      two group halves) verbatim from `Sim.lua` into `Bands.lua`, so Bands is the one writer of `groups{}` (R2). Only
+      this slice: B2, B3 and B4 stay parked. Plan: `docs/plans/rung3-part4-belonging.md`; goals `docs/qa/rung3-part4-p0-room.md`.
+      QA 9/10 (`docs/qa/rung3-part4-p0-room-summary.md`). Phase 1 spent 3 of the 31 lines (`Sim.lua` 1227, ceiling
+      lowered 1255 → 1228 by the test's own count).
+
 **Parked on purpose (Danzo, 2026-09-18): do not continue Track B without asking.** What is carved so far is tested
 and smoke-tested in Studio but **no QA reviewer has looked at it** — run `/qa-loop` on it before building on it.
+
+## Development mode (handoff H4, 2026-10-05)
+
+- [x] `Workspace.DevMode` (a boolean attribute; Danzo ticks it in Properties). In Studio, ticked or not set = DEV:
+      `Persistence` never opens the DataStore (NO-SAVE "DEV mode", `getStore` errors), every Play is a fresh world,
+      the Debug console exists, a DEV notice on join. Unticked = the ordinary game on the real save. Outside Studio
+      always off. Read once at boot. Detail: `docs/ARCHITECTURE.md` §12 (`docs/architecture/as-built.md`).

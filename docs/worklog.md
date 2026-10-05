@@ -21,6 +21,27 @@ paid for. The detail belongs in commits and the docs; this is the timeline.
   out of Sim, which drops to 1255 lines and the ratchet with it); `arrive` checks the leader is in the village. Rule S6.
 - 2026-10-05 · `docs/expansion-notes`: "Expansion: deficits at scale" added to all nine `docs/systems/` files (four
   agents, notes only, no code). Systems hub points at them. CLAUDE.md: `Grid.lua` → `client/Viewport.lua` (Grid was removed in rung 2 part 1).
+- 2026-10-05 · `dev` (heavy, H4): development mode. `Workspace.DevMode` in Studio (not set = on): no DataStore at all,
+  Debug console, a DEV notice; unticked = the real save, no Debug; forced off outside Studio. `shared/DevMode.lua` +
+  `server/Dev.lua`, gated in Persistence, Debug and Server. Studio-checked both ways. ARCHITECTURE §12, learnings P4.
+- 2026-10-05 · `dev`: three research agents for rung 3 part 4 (belonging): `docs/research/belonging-joining.md`,
+  `-guidance.md`, `-activities.md` (other games, what worked and why, shortcomings, sources). Plan → heavy (H7).
+- 2026-10-05 · `dev` (heavy, H7): rung 3 part 4 plan, no code: `docs/plans/rung3-part4-belonging.md`. Ask the
+  leader (7 checks, pure `Belong.ask`), riders as scratch not `members` (no save change), pay at each arrival from a
+  pot cut by losses, graded leaving, barks + "what now", then "first to spot it". Phases 0–4; phase 0 un-parks one
+  Track B slice. H7 stays OPEN on Q1–Q4. Learnings S7.
+- 2026-10-05 · `dev` (heavy, H7 resolved): Danzo approved the part 4 plan, all ten questions as recommended; the
+  phase 0 Track B slice is un-parked (server README). Goals file `docs/qa/rung3-part4-p0-room.md`. Phase 0's code
+  move was NOT made: the edit to `Sim.lua` was refused by the session's permission check, left for Danzo.
+- 2026-10-05 · `dev` (heavy): part 4 phase 0. `killEntity`'s two group halves moved verbatim to `Bands.carryKill` /
+  `Bands.lose`; `Sim.lua` 1255 → 1225 (ceiling kept at 1255 for phase 1), `Bands.lua` 194 → 233. Tree identical, tests +
+  lint green; Studio (DevMode): band broke at 3 of 4 lost, squad laden at 9 turned home and banked, band refilled.
+- 2026-10-05 · `dev`: QA loop on part 4 phase 0, one round, **9/10** (`docs/qa/rung3-part4-p0-room-summary.md`). Fixed
+  the server README sizes and the Bands row, Bands' header lists `carryKill`/`lose`, data-model notes Restore's bulk write.
+- 2026-10-05 · `dev` (heavy, H8): part 4 phase 1, ask / ride / arrive. `shared/Belong.lua` (pure, 105 lines,
+  `test/luau/belong.test.luau`), `server/Ride.lua` (249), hooks in Sim (+3, ceiling 1255 → 1228), Interact, Sides, Bands,
+  Talk, Reputation (`rode`), Config `RIDERS_MAX`, Debug `arrive`; no save change. A leader beside a taken end tile
+  now turns. Studio: ask/yes/no/cooldown, wait and face, −3 for walking off, pot, 7-coin pay. Leader stall → H9. T5.
 - 2026-10-05 · `claude/nifty-pascal-3ryiwv`: world-expansion plan drawn as a design board (256² map, 16 villages, asset
   list). `docs/art-sources.md` records the free-pack research (licences read, previews not seen) and the gaps to draw.
 - 2026-10-05 · `claude/nifty-pascal-3ryiwv`: fetched all 15 free packs into `library/` (Kenney ×5, OpenGameArt ×7,

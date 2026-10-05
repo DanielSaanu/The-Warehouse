@@ -54,7 +54,7 @@ local KILL = { villager = -25, survivor = -25, merchant = -25, caravan_master = 
 
 --- Reputation changes caused by an event, per tribe type. `victimTribe` is the tribe type of the person acted on
 --- (nil for wildlife). Events: trade, gift, hit, kill, mercy (a beaten person got away from you), escape (a band
---- lost you), died_to (nothing), rest.
+--- lost you), died_to (nothing), rest, rode (a leg ridden with their group).
 function Reputation.deltas(event: string, victimKind: string?, victimTribe: string?, ctx: Context?): Deltas
 	local d: Deltas = {}
 	local c: Context = ctx or {}
@@ -85,6 +85,14 @@ function Reputation.deltas(event: string, victimKind: string?, victimTribe: stri
 		-- being killed costs nothing: dying never feeds a grudge and never stacks (Danzo, 2026-09-17)
 	elseif event == "rest" and victimTribe then
 		d[victimTribe] = 1
+	elseif event == "rode" and victimTribe then
+		-- you rode a leg with their group (rung 3 part 4): their people, their trading partners, their enemies
+		if victimTribe == "plunderer" then
+			d.plunderer, d.farmer, d.hunter = 4, -4, -4
+		else
+			d[victimTribe], d.plunderer = 4, -2
+			d[if victimTribe == "farmer" then "hunter" else "farmer"] = 3
+		end
 	end
 	return d
 end

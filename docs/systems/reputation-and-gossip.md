@@ -1,7 +1,8 @@
 # Reputation, gossip, grudges
 
 **What it does.** Every holder (a village `v1`..`v3`, or a group by its id) has a standing with each player, from
-−100 to 100, shown as words. Standing fades toward neutral. News of a kill, mercy, an escape or a gift travels as
+−100 to 100, shown as words. Standing fades toward neutral. News of a kill, mercy, an escape, a gift or a leg ridden
+with a group (`rode`, rung 3 part 4: seeded at the group on arrival, so the village there hears it one hop weaker) travels as
 rumours: groups carry it along roads and swap it when they meet or arrive. A grudge is the lasting scar and fades
 over an in-game year.
 

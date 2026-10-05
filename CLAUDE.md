@@ -18,6 +18,10 @@ the files the task needs. For game code, start at `docs/systems/README.md`.
    accident. **Track A is merged (2026-09-18): the world and its players save**, confirmed by Danzo against the real
    DataStore. Studio needs Game Settings → Security → "Enable Studio Access to API Services", or the server runs
    NO-SAVE and says so. `roblox/src/server/README.md` says which steps have landed.
+   **Development mode (H4, ARCHITECTURE §12):** in Studio, the boolean attribute `DevMode` on Workspace (ticked, or
+   not set) means the DataStore is never opened: every Play is a fresh, disposable world and nothing done in Play is
+   kept, and the Debug console is on. Untick it to play Danzo's real save as an ordinary player (no Debug, no dev
+   text). Read once at boot; **forced off outside Studio**.
 1. Read `docs/handoffs.md` (is anything OPEN?), then `ideas/INBOX.md`. The inbox is the to-do list the
    human writes in the UI. Work through it.
 2. `node bin/warehouse.js scenes` to see what exists. Open the scene JSONs you will touch.

@@ -1,4 +1,4 @@
-# Architecture §10–§11: where the build departed, and rung 3 part 3
+# Architecture §10–§13: where the build departed, rung 3 part 3, dev mode, and riders
 
 Part of [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md), which maps every § and rule ID to its file. Moved here verbatim on
 2026-09-27 (handoff H2). A bare "§n" below means that section of ARCHITECTURE.md, wherever it now lives.
@@ -69,3 +69,66 @@ only what is *architectural* is here, so this document stays the one place the s
 
 **None of §9's six decisions is touched.** Item 6 above is the only one that even brushes against the §9 rider on
 granularity, and it is compatible for the reason given there.
+
+---
+
+## 12. Development mode: a save that is never touched (handoff H4, 2026-10-05)
+
+Danzo: *"project wide we are in DEVELOPMENT mode … we need to not worry about my personal save … easily able to
+test things … easily turned off so that we can have testing from the perspective of an ordinary player."* He settled
+the shape himself: (1) dev mode saves **nothing at all**, (2) it is **forced off outside Studio**, (3) it is
+**toggled in Studio**, not in code.
+
+**The switch.** A boolean attribute `DevMode` on **Workspace** (Explorer → Workspace → Properties → Attributes).
+Workspace was picked because it is not in `default.project.json`, so Rojo never resets the attribute, and it already
+holds the console's `Debug` / `DebugResult` attributes. The rule is pure, `shared/DevMode.lua`
+(`resolve(isStudio, flag)`, tested in `test/luau/devmode.test.luau`); `server/Dev.lua` reads it **once at boot**:
+
+| | Studio, `DevMode` ticked or **not set** | Studio, `DevMode` unticked | Live / published server |
+| --- | --- | --- | --- |
+| DataStore | never opened: no read, no write | the real save (`Lowlands_v1`) | the real save |
+| World | fresh every Play (seed `WORLD_SEED`) | Danzo's saved world | the saved world |
+| Debug console | `Workspace.Debug` attribute + `ServerStorage.Debug` | absent | absent |
+| On join | one notice line "DEV mode: nothing is saved …" | nothing | nothing |
+
+**Why each choice.**
+- **Not set = on.** The project is in development, and the failure that matters is writing a throwaway world over
+  the real one. Only an explicit `false` turns it off; a non-boolean (a typed string "false") counts as on.
+- **Read once.** Unticking mid-Play would put a throwaway world on a path to the real save. A change takes effect
+  on the next Play.
+- **Through NO-SAVE, not a new mode.** `Persistence.loadWorld` returns NO-SAVE with the reason "DEV mode", so every
+  existing guard (`saveWorld`, `loadPlayer`, `savePlayer` via `ps.noSave`, `BindToClose`) already refuses. On top of
+  that `getStore()` errors in dev mode, so no later code path can open the real store by mistake. Debug `savetest`
+  still works: it swaps in a store in memory, which `getStore` returns without touching the real one.
+- **Debug is gated twice.** `Server.server.lua` creates neither the bindable nor the attribute listener, and
+  `Debug.run` refuses on its own, for any script that reaches `Sim.debug` directly.
+- **What an ordinary player could reach before this: nothing.** A client cannot set a Workspace attribute the server
+  sees (client-side attribute writes do not replicate) and cannot see `ServerStorage`. So gating Debug makes the
+  ordinary game *the same game* rather than closing a hole; only server-side code (the owner's server console, a
+  plugin) could reach it, and a non-dev server now has nothing there to reach.
+
+**What it does not change.** None of §9's six decisions: the failure policy (decision 5) gains one more reason to
+be NO-SAVE and nothing else. The save format is untouched (`Save.VERSION` 4, `PLAYER_VERSION` 1). `Config.SAVE_WORLD`
+still exists and still forces NO-SAVE everywhere. Verified in Studio 2026-10-05: not set → `[Dev] DEV mode ON`,
+NO-SAVE, a day-1 world, Debug `state` and `savetest` work, the notice reaches the client; unticked → `[Dev] dev mode
+off`, the real world loaded (day 52), no `ServerStorage.Debug`, the `Debug` attribute ignored, no notice.
+
+## 13. Rung 3 part 4: a player riding with a group is scratch, not a member (H7/H8, 2026-10-05)
+
+**The departure.** §6 B1 planned a joining player as one more `g.members` row, `{ player = userId }`. Phase 1 does not
+do that. `members` is saved and three rules read it as PEOPLE: `Bands.materialise` makes a body per row,
+`Tick.daily` refills to `fullSize` by counting rows, and the band breaks at `#members * 2 < fullSize`. A player row
+would have spawned an NPC double, blocked replacements, skewed the break, and stayed in the world key after the player
+left (learnings S7).
+
+**What was built instead.** `g.riders[userId]` (`rode`, `legs`, `farSince`) and `ps.ride = groupId`, set up in
+`Bands.scratch` beside `g.entities` and owned by `server/Ride.lua`. Never encoded: `Save.VERSION` stays 4 and
+`PLAYER_VERSION` 1 (Danzo, H7 Q3), and `belong.test.luau` asserts a ridden group encodes exactly as an unridden one.
+What must outlast a session already does: the group's opinion of you is `ps.rep[groupId]` (holder-keyed since part
+3), and the ride itself becomes a `rode` rumour, a new value in the ring's existing `event` field.
+
+**Owners (R2).** `Ride` owns `g.riders`, `g.walked`, `g.lastPos`, `g.waitLeft`, `g.holding`, `ps.ride`, `ps.asked`.
+A rider's kill goods reach `g.carry` through `Bands.addCarry`, so Bands stays the one writer of the saved group
+fields. The rules are pure in `shared/Belong.lua`.
+
+**None of §9's six decisions is touched.**
