@@ -1,0 +1,16 @@
+{
+  "name": "knights_post",
+  "width": 16,
+  "height": 32,
+  "background": "transparent",
+  "pixelated": true,
+  "export": false,
+  "layers": [
+    {
+      "id": "t",
+      "name": "knights_post",
+      "type": "image",
+      "src": "sprites/knights_post.txt"
+    }
+  ]
+}

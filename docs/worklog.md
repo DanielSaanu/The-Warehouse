@@ -26,3 +26,5 @@ paid for. The detail belongs in commits and the docs; this is the timeline.
 - 2026-10-05 · `claude/nifty-pascal-3ryiwv`: fetched all 15 free packs into `library/` (Kenney ×5, OpenGameArt ×7,
   itch ×5 via its free-download endpoint into `library/local/<code>/`), looked at every sheet, and wrote "Verified
   contents" in `docs/art-sources.md`: 27 have, 61 borrow, 6 check, 31 draw. Kenney fetcher fixed (single-quoted hrefs).
+- 2026-10-05 · `claude/nifty-pascal-3ryiwv`: drew the 31 DRAW items from `docs/art-sources.md` in the Kenney Tiny palette
+  (34 sprites, all `"export": false`, sheet unchanged); `scenes/preview_expansion_art.json` shows them beside Kenney tiles.

@@ -108,15 +108,24 @@ icons are top-down either way. "Map" = a whole building squeezed into 1 to 3 til
 - lily pad: RPG (28,10–11) look like floating leaves.
 - lantern post: RPG torch posts (16–18,7–8), lanterns (51–52,16–17).
 
-### Draw by hand (31)
+### Draw by hand (31): drawn 2026-10-05
 
-- **Farmers:** town hall 3×3, granary, storehouse, knights post, windmill.
-- **Hunters:** longhouse 3×2, trophy hall, tannery, drying rack, muster ring, smokehouse, lookout tree.
-- **Plunderers:** war hall 3×2 (MW's orc hall is preview-only).
-- **Rooms:** shrine (RPG statue and candles help), barracks; furniture: workbench, loom, weapon rack.
-- **Debris:** broken wall, broken cart (only mine carts exist), broken fence, scorched ground, abandoned tent.
-- **Nature:** reeds, chimney smoke, fireflies, crows.
-- **Props:** cart, woodpile, scarecrow. **Items:** cloth.
+All 31 are drawn, in the Kenney Tiny palette (outline `#3d212d`, its wood, stone, green and red ramps, 3/4 view) so
+they sit beside the borrowed tiles. Every scene has `"export": false`: the Roblox sheet does not change and nothing needs
+uploading until WorldGen places them (phase 2), when each one is turned on (and big ones split into tiles if the
+renderer needs it). See them all at once: `scenes/preview_expansion_art.json`.
+
+| Group | Sprites (size) |
+|---|---|
+| Farmers | `town_hall` 48×48, `granary` 32×32, `storehouse` 32×32, `knights_post` 16×32, `windmill` 32×48 |
+| Hunters | `longhouse` 48×32, `trophy_hall` 32×32, `tannery` 32×32, `drying_rack`, `muster_ring` 32×32, `smokehouse` 16×32, `lookout_tree` 32×48 |
+| Plunderers | `war_hall` 48×32 |
+| Rooms | `shrine_altar` (shrine), `bunk_bed` 16×32 (barracks), `workbench`, `loom`, `weapon_rack` |
+| Debris | `broken_wall`, `broken_fence`, `broken_cart` 32×16, `scorched_ground`, `abandoned_tent` 32×32 |
+| Nature | `reeds`, `chimney_smoke_0/1`, `fireflies_0/1`, `crow_0/1` (two-frame animations) |
+| Props, items | `cart` 32×16, `woodpile`, `scarecrow`, `item_cloth` |
+
+Unmarked sizes are 16×16.
 
 ## Rejected (so nobody re-checks them)
 
