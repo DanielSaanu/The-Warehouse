@@ -1,0 +1,25 @@
+{
+  "name": "soil_rows",
+  "width": 64,
+  "height": 32,
+  "background": "transparent",
+  "pixelated": true,
+  "export": false,
+  "notes": "Borrowed: Kenney Tiny Farm, CC0. TF (0,4).",
+  "layers": [
+    {
+      "id": "t",
+      "name": "soil_rows",
+      "type": "image",
+      "src": "library/kenney/tiny-farm/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 0,
+        "y": 64,
+        "w": 64,
+        "h": 32
+      },
+      "x": 0,
+      "y": 0
+    }
+  ]
+}

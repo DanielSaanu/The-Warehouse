@@ -1,0 +1,29 @@
+{
+  "name": "washing_line",
+  "width": 48,
+  "height": 32,
+  "background": "transparent",
+  "pixelated": true,
+  "export": false,
+  "notes": "Borrowed: Kenney Roguelike Indoors, CC0. KI (16,1).",
+  "layers": [
+    {
+      "id": "t",
+      "name": "washing_line",
+      "type": "image",
+      "src": "library/kenney/roguelike-indoors/Tilesheets__roguelikeIndoor_transparent.png",
+      "crop": {
+        "x": 272,
+        "y": 17,
+        "w": 48,
+        "h": 32
+      },
+      "x": 0,
+      "y": 0,
+      "outline": {
+        "color": "#3d212d",
+        "size": 1
+      }
+    }
+  ]
+}

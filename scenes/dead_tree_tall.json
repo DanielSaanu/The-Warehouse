@@ -1,0 +1,29 @@
+{
+  "name": "dead_tree_tall",
+  "width": 16,
+  "height": 48,
+  "background": "transparent",
+  "pixelated": true,
+  "export": false,
+  "notes": "Borrowed: Kenney Roguelike RPG Pack, CC0. RPG (27,9).",
+  "layers": [
+    {
+      "id": "t",
+      "name": "dead_tree_tall",
+      "type": "image",
+      "src": "library/kenney/roguelike-rpg-pack/Spritesheet__roguelikeSheet_transparent.png",
+      "crop": {
+        "x": 459,
+        "y": 153,
+        "w": 16,
+        "h": 48
+      },
+      "x": 0,
+      "y": 0,
+      "outline": {
+        "color": "#3d212d",
+        "size": 1
+      }
+    }
+  ]
+}

@@ -127,6 +127,32 @@ renderer needs it). See them all at once: `scenes/preview_expansion_art.json`.
 
 Unmarked sizes are 16×16.
 
+## In the Warehouse as scenes (2026-10-05)
+
+Every BORROW item is now a scene that crops its pack in place (`"notes"` names the pack, licence and tile), so it can be
+used like any drawn sprite: 89 scenes, all `"export": false`. RPG, KI and OBJ crops carry an `outline` effect in
+`#3d212d` so they match the Kenney Tiny look; `banner_plunderer` is the orange banner with `hue: -28`.
+`scenes/preview_borrowed.json` shows them all; `scenes/preview_expansion_art.json` shows everything hand-drawn.
+
+- **Farmers:** `well fence fence_post barn watchtower hay_bale hay_bale_tied trough beehive sack barrel bucket
+  crop_wheat crop_carrot crop_cabbage soil_rows sunflower sheep cow chicken banner_farmer`
+- **Hunters / plunderers:** `hiring_board banner_hunter tent tent_green stockade stockade_gate loot_heap banner_plunderer`
+- **Rooms:** `floor_wood floor_stone floor_tile floor_brick hearth table stool bench chair chest crate bookshelf anvil
+  counter market_awning candelabra bedroll hide_rug washing_line`
+- **Debris:** `rubble bones skull ash_pile fallen_log stump tombstone grave_cross arrows_in_ground`
+- **Nature:** `pine tree_autumn pine_tall dead_tree dead_tree_tall bush berry_bush mushrooms flower_red flower_purple
+  flower_white boulder boulder_mossy rocks_grey rocks_brown lily_pad lantern_post`
+- **Items:** `item_bow item_spear item_arrows item_rope item_herbs item_meat item_grain item_trinket item_ring item_map
+  item_torch item_apple item_cheese item_backpack item_pot`
+
+**Drawn extra** (not on the board, but the plan needs them): `palisade`, `palisade_gate` (the hunters' wall, so they
+don't share the plunderers' spear wall), `cage`, `ruined_watchtower` and `roadside_shrine` (16×32, the places between
+villages), `bridge_planks`, `battle_debris`.
+
+**Credits:** nothing is owed until a scene is exported into the game. When an OBJ crop (`table stool chest crate bedroll
+hide_rug rubble bones skull ash_pile`) is turned on, its MrBeast credit line goes into `docs/PUBLISH.md`.
+Everything else used here is CC0.
+
 ## Rejected (so nobody re-checks them)
 
 - **Non-commercial free tier:** Sprout Lands, Mystic Woods, Cozy Farm, Cozy Town, Tiny Wonder Farm, Cute Fantasy RPG,

@@ -1,0 +1,29 @@
+{
+  "name": "lily_pad",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "export": false,
+  "notes": "Borrowed: Kenney Roguelike RPG Pack, CC0. RPG (28,10).",
+  "layers": [
+    {
+      "id": "t",
+      "name": "lily_pad",
+      "type": "image",
+      "src": "library/kenney/roguelike-rpg-pack/Spritesheet__roguelikeSheet_transparent.png",
+      "crop": {
+        "x": 476,
+        "y": 170,
+        "w": 16,
+        "h": 16
+      },
+      "x": 0,
+      "y": 0,
+      "outline": {
+        "color": "#3d212d",
+        "size": 1
+      }
+    }
+  ]
+}

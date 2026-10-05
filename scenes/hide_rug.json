@@ -1,0 +1,29 @@
+{
+  "name": "hide_rug",
+  "width": 16,
+  "height": 32,
+  "background": "transparent",
+  "pixelated": true,
+  "export": false,
+  "notes": "Borrowed: Objects for 16x16 tilesets, CC-BY 3.0: Art by MrBeast. Commissioned by OpenGameArt.org (http://opengameart.org). OBJ (3,0).",
+  "layers": [
+    {
+      "id": "t",
+      "name": "hide_rug",
+      "type": "image",
+      "src": "library/opengameart/objects-for-16x16-tilesets/objects.png",
+      "crop": {
+        "x": 48,
+        "y": 0,
+        "w": 16,
+        "h": 32
+      },
+      "x": 0,
+      "y": 0,
+      "outline": {
+        "color": "#3d212d",
+        "size": 1
+      }
+    }
+  ]
+}

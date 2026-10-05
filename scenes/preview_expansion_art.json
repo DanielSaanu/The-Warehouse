@@ -1,11 +1,10 @@
 {
   "name": "preview_expansion_art",
   "width": 280,
-  "height": 224,
+  "height": 212,
   "background": "#85c769",
   "pixelated": true,
   "export": false,
-  "notes": "Hand-drawn art for the world expansion (2026-10-05), Kenney Tiny palette. Bottom row: Kenney Tiny Town tiles for comparison.",
   "layers": [
     {
       "id": "longhouse",
@@ -54,6 +53,20 @@
       "type": "scene",
       "src": "scenes/muster_ring.json",
       "x": 204,
+      "y": 4
+    },
+    {
+      "id": "palisade",
+      "type": "scene",
+      "src": "scenes/palisade.json",
+      "x": 240,
+      "y": 4
+    },
+    {
+      "id": "palisade_gate",
+      "type": "scene",
+      "src": "scenes/palisade_gate.json",
+      "x": 260,
       "y": 4
     },
     {
@@ -106,195 +119,165 @@
       "y": 116
     },
     {
+      "id": "cage",
+      "type": "scene",
+      "src": "scenes/cage.json",
+      "x": 92,
+      "y": 116
+    },
+    {
       "id": "shrine_altar",
       "type": "scene",
       "src": "scenes/shrine_altar.json",
-      "x": 92,
+      "x": 112,
       "y": 116
     },
     {
       "id": "bunk_bed",
       "type": "scene",
       "src": "scenes/bunk_bed.json",
-      "x": 112,
+      "x": 132,
       "y": 116
     },
     {
       "id": "workbench",
       "type": "scene",
       "src": "scenes/workbench.json",
-      "x": 132,
+      "x": 152,
       "y": 116
     },
     {
       "id": "loom",
       "type": "scene",
       "src": "scenes/loom.json",
-      "x": 152,
+      "x": 172,
       "y": 116
     },
     {
       "id": "weapon_rack",
       "type": "scene",
       "src": "scenes/weapon_rack.json",
-      "x": 172,
+      "x": 192,
       "y": 116
+    },
+    {
+      "id": "ruined_watchtower",
+      "type": "scene",
+      "src": "scenes/ruined_watchtower.json",
+      "x": 4,
+      "y": 156
+    },
+    {
+      "id": "roadside_shrine",
+      "type": "scene",
+      "src": "scenes/roadside_shrine.json",
+      "x": 24,
+      "y": 156
     },
     {
       "id": "broken_wall",
       "type": "scene",
       "src": "scenes/broken_wall.json",
-      "x": 4,
+      "x": 44,
       "y": 156
     },
     {
       "id": "broken_fence",
       "type": "scene",
       "src": "scenes/broken_fence.json",
-      "x": 24,
+      "x": 64,
       "y": 156
     },
     {
       "id": "broken_cart",
       "type": "scene",
       "src": "scenes/broken_cart.json",
-      "x": 44,
+      "x": 84,
       "y": 156
     },
     {
       "id": "scorched_ground",
       "type": "scene",
       "src": "scenes/scorched_ground.json",
-      "x": 80,
+      "x": 120,
+      "y": 156
+    },
+    {
+      "id": "battle_debris",
+      "type": "scene",
+      "src": "scenes/battle_debris.json",
+      "x": 140,
+      "y": 156
+    },
+    {
+      "id": "bridge_planks",
+      "type": "scene",
+      "src": "scenes/bridge_planks.json",
+      "x": 160,
       "y": 156
     },
     {
       "id": "reeds",
       "type": "scene",
       "src": "scenes/reeds.json",
-      "x": 100,
+      "x": 180,
       "y": 156
     },
     {
       "id": "chimney_smoke_0",
       "type": "scene",
       "src": "scenes/chimney_smoke_0.json",
-      "x": 120,
+      "x": 200,
       "y": 156
     },
     {
       "id": "fireflies_0",
       "type": "scene",
       "src": "scenes/fireflies_0.json",
-      "x": 140,
+      "x": 220,
       "y": 156
     },
     {
       "id": "crow_0",
       "type": "scene",
       "src": "scenes/crow_0.json",
-      "x": 160,
+      "x": 240,
       "y": 156
     },
     {
       "id": "crow_1",
       "type": "scene",
       "src": "scenes/crow_1.json",
-      "x": 180,
+      "x": 260,
       "y": 156
     },
     {
       "id": "cart",
       "type": "scene",
       "src": "scenes/cart.json",
-      "x": 200,
-      "y": 156
+      "x": 4,
+      "y": 192
     },
     {
       "id": "woodpile",
       "type": "scene",
       "src": "scenes/woodpile.json",
-      "x": 236,
-      "y": 156
+      "x": 40,
+      "y": 192
     },
     {
       "id": "scarecrow",
       "type": "scene",
       "src": "scenes/scarecrow.json",
-      "x": 256,
-      "y": 156
+      "x": 60,
+      "y": 192
     },
     {
       "id": "item_cloth",
       "type": "scene",
       "src": "scenes/item_cloth.json",
-      "x": 4,
-      "y": 176
-    },
-    {
-      "id": "tt0",
-      "type": "image",
-      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
-      "crop": {
-        "x": 64,
-        "y": 0,
-        "w": 16,
-        "h": 16
-      },
-      "x": 4,
-      "y": 204
-    },
-    {
-      "id": "tt1",
-      "type": "image",
-      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
-      "crop": {
-        "x": 80,
-        "y": 32,
-        "w": 16,
-        "h": 16
-      },
-      "x": 24,
-      "y": 204
-    },
-    {
-      "id": "tt2",
-      "type": "image",
-      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
-      "crop": {
-        "x": 144,
-        "y": 112,
-        "w": 16,
-        "h": 16
-      },
-      "x": 44,
-      "y": 204
-    },
-    {
-      "id": "tt3",
-      "type": "image",
-      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
-      "crop": {
-        "x": 128,
-        "y": 112,
-        "w": 16,
-        "h": 16
-      },
-      "x": 64,
-      "y": 204
-    },
-    {
-      "id": "tt4",
-      "type": "image",
-      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
-      "crop": {
-        "x": 160,
-        "y": 160,
-        "w": 16,
-        "h": 16
-      },
-      "x": 84,
-      "y": 204
+      "x": 80,
+      "y": 192
     }
   ]
 }

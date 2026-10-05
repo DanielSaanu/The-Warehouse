@@ -1,0 +1,25 @@
+{
+  "name": "item_torch",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "export": false,
+  "notes": "Borrowed: Puny Dungeon by Shade, CC0. PD (16,0).",
+  "layers": [
+    {
+      "id": "t",
+      "name": "item_torch",
+      "type": "image",
+      "src": "library/opengameart/16x16-puny-dungeon-tileset/punyworld-dungeon-tileset.png",
+      "crop": {
+        "x": 256,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "x": 0,
+      "y": 0
+    }
+  ]
+}
