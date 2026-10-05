@@ -24,3 +24,5 @@ paid for. The detail belongs in commits and the docs; this is the timeline.
 - 2026-10-05 · `dev` (heavy, H4): development mode. `Workspace.DevMode` in Studio (not set = on): no DataStore at all,
   Debug console, a DEV notice; unticked = the real save, no Debug; forced off outside Studio. `shared/DevMode.lua` +
   `server/Dev.lua`, gated in Persistence, Debug and Server. Studio-checked both ways. ARCHITECTURE §12, learnings P4.
+- 2026-10-05 · `dev`: three research agents for rung 3 part 4 (belonging): `docs/research/belonging-joining.md`,
+  `-guidance.md`, `-activities.md` (other games, what worked and why, shortcomings, sources). Plan → heavy (H7).

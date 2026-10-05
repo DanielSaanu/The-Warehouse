@@ -24,6 +24,7 @@ to (`roblox/default.project.json`).
 - [`docs/RUNG3.md`](docs/RUNG3.md): the rung 3 build plan, parts 1–7 (part 3 = gossip spec). Before rung 3 work.
 - [`docs/ROBLOX_SETUP.md`](docs/ROBLOX_SETUP.md): installing Rojo, connecting Studio, Open Cloud key, uploading. Setup or toolchain problems.
 - [`docs/PUBLISH.md`](docs/PUBLISH.md): making the game public, credits owed, the post-sprite-change routine. Before publishing.
+- [`docs/research/`](docs/research/): outside research behind a design (other games, how and why it worked, the shortcomings). `belonging-*.md` feed rung 3 part 4.
 - [`docs/qa/`](docs/qa/): QA goals files and `*-summary.md` per PR. Read the summary for the area you touch; never `archive/`.
 - [`docs/REFACTOR-SURVEY.md`](docs/REFACTOR-SURVEY.md): the 2026-09-27 survey: instance tree, requires, remote call sites, secrets check.
 
