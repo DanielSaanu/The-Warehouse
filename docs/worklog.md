@@ -33,3 +33,6 @@ paid for. The detail belongs in commits and the docs; this is the timeline.
 - 2026-10-05 · `dev` (heavy, H7 resolved): Danzo approved the part 4 plan, all ten questions as recommended; the
   phase 0 Track B slice is un-parked (server README). Goals file `docs/qa/rung3-part4-p0-room.md`. Phase 0's code
   move was NOT made: the edit to `Sim.lua` was refused by the session's permission check, left for Danzo.
+- 2026-10-05 · `dev` (heavy): part 4 phase 0. `killEntity`'s two group halves moved verbatim to `Bands.carryKill` /
+  `Bands.lose`; `Sim.lua` 1255 → 1225 (ceiling kept at 1255 for phase 1), `Bands.lua` 194 → 233. Tree identical, tests +
+  lint green; Studio (DevMode): band broke at 3 of 4 lost, squad laden at 9 turned home and banked, band refilled.

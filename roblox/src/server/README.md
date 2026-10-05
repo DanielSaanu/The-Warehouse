@@ -83,7 +83,8 @@ Read this first. Update it in the same commit as any move. Sizes are line counts
 - [ ] **B1 (rest)** the calamity half of `Calendar`. Members as `{ player = userId }` is part 4, not here.
 - [ ] **B2** `Bodies`, `Brains`, `Fighting`. **B3** name the owners (R2/R3). **B4** split `WorldGen.lua`.
 
-- [ ] **Part 4 phase 0 (un-parked by Danzo, 2026-10-05, H7 Q4):** move "what a fight does to a group" (`killEntity`'s
+- [x] **Part 4 phase 0 (un-parked by Danzo, 2026-10-05, H7 Q4; built 2026-10-05, `Sim.lua` 1255 → 1225, ceiling kept at
+      1255 until phase 1 lands; no QA loop yet):** move "what a fight does to a group" (`killEntity`'s
       two group halves) verbatim from `Sim.lua` into `Bands.lua`, so Bands is the one writer of `groups{}` (R2). Only
       this slice: B2, B3 and B4 stay parked. Plan: `docs/plans/rung3-part4-belonging.md`; goals `docs/qa/rung3-part4-p0-room.md`.
 

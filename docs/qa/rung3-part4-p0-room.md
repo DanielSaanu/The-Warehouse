@@ -42,8 +42,8 @@ Everything in part 4 phases 1–4: riders, the ask, pay, barks. The rest of Trac
 - `groupStep` still writes `g.target`, `g.aggroUntil` and `g.leader` from Sim. It is a group's brain (B2), not
   "what a fight does to a group", and the plan leaves it parked.
 - `hitEntity` still sets `g.target` when a player strikes a member (`Sim.lua`, the aggro line). Same reason.
-- The ceiling in `test/structure.test.js`: the ratchet may only shrink. If it is lowered to the new line count,
-  phase 1 has no room again. The builder's note in the commit says what was chosen and why.
+- The ceiling in `test/structure.test.js` stays at 1255 for now (Danzo, 2026-10-05): `Sim.lua` is 1225, and the 30
+  lines are phase 1's room. It is lowered to the real count after phase 1 lands. Not a missed ratchet.
 
 ## Useful Debug commands
 

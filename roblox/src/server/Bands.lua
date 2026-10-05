@@ -3,9 +3,10 @@
 -- route (derived from `from`/`to`, never saved) and a position along it. Materialised - a player is near - its
 -- members are entities walking the route behind a leader; collapsed, the record's `pos` just advances.
 -- Owns: `S.groups` rows - making them (init), their transient half (scratch), bodies in and out (materialise,
--- collapse), the 1 Hz decision of which (tick), and the server's side of turning for home (turn).
--- Does NOT move a collapsed group (shared/Tick.groups: pure, shared with catch-up), steer a materialised one
--- (Sim's groupStep), or decide what a fight does to a group (Sim's killEntity). Carved verbatim out of Sim.lua.
+-- collapse), the 1 Hz decision of which (tick), the server's side of turning for home (turn), and what a fight does
+-- to a group (carryKill, lose: called from Sim's killEntity, rung 3 part 4 phase 0).
+-- Does NOT move a collapsed group (shared/Tick.groups: pure, shared with catch-up) or steer a materialised one
+-- (Sim's groupStep). Carved verbatim out of Sim.lua.
 -- Bound, not required, for the entity constructors, which still live in Sim (B2 moves them to Bodies).
 --   Bands.init()                                 -- a new world: the three groups
 --   local p = Bands.pos(g)                       -- where it is, bodies or not
@@ -15,6 +16,7 @@ local Config = require(Shared:WaitForChild("Config"))
 local WorldGen = require(Shared:WaitForChild("WorldGen"))
 local Names = require(Shared:WaitForChild("Names"))
 local Tick = require(Shared:WaitForChild("Tick"))
+local Combat = require(Shared:WaitForChild("Combat"))
 local Map = require(script.Parent:WaitForChild("Map"))
 local State = require(script.Parent:WaitForChild("State"))
 local Calendar = require(script.Parent:WaitForChild("Calendar"))
@@ -116,6 +118,43 @@ function Bands.carryTotal(g): number
 	local n = 0
 	for _, v in pairs(g.carry) do n += v end
 	return n
+end
+
+--- What an NPC member's kill adds to its group (moved verbatim from Sim's killEntity, part 4 phase 0): the loot
+--- goes into the carry, and a laden group turns for home.
+function Bands.carryKill(g, e)
+	for item, n in pairs(Combat.loot(e.kind, rng)) do
+		if item ~= "coin" then g.carry[item] = (g.carry[item] or 0) + n end
+	end
+	-- laden: turn for home rather than keep killing
+	if g.dir == 1 and Bands.carryTotal(g) >= Config.SQUAD_LOAD then
+		g.dir, g.pauseUntil = -1, 0
+	end
+end
+
+--- What a member's death does to its group (moved verbatim from Sim's killEntity, part 4 phase 0).
+function Bands.lose(e)
+	local g = S.groups[e.group]
+	if g then
+		-- the record loses a member; the tribe replaces them at home after a while
+		for i, m in ipairs(g.members) do if m.person == e.person then table.remove(g.members, i) break end end
+		local now = Calendar.now()
+		g.replenishAt = now + Config.DAY_SECONDS
+		-- A pack breaks when it has lost more than half, not the moment it loses one (Danzo, 2026-09-18:
+		-- "if u encounter a bandit group and kill more than half the rest run away like with wolf packs but
+		-- they shouldnt abort instantly once one dies"). Until then they fight, and they are still
+		-- individually capable of breaking at their own hp threshold.
+		if g.kind == "band" and #g.members * 2 < (g.fullSize or #g.members) and now >= (g.retreatUntil or 0) then
+			g.retreatUntil = now + Config.BAND_RETREAT
+			g.target, g.aggroUntil, g.pauseUntil = nil, 0, 0
+			g.dir = -1
+			for id in pairs(g.entities) do
+				local m = S.entities[id]
+				if m and m ~= e then m.state, m.target, m.npcTarget, m.windupAt = "idle", nil, nil, nil end
+			end
+			print("[Sim] the band has broken off and is running for home")
+		end
+	end
 end
 
 --- What the pure group tick reports, for the server log.

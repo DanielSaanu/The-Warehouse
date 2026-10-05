@@ -409,15 +409,7 @@ local function killEntity(e, killer, ctx, byEntity)
 		local now = Calendar.now()
 		byEntity.fedUntil = now + (if byEntity.species then Config.FED_SECONDS else Config.FED_HUNTER)
 		local g = byEntity.group and S.groups[byEntity.group]
-		if g then
-			for item, n in pairs(Combat.loot(e.kind, rng)) do
-				if item ~= "coin" then g.carry[item] = (g.carry[item] or 0) + n end
-			end
-			-- laden: turn for home rather than keep killing
-			if g.dir == 1 and Bands.carryTotal(g) >= Config.SQUAD_LOAD then
-				g.dir, g.pauseUntil = -1, 0
-			end
-		end
+		if g then Bands.carryKill(g, e) end
 	end
 	-- who was close enough to see the fatal blow (Sides.witnessed stashed it on the victim). Nobody means nobody:
 	-- no rumour, no standing change anywhere, and no name on the headline below (docs/RUNG3.md part 3).
@@ -456,29 +448,7 @@ local function killEntity(e, killer, ctx, byEntity)
 		local r = S.regions.list[e.region]
 		r[e.species] = math.max(0, r[e.species] - 1)
 	end
-	if e.group then
-		local g = S.groups[e.group]
-		if g then
-			-- the record loses a member; the tribe replaces them at home after a while
-			for i, m in ipairs(g.members) do if m.person == e.person then table.remove(g.members, i) break end end
-			local now = Calendar.now()
-			g.replenishAt = now + Config.DAY_SECONDS
-			-- A pack breaks when it has lost more than half, not the moment it loses one (Danzo, 2026-09-18:
-			-- "if u encounter a bandit group and kill more than half the rest run away like with wolf packs but
-			-- they shouldnt abort instantly once one dies"). Until then they fight, and they are still
-			-- individually capable of breaking at their own hp threshold.
-			if g.kind == "band" and #g.members * 2 < (g.fullSize or #g.members) and now >= (g.retreatUntil or 0) then
-				g.retreatUntil = now + Config.BAND_RETREAT
-				g.target, g.aggroUntil, g.pauseUntil = nil, 0, 0
-				g.dir = -1
-				for id in pairs(g.entities) do
-					local m = S.entities[id]
-					if m and m ~= e then m.state, m.target, m.npcTarget, m.windupAt = "idle", nil, nil, nil end
-				end
-				print("[Sim] the band has broken off and is running for home")
-			end
-		end
-	end
+	if e.group then Bands.lose(e) end
 	local t = e.tribe and S.tribes[e.tribe]
 	if t then
 		if t.guard == e.id then t.guard = nil end
