@@ -40,7 +40,7 @@
   villages, the NPC count and what NPCs do will all grow a lot, and every system must scale with it. **To do after the
   gossip QA loop:** agents go through each `docs/systems/*.md` and add an "Expansion: deficits at scale" section
   covering hard caps, linear scans, fixed ids, byte budgets and per-tick costs, each with file:line. Gossip's list
-  comes from QA round 3.
+  comes from QA round 3. **Done 2026-10-05** (branch `docs/expansion-notes`): all nine system docs have the section.
 
 This file is the shared scratchpad. Type here in the UI (bottom pane) or in any editor. Claude reads it 
 the start of a session and works through it. Cross things out or delete them when done.

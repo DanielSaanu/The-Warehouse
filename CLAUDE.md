@@ -69,7 +69,7 @@ the files the task needs. For game code, start at `docs/systems/README.md`.
   lands in `library/index.json`; keep CC-BY attributions when shipping.
 - **Ship** with `node bin/warehouse.js roblox build` (add `--upload` only if the human has set up `.env`).
   This regenerates `roblox/src/shared/Sprites.lua`. Never hand-edit that file.
-- **Game code** lives in `roblox/src/`, synced to Studio by Rojo. `Grid.lua` is the tile renderer,
+- **Game code** lives in `roblox/src/`, synced to Studio by Rojo. `client/Viewport.lua` is the tile renderer,
   `Client.client.lua` the first playable, `Server.server.lua` the world clock.
 
 ## Conventions
