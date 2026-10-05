@@ -27,9 +27,32 @@ Resolution (added by the heavy agent under the same entry):
 
 ## Open
 
-*(none)*
+### H9 — A materialised leader stalls in a crowd while its `pos` walks on without it — 2026-10-05 — OPEN
+- **Trigger:** 4 (Studio behaviour the session could not fix in one honest attempt), 2 (`shared/Tick.lua`), 6 (Sim's AI)
+- **Doc:** `docs/qa/rung3-part4-p1-ride.md` "Known limitations"; `docs/systems/population.md`
+- **Observed (Studio, DevMode, 2026-10-05, phase 1 play-through):** the caravan master boxed in at Glenworth's and
+  Kenstow's squares (own guards, villagers, the merchant, a player beside him) stood still for 60–110 s while
+  `group caravan` showed `pos` running 1 → 56 (and once 56 → 1). The squad's four hunters stood on `hunt` toward a
+  boar 4 tiles away for minutes (`e107`, unreachable), its pos oscillating 27 ↔ 29. Leaving the squad did not unjam it,
+  so it is not Ride. Cause read from the code: `Tick.leaderStep` sets `g.pos = nextI` when a path is PLANNED, and
+  `followPath` drops a path after 4 blocked steps, so each think plans again and `pos` advances with no step (S6).
+- **Evidence:** I tried "advance `pos` only when beside the tile" with a test that failed without it; in Studio the
+  boxed leader then stood still for 90 s instead of drifting (my harness stood beside it, so this is confounded, → T5).
+  The drift may be what eventually un-sticks a boxed leader, so I reverted it rather than ship an unproven change.
+- **Heavy agent's read:** the real fix is in the body, not the record: `followPath`'s side-step only takes a strictly
+  closer tile, so a leader ringed by its own followers (who keep within 2 tiles) never gets out. That is Sim's AI
+  (Track B2, parked), and Sim has 0 lines of headroom. It also makes part 4 rides flaky to test (Debug `arrive`).
+- **Decision needed:** whether to fix it now (where: a Sim carve of `groupStep`/`followPath`, i.e. more of B2) or
+  after part 4; and whether the record should stop on a planned path once the body can move.
+- **Blocked routine work:** nothing hard-blocked; a full Glenworth → Kenstow ride in Studio is luck until fixed.
 
 ## Resolved
+
+### H8 — Build rung 3 part 4 phase 1: ask, ride, arrive — 2026-10-05 — RESOLVED
+- **Resolved 2026-10-05 (heavy):** built: `shared/Belong.lua` (pure, `belong.test.luau`), `server/Ride.lua`, hooks in
+  Sim (+3, ceiling 1228), Interact, Sides, Bands, Talk, Reputation (`rode`), Debug `arrive`; no save change; a taken
+  end tile now arrives (`Tick.leaderStep`). Studio saw all but Kenstow hearing it (test only; the leader stalled, H9).
+  → `docs/plans/rung3-part4-belonging.md` phase 1, `docs/qa/rung3-part4-p1-ride.md`, ARCHITECTURE §13, learnings T5.
 
 ### H7 — Rung 3 part 4, belonging: the plan (join a group, know what to do, what groups do) — 2026-10-05 — RESOLVED
 - **Resolved 2026-10-05 (heavy):** plan written and approved by Danzo, all ten questions as recommended (a disconnect is

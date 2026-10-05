@@ -117,6 +117,12 @@ module under test instead. *(2026-09-23, rung 3 part 3.)*
 the world is built. A cosmetic label is never worth an error: look it up in a `pcall` and word the line the plain
 way if it fails. *(2026-09-23, rung 3 part 3 - the standing-change line.)*
 
+**T5 — A Studio test harness that moves the player is part of the experiment: put it where a player would
+stand.** Following the caravan by teleporting onto the tile beside the leader parked a body on the leader's next
+step, and the leader stalled; read as "the caravan is broken" it cost three Play restarts. Follow from BEHIND
+(the side the route came from), at a distance, and before blaming the code, move the harness away and see whether
+the fault goes with it. *(2026-10-05, handoff H8.)*
+
 **T1 — The line ceiling in `test/structure.test.js` is a design input, not a lint you notice at the end.**
 `ALLOWED` is a ratchet that *may only shrink*, and `server/Sim.lua` sits at 1282 against 1285. So "add it to Sim"
 is not available: new server behaviour goes in a new module, and the cheapest way to pay for it is to move an

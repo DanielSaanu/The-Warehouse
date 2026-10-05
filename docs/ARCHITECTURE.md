@@ -38,6 +38,7 @@ citation still lands on this hub (→ learnings G3).
 | §10 | Where the build departed from the plan (Track A) | — | [architecture/as-built.md](architecture/as-built.md) |
 | §11 | Rung 3 part 3: gossip, and what it does to this document | — | [architecture/as-built.md](architecture/as-built.md) |
 | §12 | Development mode: `Workspace.DevMode`, a save that is never touched (H4) | — | [architecture/as-built.md](architecture/as-built.md) |
+| §13 | Rung 3 part 4: a rider is scratch (`g.riders`), not a `members` row (H7/H8) | — | [architecture/as-built.md](architecture/as-built.md) |
 
 **§9's six decisions, by name, so nobody undoes one by accident** (the reasons are in the file): 1. ids stay
 numeric and `Save` writes arrays of rows; 2. `mapDiff` is deleted; 3. one clock (`gameSeconds`); 4. Tracks A and B;

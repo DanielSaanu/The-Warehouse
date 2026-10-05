@@ -26,6 +26,8 @@ local Map = require(script.Parent:WaitForChild("Map"))
 local Villagers = require(script.Parent:WaitForChild("Villagers"))
 local Standing = require(script.Parent:WaitForChild("Standing"))
 local Dev = require(script.Parent:WaitForChild("Dev"))
+local Bands = require(script.Parent:WaitForChild("Bands"))
+local Ride = require(script.Parent:WaitForChild("Ride"))
 
 local Debug = {}
 
@@ -202,6 +204,13 @@ function Debug.run(cmd: string, ...): any
 		return ("%s at %d,%d (route %d,%d) dir %d pos %d/%d%s carrying[%s]%s members[%s]"):format(g.id, p.x, p.y, rt.x, rt.y, g.dir, g.pos, #g.route,
 			if g.materialised then " visible" else "", table.concat(carry, ", "),
 			if Calendar.now() < (g.retreatUntil or 0) then " RETREATING" else "", table.concat(who, ", "))
+	elseif cmd == "arrive" then
+		-- part 4: the group reaches the end it is walking to NOW, through the real path (Ride pays, then Bands.turn)
+		local g = S.groups[args[1] or "caravan"]
+		if not g then return "no such group" end
+		Ride.arrive(g)
+		Bands.turn(g)
+		return ("%s turned, dir %d"):format(g.id, g.dir)
 	elseif cmd == "summon" and ps then
 		-- bring a group next to the player
 		local g = S.groups[args[1] or "band"]

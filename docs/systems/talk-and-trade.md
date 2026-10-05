@@ -12,6 +12,9 @@ and coin; prices move with stock and with standing. A goal line under the clock 
   inventory.
 - `server/Goals.lua` holds the goal line. It stops for good at the first calamity.
 - `server/Tiles.lua` handles camps and bags, and it is the only runtime writer of the map's object layer.
+- `server/Ride.lua` answers a group leader's `ride` / `leave` topics (rung 3 part 4). The caravan master and the
+  squad's leader offer them; the band does from phase 3. The answer is `Belong.ask` (pure); the lines are
+  `Talk.joinYes` / `joinNo` / `arrival` / `leave`. Labels travel in `Talk.TOPIC_LABELS`, so the client is unchanged.
 
 **Tunables:** `CAMPFIRE_HOURS`, `BAG_PRIVATE_SECONDS` and `BAG_LIFETIME_SECONDS` in Config. Item stats are in
 `Items.lua`.

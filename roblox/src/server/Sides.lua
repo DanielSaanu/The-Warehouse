@@ -267,6 +267,7 @@ end
 --- Does this armed person go for that player on sight? (Standing hostility, not taking a side in a fight.)
 function Sides.hostileToPlayer(e, ps): boolean
 	if not Sides.canFight(e) or not e.tribe then return false end
+	if ps.ride ~= nil and ps.ride == e.group then return false end -- part 4: your own group never goes for you
 	return Witness.hostileOnSight(seerOf(e), playerParty(ps, e))
 end
 

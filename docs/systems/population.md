@@ -15,6 +15,9 @@ walk routes between villages. Wildlife is counts per region: grass, deer, boar a
   walking the route. Collapsed, only `pos` advances (`Tick.groups`). Materialised, the leader's route rule is
   `Tick.leaderStep` (pure, tested): `pos` moves only when the bodies do, and a leader that cannot get back to the
   road is reported "lost" and the group collapses (H6).
+- `server/Ride.lua` + `shared/Belong.lua` (rung 3 part 4): a player rides with a group as SCRATCH (`g.riders`,
+  `ps.ride`), never as a `members` row and never saved (learnings S7, ARCHITECTURE §13). The leader waits up to
+  `Belong.WAIT` s a leg for a rider more than `Belong.LAG` tiles behind; a rider's kill goods go into `g.carry`.
 
 **Tunables:** `MATERIALISE_RANGE`, `COLLAPSE_RANGE`, `SQUAD_LOAD`, `FED_SECONDS`, `FED_HUNTER`, `BAND_RETREAT`,
 `GRACE_DAYS` and `CAMPFIRE_RADIUS` in Config. Size tiers are in DESIGN §5.
@@ -25,6 +28,8 @@ walk routes between villages. Wildlife is counts per region: grass, deer, boar a
 - Records must finish their work whether or not anyone is watching: a birth raises the population even if the
   mother has no body right now.
 - `homeTile` and `workTile` are scratch on the entity, never saved.
+- Anything new that joins a group: check every reader of `g.members` first (materialise, the daily refill, the
+  band's break all count it as people) (→ S7).
 
 ## Expansion: deficits at scale
 

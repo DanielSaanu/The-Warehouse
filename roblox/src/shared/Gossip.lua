@@ -36,7 +36,7 @@ Gossip.onChange = nil :: ((any, string, number, number) -> ())?
 
 --- Events that become a story somebody carries home. Everything else - a slap, a trade, a night's rest - is instant
 --- and local: a -1 slap is not news, and one long fight's blows would fill the ring on their own.
-Gossip.TRAVELS = { kill = true, mercy = true, escape = true, gift = true } :: { [string]: boolean }
+Gossip.TRAVELS = { kill = true, mercy = true, escape = true, gift = true, rode = true } :: { [string]: boolean }
 
 -- ---------- holders ----------
 function Gossip.villageKey(tribeIdx: number): string

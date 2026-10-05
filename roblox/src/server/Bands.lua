@@ -67,6 +67,7 @@ end
 function Bands.scratch(g)
 	g.entities, g.leader, g.trail, g.materialised = {}, nil, {}, false
 	g.target, g.aggroUntil, g.lastSeen = nil, 0, nil
+	g.riders, g.walked, g.lastPos, g.waitLeft, g.holding = {}, 0, g.pos, 0, false -- part 4: players riding along (Ride.lua)
 end
 
 local function makeGroup(id: string, kind: string, tribeIdx: number, from: WorldGen.Pos, to: WorldGen.Pos, specs, pauses)
@@ -125,7 +126,13 @@ end
 --- What an NPC member's kill adds to its group (moved verbatim from Sim's killEntity, part 4 phase 0): the loot
 --- goes into the carry, and a laden group turns for home.
 function Bands.carryKill(g, e)
-	for item, n in pairs(Combat.loot(e.kind, rng)) do
+	Bands.addCarry(g, Combat.loot(e.kind, rng))
+end
+
+--- Goods into the group's pot (the coin in `loot` is not the group's: whoever took it keeps it). A rider's kill
+--- comes here too (server/Ride.lua): the same pot and the same laden rule an NPC member's kill meets.
+function Bands.addCarry(g, loot)
+	for item, n in pairs(loot) do
 		if item ~= "coin" then g.carry[item] = (g.carry[item] or 0) + n end
 	end
 	-- laden: turn for home rather than keep killing

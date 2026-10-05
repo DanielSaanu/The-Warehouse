@@ -38,3 +38,7 @@ paid for. The detail belongs in commits and the docs; this is the timeline.
   lint green; Studio (DevMode): band broke at 3 of 4 lost, squad laden at 9 turned home and banked, band refilled.
 - 2026-10-05 · `dev`: QA loop on part 4 phase 0, one round, **9/10** (`docs/qa/rung3-part4-p0-room-summary.md`). Fixed
   the server README sizes and the Bands row, Bands' header lists `carryKill`/`lose`, data-model notes Restore's bulk write.
+- 2026-10-05 · `dev` (heavy, H8): part 4 phase 1, ask / ride / arrive. `shared/Belong.lua` (pure, 105 lines,
+  `test/luau/belong.test.luau`), `server/Ride.lua` (249), hooks in Sim (+3, ceiling 1255 → 1228), Interact, Sides, Bands,
+  Talk, Reputation (`rode`), Config `RIDERS_MAX`, Debug `arrive`; no save change. A leader beside a taken end tile
+  now turns. Studio: ask/yes/no/cooldown, wait and face, −3 for walking off, pot, 7-coin pay. Leader stall → H9. T5.

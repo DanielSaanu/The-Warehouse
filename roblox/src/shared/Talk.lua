@@ -166,6 +166,53 @@ function Talk.merchant(ctx: Context): string
 	return ("Buying and selling. We're short of %s, if you've got it."):format(ctx.scarce)
 end
 
+-- ---------- riding along (rung 3 part 4, docs/plans/rung3-part4-belonging.md) ----------
+-- the leader's two topics; their labels ride in TOPIC_LABELS (the client shows whatever labels the server sends)
+Talk.TOPIC_LABELS.ride, Talk.TOPIC_LABELS.leave = "Ask to ride along", "Tell them you're leaving"
+
+export type RideContext = {
+	dest: string,     -- where the group is walking now: a village name, or "the woods" for the squad going out
+	home: string,     -- the group's own village
+	scarce: string?,  -- what the village just reached is short of (the onward pointer)
+	pay: number?,     -- coin paid at this arrival
+	heard: boolean?,  -- did the village hear you rode with them
+	reason: string?,  -- the detail of a "no" (the victim kind they heard about)
+	homeward: boolean?, -- walking back to their own village (the squad's line differs)
+}
+
+--- The yes is the tutorial: where, what you do, what you get, in one breath (PRINCIPLES 1, the first minute).
+function Talk.joinYes(kind: string, c: RideContext): string
+	if kind == "squad" and c.homeward then return ("Heading home to %s with the kill. Keep the wolves off it. You get a cut."):format(c.dest) end
+	if kind == "squad" then return ("We're out for deer in %s. Hit what we hit. Hides go home, you get a cut."):format(c.dest) end
+	if kind == "band" then return "We wait for the farm road. When we go, you go. Loot's split at camp." end
+	return ("Walk with us to %s. Keep bandits off the carts. Your share's paid when we get there."):format(c.dest)
+end
+
+--- The no, with its reason. The reason is the world talking: what they heard, what you are to them.
+function Talk.joinNo(answer: string, c: RideContext): string
+	if answer == "busy" then return "Not now." end
+	if answer == "asked" then return "I gave you my answer." end
+	if answer == "full" then return "We're full up." end
+	if answer == "grudge" then return "Not after what you did. Not with my people." end
+	if answer == "heard" then return ("I heard about the %s. No."):format(c.reason or "killing") end
+	if answer == "snub" then return "You smell of farm. Walk on." end
+	return ("Earn it first. Folk in %s don't know you well enough yet."):format(c.home)
+end
+
+--- The arrival line: the pay, the news, and one pointer onward (the hour-twenty compass at the minute it is needed).
+function Talk.arrival(c: RideContext): string
+	local pay = if (c.pay or 0) > 0 then ("Here's your share, %d coin. "):format(c.pay :: number) else "No share this time. "
+	local heard = if c.heard then ("%s will hear you rode with us. "):format(c.dest) else ""
+	local onward = if c.scarce then ("They're short of %s here."):format(c.scarce) else ""
+	return pay .. heard .. onward
+end
+
+--- Leaving, said by the leader. Never a failure notice.
+function Talk.leave(grade: string): string
+	if grade == "clean" then return "Ride with us again." end
+	return "Suit yourself."
+end
+
 --- Squad and band members, one line each. The band's line is what you hear before they draw.
 function Talk.groupLine(kind: string, ctx: Context): string
 	if kind == "hunter" then return "Squad's out for deer. Walk with us if you like, but don't spook the game." end

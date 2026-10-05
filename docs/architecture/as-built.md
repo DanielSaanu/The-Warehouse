@@ -1,4 +1,4 @@
-# Architecture §10–§12: where the build departed, rung 3 part 3, and dev mode
+# Architecture §10–§13: where the build departed, rung 3 part 3, dev mode, and riders
 
 Part of [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md), which maps every § and rule ID to its file. Moved here verbatim on
 2026-09-27 (handoff H2). A bare "§n" below means that section of ARCHITECTURE.md, wherever it now lives.
@@ -112,3 +112,23 @@ be NO-SAVE and nothing else. The save format is untouched (`Save.VERSION` 4, `PL
 still exists and still forces NO-SAVE everywhere. Verified in Studio 2026-10-05: not set → `[Dev] DEV mode ON`,
 NO-SAVE, a day-1 world, Debug `state` and `savetest` work, the notice reaches the client; unticked → `[Dev] dev mode
 off`, the real world loaded (day 52), no `ServerStorage.Debug`, the `Debug` attribute ignored, no notice.
+
+## 13. Rung 3 part 4: a player riding with a group is scratch, not a member (H7/H8, 2026-10-05)
+
+**The departure.** §6 B1 planned a joining player as one more `g.members` row, `{ player = userId }`. Phase 1 does not
+do that. `members` is saved and three rules read it as PEOPLE: `Bands.materialise` makes a body per row,
+`Tick.daily` refills to `fullSize` by counting rows, and the band breaks at `#members * 2 < fullSize`. A player row
+would have spawned an NPC double, blocked replacements, skewed the break, and stayed in the world key after the player
+left (learnings S7).
+
+**What was built instead.** `g.riders[userId]` (`rode`, `legs`, `farSince`) and `ps.ride = groupId`, set up in
+`Bands.scratch` beside `g.entities` and owned by `server/Ride.lua`. Never encoded: `Save.VERSION` stays 4 and
+`PLAYER_VERSION` 1 (Danzo, H7 Q3), and `belong.test.luau` asserts a ridden group encodes exactly as an unridden one.
+What must outlast a session already does: the group's opinion of you is `ps.rep[groupId]` (holder-keyed since part
+3), and the ride itself becomes a `rode` rumour, a new value in the ring's existing `event` field.
+
+**Owners (R2).** `Ride` owns `g.riders`, `g.walked`, `g.lastPos`, `g.waitLeft`, `g.holding`, `ps.ride`, `ps.asked`.
+A rider's kill goods reach `g.carry` through `Bands.addCarry`, so Bands stays the one writer of the saved group
+fields. The rules are pure in `shared/Belong.lua`.
+
+**None of §9's six decisions is touched.**

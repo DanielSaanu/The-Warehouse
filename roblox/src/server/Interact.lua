@@ -20,6 +20,7 @@ local Sim = require(script.Parent:WaitForChild("Sim"))
 local Map = require(script.Parent:WaitForChild("Map"))
 local State = require(script.Parent:WaitForChild("State"))
 local Standing = require(script.Parent:WaitForChild("Standing"))
+local Ride = require(script.Parent:WaitForChild("Ride"))
 
 local Interact = {}
 local S = Sim.state
@@ -122,11 +123,13 @@ local function talkTo(ps, e)
 		openTrade(ps, tribeIdx, Talk.merchant(ctx))
 	elseif e.role == "caravan_master" then
 		if not Reputation.willTalk(rep) then dialogue(ps, e.label, { Talk.refusal(ctx) }) return end
-		dialogue(ps, e.name .. ", caravan master", Talk.caravanMaster(ctx), nil, "caravan_master")
+		dialogue(ps, e.name .. ", caravan master", Talk.caravanMaster(ctx), Ride.choices(ps, e), "caravan_master")
+		ps.dialogue.e = e.id -- part 4: the leader the "ride" / "leave" topics go to
 	elseif e.group then
 		if e.kind == "bandit" and rep < -10 then dialogue(ps, "bandit", { Talk.groupLine("bandit", ctx) }) return end
 		if not Reputation.willTalk(rep) then dialogue(ps, e.label, { Talk.refusal(ctx) }) return end
-		dialogue(ps, e.label, { Talk.groupLine(e.kind, ctx) })
+		dialogue(ps, e.label, { Talk.groupLine(e.kind, ctx) }, Ride.choices(ps, e), e.kind)
+		ps.dialogue.e = e.id
 	elseif e.kind == "baby" then
 		Sim.text(ps, ("%s. Asleep. Best leave it that way."):format(e.first or "The baby"))
 	elseif e.species then
@@ -273,6 +276,12 @@ end
 
 --- A guard topic.
 function Interact.topic(ps, topic: string)
+	-- part 4: a group leader's "ride" and "leave" (server/Ride.lua decides; the window just shows the answer)
+	if (topic == "ride" or topic == "leave") and ps.dialogue and ps.dialogue.e then
+		local e = S.entities[ps.dialogue.e]
+		if e then dialogue(ps, ps.dialogue.with, Ride.topic(ps, topic, e), nil, ps.dialogue.role) end
+		return
+	end
 	if not ps.dialogue or ps.dialogue.role ~= "guard" then return end
 	if not table.find(Talk.TOPICS, topic) then return end
 	-- the guard you are talking to, whatever tile you stand on

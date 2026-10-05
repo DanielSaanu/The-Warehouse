@@ -195,6 +195,14 @@ Each is one branch, one goals file in `docs/qa/`, one QA loop. Luau gates every 
   get ambushed; arrive, get paid, and see Kenstow's standing line go up. Ask the squad as a stranger and get a
   "no" with a reason. Walk off mid-route: one line, a −3 with the caravan, no failure notice.
 - Goals file: `docs/qa/rung3-part4-p1-ride.md`.
+- **Built 2026-10-05 (H8)**, `shared/Belong.lua` + `server/Ride.lua`, `Sim.lua` +3 lines (ceiling now 1228).
+  Small calls the plan left open, made the cheap way: a yes does not spend the day's ask (only a no does); dying
+  ends a ride like a disconnect (no cost); the clean-leave plus needs a leg ridden (no farming it by joining and
+  leaving at an end); a rider's coin from a kill stays theirs, only goods go to the pot. Also fixed: a leader
+  beside a TAKEN end tile now arrives (`Tick.leaderStep`; the squad stood on Kenstow's spawn and the caravan never
+  turned). Studio: ask, yes, no with a reason, the day's ask, the wait and face, walking off (−3), the pot and the
+  7-coin pay all seen; Kenstow hearing it is covered by test only, because the leader stalled outside the village
+  (an older pathing fault, handoff H9).
 
 **Phase 2: the obvious layer**
 - What: `Barks.lua` with the first eight facts and the fade; `whatnow` on every member; road talk lines.
