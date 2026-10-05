@@ -53,6 +53,12 @@ do
 	assert(Reputation.word(-60) == "hostile" and Reputation.word(-20) == "wary" and Reputation.word(0) == "neutral" and Reputation.word(30) == "welcome" and Reputation.word(80) == "family", "words")
 	local rep = Reputation.newTable()
 	assert(Reputation.word(rep.farmer) == "welcome" and Reputation.word(rep.plunderer) == "wary", "starting standing")
+	-- rung 3 part 3: the table is keyed by HOLDER now, and each holder is seeded from its own tribe type's START.
+	-- (The no-argument form above is still what a v2 player key holds, which is why it kept working.)
+	local held = Reputation.newTable({ v1 = "farmer", v2 = "hunter", v3 = "plunderer", squad = "hunter" })
+	assert(held.v1 == Reputation.START.farmer and held.v2 == Reputation.START.hunter, "villages seeded from their tribe type")
+	assert(held.v3 == Reputation.START.plunderer and held.squad == Reputation.START.hunter, "a group is seeded like its tribe")
+	assert(held.farmer == nil and held.hunter == nil, "and the old tribe-type keys are gone")
 	Reputation.apply(rep, Reputation.deltas("kill", "bandit", "plunderer"))
 	assert(rep.plunderer == -35 and rep.farmer == 25 and rep.hunter == 5, "killing a bandit: plunderers down, others up")
 	Reputation.apply(rep, Reputation.deltas("kill", "villager", "farmer"))

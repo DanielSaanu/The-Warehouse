@@ -18,11 +18,13 @@ local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local Save = require(Shared:WaitForChild("Save"))
 local Headlines = require(Shared:WaitForChild("Headlines"))
+local Gossip = require(Shared:WaitForChild("Gossip"))
 local Calendar = require(script.Parent:WaitForChild("Calendar"))
 local Restore = require(script.Parent:WaitForChild("Restore"))
 local Persistence = require(script.Parent:WaitForChild("Persistence"))
 local Map = require(script.Parent:WaitForChild("Map"))
 local Villagers = require(script.Parent:WaitForChild("Villagers"))
+local Standing = require(script.Parent:WaitForChild("Standing"))
 
 local Debug = {}
 
@@ -72,9 +74,39 @@ function Debug.run(cmd: string, ...): any
 		return "ok"
 	elseif cmd == "rep" and ps then
 		local t = S.tribes[args[1] or 1]
-		ps.rep[t.tribeType] = args[2] or 0
+		ps.rep[Gossip.villageKey(args[1] or 1)] = args[2] or 0
 		Sim.hud(ps)
-		return t.tribeType .. " = " .. tostring(ps.rep[t.tribeType])
+		return t.tribeType .. " = " .. tostring(Standing.tribe(ps, args[1] or 1))
+	elseif cmd == "gossip" then
+		-- the ring, and who knows what. Part 3 cannot be QA'd without being able to see this.
+		local out = { ("%d rumours in flight, next id %d"):format(#(S.rumours or {}), (S.meta.nextRumourId or 0) + 1) }
+		for _, r in ipairs(S.rumours or {}) do
+			table.insert(out, ("  #%d day %d %s%s x%.2f%s"):format(r.id, r.day, r.event,
+				if r.victim then " " .. r.victim else "", r.mult or 1,
+				if r.fleeing then " (fleeing)" elseif r.aggressor then " (they drew first)" else ""))
+		end
+		for _, h in ipairs(Gossip.holders(S)) do
+			local who = h.key
+			local i = Gossip.tribeOf(S, h.key)
+			if i and S.tribes[i] then who = ("%s [%s]"):format(h.key, Map.village(S.tribes[i].villageId).name) end
+			local known = {}
+			for n, id in ipairs(h.knows) do table.insert(known, ("#%d@%d"):format(id, h.hops[n] or 0)) end -- id@hops here
+			table.insert(out, ("  %s knows %s"):format(who, if #known == 0 then "nothing" else table.concat(known, ", ")))
+		end
+		local owedTo = 0
+		for _ in pairs(S.owed or {}) do owedTo += 1 end
+		table.insert(out, ("  owed to %d absent player(s)"):format(owedTo))
+		if ps then
+			local parts = {}
+			for holder, v in pairs(ps.rep) do table.insert(parts, ("%s %d"):format(holder, math.floor(v))) end
+			table.sort(parts)
+			table.insert(out, "  you: " .. table.concat(parts, ", "))
+			local g = {}
+			for tribeType, v in pairs(ps.grudge or {}) do table.insert(g, ("%s %.2f"):format(tribeType, v)) end
+			table.sort(g)
+			table.insert(out, "  grudge: " .. (if #g == 0 then "none" else table.concat(g, ", ")))
+		end
+		return table.concat(out, "\n")
 	elseif cmd == "reload" then
 		-- save the world and load it straight back, in place: everything a restart would do except the DataStore.
 		-- `reload 3600` also sleeps an hour first (catch-up), the way a server that was down for an hour would.
@@ -164,7 +196,8 @@ function Debug.run(cmd: string, ...): any
 			local person = m.person and S.people.people[m.person]
 			table.insert(who, if person then ("%d %s %s%s"):format(person.id, person.first, person.last, if person.entity then " " .. person.entity else "") else "?" .. m.kind)
 		end
-		return ("%s at %d,%d dir %d pos %d/%d%s carrying[%s]%s members[%s]"):format(g.id, p.x, p.y, g.dir, g.pos, #g.route,
+		local rt = g.route[g.pos] or p -- the route tile `pos` names, beside where the leader really is (H6)
+		return ("%s at %d,%d (route %d,%d) dir %d pos %d/%d%s carrying[%s]%s members[%s]"):format(g.id, p.x, p.y, rt.x, rt.y, g.dir, g.pos, #g.route,
 			if g.materialised then " visible" else "", table.concat(carry, ", "),
 			if Calendar.now() < (g.retreatUntil or 0) then " RETREATING" else "", table.concat(who, ", "))
 	elseif cmd == "summon" and ps then

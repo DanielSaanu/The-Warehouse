@@ -25,11 +25,22 @@
   per tribe type: 18 / 15 / 14); **Track B restarted at Danzo's word** - `Bands.lua` carved, groups are made of named
   PEOPLE who stay the same people (save format v2, the old world reset by choice); strangers show a trade or nothing until
   met; the squad no longer walks through Wild's Rest. QA loop: 8 then **8.5** (`docs/qa/track-b1-summary.md`).
-- **Next, Danzo's call:** merge the stack to main, then **rung 3 part 3, gossip** - stable group members were the thing it
-  was waiting for. The rest of Track B (Calendar's calamity half, B2-B4) can wait. One small question is open in the QA
+- ~~**Next, Danzo's call:** merge the stack to main, then rung 3 part 3, gossip~~ **The stack is merged, and part 3 is
+  BUILT (2026-09-23, branch `rung3-part3-gossip`).** Reputation travels now: `ps.rep` is keyed by holder (village or
+  group) instead of tribe type, `shared/Gossip.lua` is the rule, `server/Standing.lua` the adapter, save v2 -> v3
+  upgraded in place. Danzo's real world migrated on load in Studio. **It has had no QA loop** - goals are written:
+  `/qa-loop docs/qa/rung3-part3.md`. The one thing left for Danzo is the play-through at the bottom of that file.
+  After part 3: part 4 (belonging) is what `GRUDGE_GROUP` is waiting for. The rest of Track B (Calendar's calamity half, B2-B4) can wait. One small question is open in the QA
   summary: how long a dropped bag should last (`Tiles.lua` says 6 in-game days, its comment says an hour).
 - ~~One decision waiting on Danzo: `Families.MAX_PEOPLE = 9`~~ **Settled 2026-09-21: the cap is per tribe type**
   (farmer 18, hunter 15, plunderer 14 - above every starting roster, farmers biggest). People are born again.
+- **2026-10-05, Danzo:** the project is in **DEVELOPMENT mode**. Danzo's own save, character and progression are
+  disposable. A switch is wanted for easy testing that turns off with one change for an ordinary-player test (handoff H4).
+- **2026-10-05, Danzo: the big expansion comes later.** Once the backbone systems are in, the map, the number of
+  villages, the NPC count and what NPCs do will all grow a lot, and every system must scale with it. **To do after the
+  gossip QA loop:** agents go through each `docs/systems/*.md` and add an "Expansion: deficits at scale" section
+  covering hard caps, linear scans, fixed ids, byte budgets and per-tick costs, each with file:line. Gossip's list
+  comes from QA round 3.
 
 This file is the shared scratchpad. Type here in the UI (bottom pane) or in any editor. Claude reads it 
 the start of a session and works through it. Cross things out or delete them when done.
@@ -156,5 +167,6 @@ Art:
 - [x] The food icon reads as a sponge. Make it a turkey leg or a loaf with a crust. (Turkey leg.)
 - [x] Rivers look like a blue carpet: water and river now have two frames each and animate like the campfire.
       Shore edge tiles were left out of part 4 on purpose; they are still worth doing.
-- [ ] He offered to draw sprites. Sprite files are plain text in `sprites/` (one character per pixel); the UI at
-      `npm start` edits them live. Any of his get used.
+- ~~He offered to draw sprites.~~ **Closed 2026-09-23: he is not doing them.** The offer stands if he changes
+      his mind - sprite files are plain text in `sprites/`, one character per pixel, and the UI at `npm start`
+      edits them live.

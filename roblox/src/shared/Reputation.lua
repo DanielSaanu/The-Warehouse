@@ -96,8 +96,16 @@ function Reputation.apply(rep: { [string]: number }, deltas: Deltas)
 	end
 end
 
-function Reputation.newTable(): { [string]: number }
+--- A new player's standing table. `seed` maps each HOLDER key to its tribe type (docs/RUNG3.md part 3: the key is a
+--- village or a group, not a tribe type, so a squad on the road can know something its village does not). Only the
+--- villages are seeded - a group's key appears the first time its own opinion diverges, via Gossip.standing's
+--- fallback. Called with no argument it still gives the old tribe-type table, which is what a v2 save holds.
+function Reputation.newTable(seed: { [string]: string }?): { [string]: number }
 	local t = {}
+	if seed then
+		for holder, tribeType in pairs(seed) do t[holder] = Reputation.START[tribeType] or 0 end
+		return t
+	end
 	for k, v in pairs(Reputation.START) do t[k] = v end
 	return t
 end

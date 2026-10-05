@@ -134,7 +134,8 @@ end
 --- Tick.groupTurn, shared with the abstract tick and catch-up.
 function Bands.turn(g)
 	local events = {}
-	Tick.groupTurn(S, g, Calendar.now(), events)
+	local l = g.leader and S.entities[g.leader]
+	Tick.groupTurn(S, g, Calendar.now(), events, world, if l then { x = l.x, y = l.y } else nil)
 	logGroupEvents(events)
 end
 
@@ -162,13 +163,7 @@ end
 
 function Bands.collapse(g)
 	local p = Bands.pos(g)
-	-- record where the leader got to on the route
-	local bestI, bestD = g.pos, math.huge
-	for i, r in ipairs(g.route) do
-		local d = math.abs(r.x - p.x) + math.abs(r.y - p.y)
-		if d < bestD then bestI, bestD = i, d end
-	end
-	g.pos = bestI
+	g.pos = Tick.nearestRouteIndex(g, p.x, p.y) -- record where the leader got to on the route
 	for id in pairs(g.entities) do
 		local e = S.entities[id]
 		local person = e and e.person and S.people.people[e.person]

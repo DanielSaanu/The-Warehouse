@@ -26,6 +26,9 @@ export type Context = {
 	survivorName: string?,
 	playerName: string?,
 	familyNews: string?,    -- the village's latest birth or succession, if any
+	heard: string?,         -- what THIS village has heard about the player (rung 3 part 3). nil if they know nothing:
+	                        -- a village that has heard nothing is the whole point of gossip having to travel, and it
+	                        -- is a separate channel from `familyNews`, which is the village's own news about itself.
 }
 
 Talk.TOPICS = { "road", "tribes", "prices", "me" }
@@ -134,6 +137,9 @@ function Talk.guard(ctx: Context, topic: string): string
 		return ("Merchant's board today: %s. We make %s, we're short of %s."):format(ctx.prices, ctx.makes, ctx.scarce)
 	elseif topic == "me" then
 		local w = ctx.repWord
+		-- What they HEARD outranks what they think, because it is the news that moved the number (part 3). A village
+		-- that has heard nothing falls through to the standing lines, which is how "they do not know you yet" reads.
+		if ctx.heard then return ctx.heard .. " " .. (if w == "hostile" or w == "wary" then "It has not helped you here." else "Make of that what you will.") end
 		if w == "family" then return ("%s calls you one of our own. Whatever you need."):format(ctx.tribeName) end
 		if w == "welcome" then return ("You're welcome in %s. Keep it that way and the prices stay kind."):format(ctx.village) end
 		if w == "neutral" then return "Nobody here has an opinion of you yet. Trade honest, help a caravan, and they will." end
