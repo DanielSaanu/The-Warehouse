@@ -319,10 +319,12 @@ end
 --- A group reached an end of its route (Tick.groupTurn, before it flips `dir`): it and the village AT THAT END swap
 --- everything - `to` walking out, `from` walking home, nobody if that end is the forest or an ambush spot. Never
 --- simply its own village, which may be a whole route away. The caravan arrives; the squad comes back.
-function Gossip.arrive(w, g, world): number
+function Gossip.arrive(w, g, world, standing): number
 	local at = if g.dir == -1 then g.from else g.to
 	local i = at and Gossip.villageAt(w, world, at.x, at.y)
 	if not i then return 0 end
+	-- a materialised leader (`standing`, from Bands.turn) must really be in that village (QA round 3, H6)
+	if standing and Gossip.villageAt(w, world, standing.x, standing.y) ~= i then return 0 end
 	return Gossip.exchange(w, tostring(g.id), Gossip.villageKey(i))
 end
 

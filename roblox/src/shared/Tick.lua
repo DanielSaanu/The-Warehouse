@@ -118,15 +118,73 @@ local function deposit(w, g)
 	return { kind = "deposit", group = g.id, tribe = g.tribe, text = table.concat(parts, ", ") }
 end
 
+-- ---------- a MATERIALISED leader on its route (the adapter supplies the bodies, the rule lives here) ----------
+Tick.LEADER_BUDGET, Tick.LOST_BUDGET, Tick.LOST_TRIES = 200, 800, 5
+
+--- The route index nearest a tile: where a group really is when its leader has been pulled off the road.
+function Tick.nearestRouteIndex(g, x: number, y: number): number
+	local bestI, bestD = g.pos, math.huge
+	for i, r in ipairs(g.route) do
+		local d = math.abs(r.x - x) + math.abs(r.y - y)
+		if d < bestD then bestI, bestD = i, d end
+	end
+	return bestI
+end
+
+--- One decision for a materialised group's leader standing at (ex, ey). `walking` is whether it already has a path.
+--- ops: free(x, y) -> bool, step(r) (one tile), path(x, y, budget) -> bool (a real path was found). Returns "turn"
+--- (at the end: call groupTurn), "lost" (give up: collapse the group), or nil.
+--- `pos` moves ONLY with the bodies (QA round 3, H6): it used to advance whenever the leader was not beside the next
+--- tile, even when the path failed - so after a chase the squad stood in the forest while `pos` walked home, Kenstow
+--- heard the news and the hide was banked. Off the road, `pos` re-anchors to where the leader really is.
+function Tick.leaderStep(g, ex: number, ey: number, walking: boolean, ops): string?
+	if walking then return nil end -- the end is reached when the walk is FINISHED, not when it is planned
+	local nextI = g.pos + g.dir
+	if nextI < 1 or nextI > #g.route then
+		local e = g.route[g.pos]
+		if math.abs(ex - e.x) + math.abs(ey - e.y) <= 1 then return "turn" end
+		nextI = g.pos -- `pos` is the end, but the bodies are not there yet: walk to it first
+	end
+	local r = g.route[nextI]
+	if math.abs(ex - r.x) + math.abs(ey - r.y) <= 1 then
+		if ops.free(r.x, r.y) then ops.step(r) g.pos = nextI g.stuck = 0
+		elseif ex == r.x and ey == r.y then g.pos = nextI g.stuck = 0
+		else
+			-- somebody is standing on the next tile: after a few tries, walk on to the one after it
+			g.stuck = (g.stuck or 0) + 1
+			local after = g.route[nextI + g.dir]
+			if g.stuck > 3 and after and ops.path(after.x, after.y, Tick.LEADER_BUDGET) then
+				g.pos, g.stuck = nextI + g.dir, 0
+			end
+		end
+		g.lost = 0
+		return nil
+	end
+	if ops.path(r.x, r.y, Tick.LEADER_BUDGET) then
+		g.pos, g.stuck, g.lost = nextI, 0, 0
+		return nil
+	end
+	-- pulled off the road (a chase): head for the nearest route tile with a bigger budget, and say where they are
+	local near = Tick.nearestRouteIndex(g, ex, ey)
+	local n = g.route[near]
+	if (n.x == ex and n.y == ey) or ops.path(n.x, n.y, Tick.LOST_BUDGET) then
+		g.pos, g.lost = near, 0
+		return nil
+	end
+	g.pos, g.lost = near, (g.lost or 0) + 1
+	return if g.lost > Tick.LOST_TRIES then "lost" else nil
+end
+
 --- Turn around at either end of the route. dir -1 is the walk home, so turning then means they have arrived.
-function Tick.groupTurn(w, g, now: number, events, world)
+--- `at` is where a materialised leader actually stands, so the village is only told if they are really in it.
+function Tick.groupTurn(w, g, now: number, events, world, at)
 	if g.dir == -1 then
 		local ev = deposit(w, g)
 		if ev and events then table.insert(events, ev) end
 	end
 	-- Gossip's main channel (docs/RUNG3.md part 3): they are standing at one end of their route, so the holder there
 	-- is known without a search. The bandit tells his band, the caravan tells the village it just reached.
-	Gossip.arrive(w, g, world)
+	Gossip.arrive(w, g, world, at)
 	g.dir = -g.dir
 	g.pauseUntil = now + (if g.dir == 1 then g.pauses[1] else g.pauses[2])
 end

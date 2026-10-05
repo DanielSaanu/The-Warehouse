@@ -196,7 +196,8 @@ function Debug.run(cmd: string, ...): any
 			local person = m.person and S.people.people[m.person]
 			table.insert(who, if person then ("%d %s %s%s"):format(person.id, person.first, person.last, if person.entity then " " .. person.entity else "") else "?" .. m.kind)
 		end
-		return ("%s at %d,%d dir %d pos %d/%d%s carrying[%s]%s members[%s]"):format(g.id, p.x, p.y, g.dir, g.pos, #g.route,
+		local rt = g.route[g.pos] or p -- the route tile `pos` names, beside where the leader really is (H6)
+		return ("%s at %d,%d (route %d,%d) dir %d pos %d/%d%s carrying[%s]%s members[%s]"):format(g.id, p.x, p.y, rt.x, rt.y, g.dir, g.pos, #g.route,
 			if g.materialised then " visible" else "", table.concat(carry, ", "),
 			if Calendar.now() < (g.retreatUntil or 0) then " RETREATING" else "", table.concat(who, ", "))
 	elseif cmd == "summon" and ps then

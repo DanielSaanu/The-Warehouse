@@ -439,6 +439,15 @@ Round 2 scored 7/10 with one FIX (`docs/qa/rung3-part3-round2.md`); all round-1 
   lone hunter seeing a kill near Glenworth moves Kenstow at hop 0. Rare (villagers stay home); the real fix is
   "the village they are standing in" or a per-person holder, which belongs with part 4's belonging rules.
 
+### After round 3 (2026-10-05, handoff H6)
+
+A materialised group's `pos` ran home while its leader stood in the forest after a chase (Sim set `pos = nextI`
+whenever the leader was not beside the next tile, even when the path failed), so the village heard and the hide
+was banked by nobody. The leader's route rule is now `Tick.leaderStep`, pure and tested: `pos` follows the bodies,
+the end turns only with the leader on it, a leader off the road re-anchors and walks back, and one that cannot is
+"lost" and the group collapses. `Gossip.arrive` takes the leader's tile and refuses unless it is in the village.
+Detail: `docs/qa/rung3-part3-summary.md` "Open after round 3".
+
 **Done when:**
 
 - `npm run test:luau` passes a new `test/luau/gossip.test.luau`: a rumour seeded at the squad does not move the

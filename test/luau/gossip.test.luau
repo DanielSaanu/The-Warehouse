@@ -402,6 +402,70 @@ do
 	print(("   the squad's news reaches %s at the far end, Kenstow only on the walk home"):format(fk))
 end
 
+-- QA round 3 (H6): a MATERIALISED group's `pos` moves only with its bodies. The reviewer saw the squad leader stand in
+-- the forest after a chase while `pos` walked home, Kenstow heard, and the hide was banked. Driven through
+-- Tick.leaderStep with fake bodies: a path "succeeds" only within budget/10 tiles, and walking is instant.
+do
+	local function bodies(leader)
+		local ops = {}
+		function ops.free() return true end
+		function ops.step(r) leader.x, leader.y = r.x, r.y end
+		function ops.path(x, y, budget)
+			if math.abs(leader.x - x) + math.abs(leader.y - y) > budget / 10 then return false end
+			leader.x, leader.y = x, y
+			return true
+		end
+		return ops
+	end
+	local function off(leader, r) return math.abs(leader.x - r.x) + math.abs(leader.y - r.y) end
+
+	-- chase, then return: pulled 30 tiles off the road mid-way home, the squad walks back and only THEN goes home
+	local w, ps = newRecord(33)
+	local vk = Gossip.villageKey(HUNTER)
+	local before = Gossip.standing(w, ps, vk)
+	Gossip.seed(w, 7, "kill", "hunter", HUNTER, { fleeing = true }, 1, { squad = true })
+	local sq = w.groups.squad
+	sq.pos, sq.dir, sq.materialised = math.floor(#sq.route / 2), -1, true
+	local mid = sq.route[sq.pos]
+	local leader = { x = mid.x + 30, y = mid.y }
+	local ops = bodies(leader)
+	local turned = false
+	for _ = 1, 4 * #sq.route do
+		local act = Tick.leaderStep(sq, leader.x, leader.y, false, ops)
+		if act == "turn" then
+			Tick.groupTurn(w, sq, 500, {}, world, { x = leader.x, y = leader.y })
+			turned = true
+			break
+		end
+		assert(act ~= "lost", "a squad 30 tiles off the road finds its way back")
+		assert(off(leader, sq.route[sq.pos]) <= 1, ("pos %d is where the bodies are (leader %d,%d)"):format(sq.pos, leader.x, leader.y))
+	end
+	assert(turned, "and gets home")
+	assert(Gossip.villageAt(w, world, leader.x, leader.y) == HUNTER, "standing in Kenstow when it turns")
+	assert(Gossip.standing(w, ps, vk) < before, "which is when Kenstow hears")
+
+	-- lost: no path back to the road at all. `pos` stays where the bodies are, nobody hears, and the adapter is
+	-- told to collapse the group instead of letting the route index walk on without them
+	local w2, ps2 = newRecord(34)
+	Gossip.seed(w2, 7, "kill", "hunter", HUNTER, { fleeing = true }, 1, { squad = true })
+	local s2 = w2.groups.squad
+	s2.pos, s2.dir, s2.materialised = 3, -1, true
+	local far = { x = s2.route[3].x + 30, y = s2.route[3].y }
+	local ops2 = bodies(far)
+	ops2.path = function() return false end -- walled in: no path back at any budget
+	local act
+	for _ = 1, Tick.LOST_TRIES + 1 do act = Tick.leaderStep(s2, far.x, far.y, false, ops2) end
+	assert(act == "lost", "a leader that cannot get back is reported lost")
+	assert(s2.pos == Tick.nearestRouteIndex(s2, far.x, far.y), "and pos is the route tile nearest the bodies")
+	assert(#w2.villages[HUNTER].knows == 0, "Kenstow heard nothing")
+
+	-- and if a turn fires anyway with the leader out in the forest, the village is not told
+	s2.pos = 1
+	Tick.groupTurn(w2, s2, 600, {}, world, far)
+	assert(#w2.villages[HUNTER].knows == 0, "arrive refuses when the leader is not in the village")
+	print(("   chase then return: back on the road and home at pos %d, Kenstow told only then"):format(sq.pos))
+end
+
 -- owe clamps: an owed sum is bounded by the widest swing a rep can make, so a huge debt cannot grow without end.
 do
 	local w = newRecord(32)

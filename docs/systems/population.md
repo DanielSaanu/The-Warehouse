@@ -12,7 +12,9 @@ walk routes between villages. Wildlife is counts per region: grass, deer, boar a
   what you watch, not a rule, so it changes no number.
 - `shared/Ecology.lua` holds the daily herbivore/predator tick, drift between regions, and the edges "breathing".
 - `server/Bands.lua` handles groups as records with a route. Near a player (materialised) they're entities
-  walking the route. Collapsed, only `pos` advances (`Tick.groups`).
+  walking the route. Collapsed, only `pos` advances (`Tick.groups`). Materialised, the leader's route rule is
+  `Tick.leaderStep` (pure, tested): `pos` moves only when the bodies do, and a leader that cannot get back to the
+  road is reported "lost" and the group collapses (H6).
 
 **Tunables:** `MATERIALISE_RANGE`, `COLLAPSE_RANGE`, `SQUAD_LOAD`, `FED_SECONDS`, `FED_HUNTER`, `BAND_RETREAT`,
 `GRACE_DAYS` and `CAMPFIRE_RADIUS` in Config. Size tiers are in DESIGN §5.

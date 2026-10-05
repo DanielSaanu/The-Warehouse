@@ -885,30 +885,10 @@ local function groupStep(e, g, now: number)
 			wanderStep(e, now)
 			return
 		end
-		local nextI = g.pos + g.dir
-		if nextI < 1 or nextI > #g.route then Bands.turn(g) return end
-		local r = g.route[nextI]
-		if not e.path then
-			if Combat.adjacent(e.x, e.y, r.x, r.y) or (e.x == r.x and e.y == r.y) then
-				if freeTile(r.x, r.y) then setPath(e, { r }) g.pos = nextI g.stuck = 0
-				elseif e.x == r.x and e.y == r.y then g.pos = nextI g.stuck = 0
-				else
-					-- somebody is standing on the next tile of the route: after a few tries, walk on to the one
-					-- after it rather than waiting for them to move
-					g.stuck = (g.stuck or 0) + 1
-					if g.stuck > 3 then
-						g.pos = nextI
-						g.stuck = 0
-						local after = g.route[nextI + g.dir]
-						if after then pathTo(e, after.x, after.y, 200, true) end
-					end
-				end
-			else
-				pathTo(e, r.x, r.y, 200, true)
-				g.pos = nextI
-				g.stuck = 0
-			end
-		end
+		-- the route rule is Tick.leaderStep (pure, tested): `pos` moves only when the bodies do (H6)
+		local act = Tick.leaderStep(g, e.x, e.y, e.path ~= nil, { free = freeTile, step = function(r) setPath(e, { r }) end,
+			path = function(x, y, budget) return pathTo(e, x, y, budget, true) end })
+		if act == "turn" then Bands.turn(g) elseif act == "lost" then Bands.collapse(g) end
 	else
 		local leader = S.entities[g.leader]
 		if not leader then

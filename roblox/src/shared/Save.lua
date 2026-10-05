@@ -247,7 +247,7 @@ function Save.rekeyRep(w, rep, saved)
 	saved = saved or {}
 	local was = table.clone(rep)
 	for i, t in ipairs(w.tribes) do
-		local v, holder = was[t.tribeType], "v" .. tostring(i)
+		local v, holder = was[t.tribeType], "v" .. tostring(i) -- PINNED to the v3 key form on purpose: this migrates INTO v3
 		if v ~= nil and saved[holder] == nil then rep[holder] = v end
 	end
 	for _, t in ipairs(w.tribes) do rep[t.tribeType] = nil end

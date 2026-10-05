@@ -46,6 +46,12 @@ Resolution (added by the heavy agent under the same entry):
 
 ## Resolved
 
+### H6 — A materialised group walks its route index while its bodies stand still — 2026-10-05 — RESOLVED
+- **Resolved 2026-10-05 (heavy):** the leader's route rule is now pure `Tick.leaderStep` (`pos` moves only with the
+  bodies, re-anchors after a chase, "lost" collapses the group); `arrive` refuses unless the leader is in the
+  village; tests fail without each fix. → `docs/qa/rung3-part3-summary.md` "Open after round 3", `docs/RUNG3.md`
+  part 3 "After round 3", learnings S6.
+
 ### H5 — Gossip QA round 2 (7/10): a group's arrival tells its own village at both ends — 2026-10-05 — RESOLVED
 - **Resolved 2026-10-05 (heavy):** `arrive` tells the village at the end reached (or nobody), probe is a test; owed
   sum clamped; saw-it line first; one village-key parser; rekey moved to `Save.rekeyRep`. → `docs/RUNG3.md` part 3

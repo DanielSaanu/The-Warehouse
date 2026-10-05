@@ -62,6 +62,12 @@ memory came out **216 KB** and **22 KB** for the same feature. Measuring took tw
 `bundle()` and a `jlen` walker over the encoded table; guessing would have shipped the wrong one. Put the number
 in the doc, and then put it in a test, so the next shape change has to argue with it. *(2026-09-23, handoff H1.)*
 
+**S6 — A record that mirrors a live body moves on what the body DID, never on what it was asked to do.** Sim set
+the group's route index the moment it asked for a path, whether or not one was found, so the record walked home
+while the bodies stood in the forest, and everything keyed on the record (gossip, the stock, the headlines)
+believed it. Update the mirror from the outcome (a path found, a step taken, the leader on the tile), and when the
+two have drifted, re-anchor the record to the body. *(2026-10-05, handoff H6.)*
+
 ## P — Persistence
 
 **P1 — A change to the PLAYER key is additive-optional, never a version bump.**

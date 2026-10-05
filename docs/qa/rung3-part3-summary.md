@@ -42,18 +42,21 @@ in `docs/qa/archive/`.
 - A lone tribe member not in a group counts as their whole village. Recorded as a known limit in RUNG3; part 4.
 - The online and offline owed totals can differ slightly over a long, mixed absence. Recorded in RUNG3.
 
-## Open after round 3 (the loop ended before these)
-- **FIX: a materialised group walks its route index while its bodies stand still.** `Sim.lua:907-910` advances
-  `g.pos` even when `pathTo` (200-node budget) fails. After a chase, the squad leader stood at 9,55 while `pos` ran
-  home, Kenstow heard, and the hide was banked. The same bug puts a false "came home" line in the headlines.
-  The fix: advance only on a successful path, retry or collapse the group when it is far off its route, and have `arrive`
-  refuse when the leader is not inside the village. Add a chase-then-return test. Unknown: whether it happens
-  without a chase.
+## Open after round 3 (the loop ended before these) — landed 2026-10-05 (heavy, H6)
+- **FIXED: a materialised group walked its route index while its bodies stood still.** The leader's route rule moved
+  out of `Sim.lua` into `Tick.leaderStep` (pure). `pos` advances only on a path that was found or a step taken; the
+  end turns only when the leader is within one tile of it (a long path to the last tile used to turn at once);
+  pulled off the road, `pos` re-anchors to the nearest route tile and the leader paths there with an 800-node budget;
+  after `Tick.LOST_TRIES` (5) failures it returns "lost" and Sim collapses the group (it re-materialises on the road
+  if a player is still near). `Gossip.arrive` also refuses when a materialised leader is not inside that village
+  (`Bands.turn` passes the leader's tile). Test: chase-then-return and walled-in cases in `gossip.test.luau`, each
+  confirmed to fail with its fix removed. Still unknown: whether it happened without a chase (the rule now holds
+  either way). Not checked in Studio.
 - CONSIDER:
-  - `tell` returns the moved list and Standing announces from it, so the adapter owns the wording (the
-    builder's question in the goals).
-  - A comment saying `Save.rekeyRep`'s `"v"..i` is pinned to v3 on purpose.
-  - Debug `group` shows both tiles.
+  - Done: `Save.rekeyRep`'s `"v"..i` carries a comment that it is pinned to the v3 form on purpose.
+  - Done: Debug `group` prints the leader tile and `(route x,y)`.
+  - Deferred: `tell` returning the moved list so Standing owns the wording. `onChange` works and is not a bug; the
+    change touches every `tell` caller, so it waits for the next pass over gossip rather than the PR.
 
 ## Scaling deficits (round 3, for the map/village/NPC expansion; not scored)
 The list keeps its file:line references so the expansion pass can use it without opening the archive.
