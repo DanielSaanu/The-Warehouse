@@ -1,6 +1,7 @@
 # Rung 3 part 4: belonging, the build plan
 
-**Written 2026-10-05 (heavy, handoff H7). Plan only, no code. Status: waiting on Danzo for Q1–Q4 below.**
+**Written 2026-10-05 (heavy, handoff H7). Plan only, no code. Status: approved by Danzo 2026-10-05, every
+question answered as recommended (below). Phase 0 is next.**
 
 Inputs: [`RUNG3.md` §Part 4](../RUNG3.md#part-4--belonging-party-up-ride-along-join) (what and done-when), the three
 research reports ([joining](../research/belonging-joining.md), [guidance](../research/belonging-guidance.md),
@@ -138,7 +139,7 @@ so an older server reading them is harmless. Their deltas live in `Reputation.lu
 
 ## Membership and the save (trigger 3, answered: no format change)
 
-**Decision proposed: the save holds nothing new.** `World VERSION` stays 4, `PLAYER_VERSION` stays 1.
+**Decided (Q3): the save holds nothing new.** `World VERSION` stays 4, `PLAYER_VERSION` stays 1.
 
 - Membership is scratch, like `g.entities`: `g.riders[userId]` (joined at, share earned, spotted, last seen near)
   and `ps.ride = groupId`. Reset by `Bands.scratch`; never encoded.
@@ -223,53 +224,53 @@ walk a job. Everything in "Later" waits until phases 1–4 are fun in Studio.
 ## Track B: must it un-park?
 
 **A slice of it, yes. Not the rest.** `Sim.lua` is exactly at its ceiling, and part 4 has to touch four places
-in it (the kill, the hit, the fight context, the leader's step). Track B is parked on Danzo's word ("do not continue
-without asking", `roblox/src/server/README.md`). Phase 0 is the smallest carve that pays for those hooks, and it is
+in it (the kill, the hit, the fight context, the leader's step). Track B was parked on Danzo's word ("do not continue
+without asking", `roblox/src/server/README.md`); he un-parked this slice only on 2026-10-05 (Q4). Phase 0 is the smallest carve that pays for those hooks, and it is
 the one the owner table already wants. B2 (`Bodies`/`Brains`/`Fighting`), B3 and B4 stay parked.
 
 ---
 
-## Open questions for Danzo
+## Danzo's questions: all decided 2026-10-05, as recommended
 
-**Q1. Does a disconnect mid-route count as leaving?** *(blocks phase 1)*
+**Q1. Does a disconnect mid-route count as leaving?** *(blocked phase 1)*
 - Options: (a) "stepped away": membership ends, no penalty, no share; (b) desertion; (c) membership persists and
   resumes on rejoin.
-- Pick: **(a).** Phones drop and Roblox sessions are short; punishing a dropped signal is a fail state. (c) needs a
+- **Decided** (as picked): **(a).** Phones drop and Roblox sessions are short; punishing a dropped signal is a fail state. (c) needs a
   save field and a group that has walked on without you.
 
-**Q2. Can two players share a group?** *(blocks phase 1)*
+**Q2. Can two players share a group?** *(blocked phase 1)*
 - Options: (a) no, one rider; (b) yes, up to a cap; (c) no cap.
-- Pick: **(b), cap 2 riders** (a Config number). There is one caravan, one squad and one band per world, so a busy
+- **Decided** (as picked): **(b), cap 2 riders** (a Config number). There is one caravan, one squad and one band per world, so a busy
   server queues ("We're full up"); no cap lets six players swamp a three-person caravan. If one betrays, the other
   loses nothing unless they struck too: standing is per player.
 
-**Q3. How does the save hold a member player?** *(blocks phase 1)*
+**Q3. How does the save hold a member player?** *(blocked phase 1)*
 - Options: (a) not at all: scratch only; (b) a field in the player key (additive, no bump); (c) a row in the world
   key's group (`VERSION` 4 → 5).
-- Pick: **(a).** Nothing new is saved and nothing is stranded. What must persist (their opinion of you, what was
+- **Decided** (as picked): **(a).** Nothing new is saved and nothing is stranded. What must persist (their opinion of you, what was
   heard) already does. (c) also breaks three rules that count `members` (above).
 
-**Q4. Un-park the phase 0 slice of Track B?** *(blocks everything)*
+**Q4. Un-park the phase 0 slice of Track B?** *(blocked everything)*
 - Options: (a) yes, phase 0 only; (b) no: squeeze Sim's lines some other way.
-- Pick: **(a).** There is no other honest way to pay for four hooks in a file at its ceiling.
+- **Decided** (as picked): **(a).** There is no other honest way to pay for four hooks in a file at its ceiling.
 
 **Q5. In the ask, how do the group's and its village's standing combine?**
-- Pick: **the lower of the two.** One number, easy to explain in the "no" line. (Average was the other option.)
+- **Decided** (as picked): **the lower of the two.** One number, easy to explain in the "no" line. (Average was the other option.)
 
 **Q6. What is the share paid in, and does your kill loot go into the pot while you ride?**
-- Pick: **coin, and yes.** Coin is simple (goods would fight the 10 slots), and loot into the pot is what stops loot
+- **Decided** (as picked): **coin, and yes.** Coin is simple (goods would fight the 10 slots), and loot into the pot is what stops loot
   races. Coin is minted at payout, as trade and loot already do.
 
 **Q7. Friendly fire: what does hitting your own group do?**
 - Options: (a) nothing, ever; (b) first blow blocked with a warning, a second within 10 s is betrayal; (c) every
   blow counts.
-- Pick: **(b).** Phone players mash attack; one stray tap must not end a ride. A deliberate second blow is a choice.
+- **Decided** (as picked): **(b).** Phone players mash attack; one stray tap must not end a ride. A deliberate second blow is a choice.
 
 **Q8. A line on the HUD while riding ("Riding with the caravan to Kenstow")?**
-- Pick: **not in phase 1.** It costs no client lines (the goal line is server text), but it is a quest log in a
+- **Decided** (as picked): **not in phase 1.** It costs no client lines (the goal line is server text), but it is a quest log in a
   costume. Add it only if the 30-second test fails.
 
-**Q9. Can a player lead a group?** Pick: **not in part 4.** That is rung 4's hiring, on this same machinery.
+**Q9. Can a player lead a group?** **Decided: not in part 4.** That is rung 4's hiring, on this same machinery.
 
 **Q10. Is "no ask on the road" right?** Asking only while the group is materialised and not fighting means you
-have to find them. Pick: **yes**; the caravan passes Glenworth twice a round trip.
+have to find them. **Decided: yes**; the caravan passes Glenworth twice a round trip.

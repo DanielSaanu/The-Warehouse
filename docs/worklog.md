@@ -30,3 +30,6 @@ paid for. The detail belongs in commits and the docs; this is the timeline.
   leader (7 checks, pure `Belong.ask`), riders as scratch not `members` (no save change), pay at each arrival from a
   pot cut by losses, graded leaving, barks + "what now", then "first to spot it". Phases 0–4; phase 0 un-parks one
   Track B slice. H7 stays OPEN on Q1–Q4. Learnings S7.
+- 2026-10-05 · `dev` (heavy, H7 resolved): Danzo approved the part 4 plan, all ten questions as recommended; the
+  phase 0 Track B slice is un-parked (server README). Goals file `docs/qa/rung3-part4-p0-room.md`. Phase 0's code
+  move was NOT made: the edit to `Sim.lua` was refused by the session's permission check, left for Danzo.
