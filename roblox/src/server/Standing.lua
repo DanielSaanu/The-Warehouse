@@ -15,6 +15,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Reputation = require(Shared:WaitForChild("Reputation"))
 local Gossip = require(Shared:WaitForChild("Gossip"))
+local Save = require(Shared:WaitForChild("Save"))
 local Map = require(script.Parent:WaitForChild("Map"))
 
 local Standing = {}
@@ -158,10 +159,10 @@ function Standing.away(ps, days: number)
 end
 
 --- A v2 player key is keyed by tribe TYPE: move each onto that tribe's village holder (the rule, and why `saved` is
---- what decides, is Gossip.rekey's - it is pure so test:luau covers it). No PLAYER_VERSION bump, because applyPlayer
+--- what decides, is Save.rekeyRep's - it is pure so test:luau covers it). No PLAYER_VERSION bump, because applyPlayer
 --- discards the whole record on a mismatch.
 function Standing.rekey(ps, savedRep)
-	Gossip.rekey(S, ps.rep, savedRep)
+	Save.rekeyRep(S, ps.rep, savedRep)
 end
 
 -- ---------- what a village has heard, in words ----------

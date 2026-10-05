@@ -43,6 +43,12 @@ function Gossip.villageKey(tribeIdx: number): string
 	return "v" .. tostring(tribeIdx)
 end
 
+--- The tribe index a VILLAGE key names, or nil for a group key: the one place a key is parsed. Group ids are words.
+function Gossip.villageIndex(holderKey: string): number?
+	local vi = string.match(holderKey, "^v(%d+)$")
+	return if vi then tonumber(vi) else nil
+end
+
 --- The holder whose opinion an entity carries: its group if it is on the road with one, else its village.
 function Gossip.holderOf(e): string?
 	if e.group then return tostring(e.group) end
@@ -52,8 +58,8 @@ end
 
 --- Which tribe index a holder belongs to, so its tribe type can be read. nil if the holder is gone.
 function Gossip.tribeOf(w, holderKey: string): number?
-	local vi = string.match(holderKey, "^v(%d+)$")
-	if vi then return tonumber(vi) end
+	local vi = Gossip.villageIndex(holderKey)
+	if vi then return vi end
 	local g = w.groups[holderKey]
 	return if g then g.tribe else nil
 end
@@ -95,9 +101,9 @@ function Gossip.holders(w)
 end
 
 local function rowOf(w, holderKey: string)
-	local vi = string.match(holderKey, "^v(%d+)$")
+	local vi = Gossip.villageIndex(holderKey)
 	if vi then
-		local v = w.villages and w.villages[tonumber(vi)]
+		local v = w.villages and w.villages[vi]
 		return if v then ready(v) else nil
 	end
 	local g = w.groups[holderKey]
@@ -224,7 +230,9 @@ local function owe(w, uid: number, holderKey: string, d: number)
 		for k, v in pairs(o.rep) do o.rep[k] = Reputation.fade(v, day - o.day) end
 		o.day = day
 	end
-	o.rep[holderKey] = (o.rep[holderKey] or 0) + d
+	-- bounded by a rep's widest swing; online clamps per step against a number the world does not have (RUNG3)
+	local span = Reputation.MAX - Reputation.MIN
+	o.rep[holderKey] = math.clamp((o.rep[holderKey] or 0) + d, -span, span)
 end
 
 --- Book a rumour at a holder, `hops` hands from the eyewitnesses: the ONE place a holder's opinion moves. Appending to
@@ -285,8 +293,7 @@ function Gossip.seed(w, uid: number, event: string, victimKind: string?, tribeId
 end
 
 -- ---------- how it spreads ----------
---- Two holders swap every rumour the other has and they do not. Each arrives one hand further from the eyewitnesses
---- than at the holder that passed it on, so strength is set by DISTANCE in hands, whatever the order of exchanges.
+--- Two holders swap every rumour the other has and they do not, each one hand further from the eyewitnesses.
 function Gossip.exchange(w, a: string, b: string): number
 	local ra, rb = rowOf(w, a), rowOf(w, b)
 	if not ra or not rb or a == b then return 0 end
@@ -300,16 +307,26 @@ function Gossip.exchange(w, a: string, b: string): number
 	return moved
 end
 
---- A group reached an end of its route: it and the village at that end tell each other everything. This is the main
---- channel and it costs nothing to find - Tick.groupTurn already fires exactly here. "A lone bandit tells his band
---- when he gets home"; the caravan arrives; the squad comes back.
-function Gossip.arrive(w, g): number
-	if not g.tribe then return 0 end
-	return Gossip.exchange(w, tostring(g.id), Gossip.villageKey(g.tribe))
+--- The tribe whose village covers this map tile, or nil (forest, road, an ambush spot). `world` is WorldGen's map.
+function Gossip.villageAt(w, world, x: number, y: number): number?
+	for i, t in ipairs(w.tribes) do
+		local v = world and world.villages[t.villageId]
+		if v and x >= v.x0 and x <= v.x1 and y >= v.y0 and y <= v.y1 then return i end
+	end
+	return nil
 end
 
---- The map tile a group is standing on, or nil if it has no route yet (a record mid-load) or is MATERIALISED: then
---- the adapter is walking real bodies and `pos` is out of date, so the abstract position would be a lie.
+--- A group reached an end of its route (Tick.groupTurn, before it flips `dir`): it and the village AT THAT END swap
+--- everything - `to` walking out, `from` walking home, nobody if that end is the forest or an ambush spot. Never
+--- simply its own village, which may be a whole route away. The caravan arrives; the squad comes back.
+function Gossip.arrive(w, g, world): number
+	local at = if g.dir == -1 then g.from else g.to
+	local i = at and Gossip.villageAt(w, world, at.x, at.y)
+	if not i then return 0 end
+	return Gossip.exchange(w, tostring(g.id), Gossip.villageKey(i))
+end
+
+--- The tile a group stands on; nil with no route yet, or MATERIALISED (bodies are walking, so `pos` is stale).
 local function tileOf(g)
 	if g.materialised or not g.route then return nil end
 	return g.route[g.pos or 1]
@@ -359,19 +376,6 @@ function Gossip.catchUpPlayer(w, ps, uid: number)
 	for k in pairs(o.rep) do table.insert(keys, k) end
 	table.sort(keys)
 	for _, k in ipairs(keys) do move(w, ps, k, Reputation.fade(o.rep[k], wait), true) end
-end
-
---- A v2 player key is keyed by tribe TYPE ("farmer"), v3 by holder ("v1"): move each old value onto its village and
---- drop the old key. `saved` (the rep AS SAVED) decides, because the live `rep` was already seeded with START at
---- every village (Sim.addPlayer): the old value wins unless the saved record itself held that holder key.
-function Gossip.rekey(w, rep, saved)
-	saved = saved or {}
-	local was = table.clone(rep)
-	for i, t in ipairs(w.tribes) do
-		local v, holder = was[t.tribeType], Gossip.villageKey(i)
-		if v ~= nil and saved[holder] == nil then rep[holder] = v end
-	end
-	for _, t in ipairs(w.tribes) do rep[t.tribeType] = nil end
 end
 
 --- The newest thing this holder has heard about the player, and how many hands it came through to reach them, for

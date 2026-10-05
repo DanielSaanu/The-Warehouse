@@ -239,6 +239,20 @@ function Save.encodePlayer(ps, day: number, worldId: string?)
 	return out
 end
 
+--- A v2 player key's `rep` is keyed by tribe TYPE ("farmer"), v3 by holder ("v1", Gossip.villageKey's form): move
+--- each old value onto its village and drop the old key. Run by Restore.player after applyPlayer. `saved` (the rep AS
+--- SAVED) decides, because the live `rep` was already seeded with START at every village (Sim.addPlayer): the old
+--- value wins unless the saved record itself held that holder key. (Moved here from Gossip in QA round 2, H5.)
+function Save.rekeyRep(w, rep, saved)
+	saved = saved or {}
+	local was = table.clone(rep)
+	for i, t in ipairs(w.tribes) do
+		local v, holder = was[t.tribeType], "v" .. tostring(i)
+		if v ~= nil and saved[holder] == nil then rep[holder] = v end
+	end
+	for _, t in ipairs(w.tribes) do rep[t.tribeType] = nil end
+end
+
 --- Lay a saved player over a freshly made live one. Position is the caller's business (the tile may be a wall, a
 --- flood or a campfire by now), so x and y are returned, not applied.
 function Save.applyPlayer(ps, data, worldId: string?): (number?, number?)

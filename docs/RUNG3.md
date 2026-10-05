@@ -245,8 +245,10 @@ and this is that hook. The victim counts too, if they lived.
 Two contact rules, both O(number of groups), both driven only by `gameSeconds`:
 
 1. **Arrival.** `Tick.groupTurn` already fires exactly when a group reaches either end of its route, and `from`
-   and `to` are stored — so the holder at that end is known without a search. The group and that village exchange
-   every rumour neither has. This is the main channel and it is free: "a lone bandit tells his band when he gets
+   and `to` are stored — so the holder at that end is known without a search. The group and **the village at that
+   end** (`to` walking out, `from` walking home; `Gossip.villageAt` over the village boxes) exchange every rumour
+   neither has; an end that is no village (the forest, an ambush spot) exchanges with nobody. (As first built it
+   always told the group's own village, from either end — fixed in QA round 2.) This is the main channel and it is free: "a lone bandit tells his band when he gets
    home", the caravan arrives, the squad comes back.
 2. **Meeting on the road.** When `math.floor(now / Gossip.EVERY)` increments, groups are bucketed by
    `math.floor(x / 2), math.floor(y / 2)` of the map tile they stand on (`route[pos]`; never `pos` itself, and a
@@ -420,6 +422,22 @@ Round 1 scored 6/10 with five FIX items (`docs/qa/rung3-part3-round1.md`). Verdi
 - **Grudge moved to `shared/Grudge.lua`** (Gossip passed the 400-line ceiling); Gossip re-exports the old names.
 - Deferred: a rebuilt group inheriting the dead crew's `ps.rep[id]` (needs a group generation stamp, so it waits
   for part 4's group identity); an id → row index for `Gossip.find` (O(64²) per exchange is cheap at this size).
+
+### QA round 2 (2026-10-05, handoff H5)
+
+Round 2 scored 7/10 with one FIX (`docs/qa/rung3-part3-round2.md`); all round-1 fixes were confirmed in Studio.
+
+- **Arrival tells the village at that end** (above). `Tick.groupTurn` and `Gossip.arrive` now take `world`; the
+  reviewer's probe (squad turns round at the far end, Kenstow must not move) is a test.
+- **Owed sums are clamped** to ±(`MAX` − `MIN`) = ±200. Known limit: online, each step clamps against the player's
+  real number, which the world does not hold, so a long run of mixed harm and kindness while away can end a little
+  differently from the same run online. Kept because the alternative is storing the player's number on the world.
+- **"Someone saw that." now comes before the standing line** (`Sim.lua`, cause before effect).
+- **One parser for village keys**, `Gossip.villageIndex`; group ids are words, never `v<n>`.
+- **`rekey` moved to `Save.rekeyRep`** (Gossip was over 400 lines again; it is a player-key migration anyway).
+- **Known limit, kept:** a tribe member who is not in a group counts as their whole village (`Gossip.holderOf`): a
+  lone hunter seeing a kill near Glenworth moves Kenstow at hop 0. Rare (villagers stay home); the real fix is
+  "the village they are standing in" or a per-person holder, which belongs with part 4's belonging rules.
 
 **Done when:**
 

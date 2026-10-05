@@ -134,7 +134,7 @@ end
 --- Tick.groupTurn, shared with the abstract tick and catch-up.
 function Bands.turn(g)
 	local events = {}
-	Tick.groupTurn(S, g, Calendar.now(), events)
+	Tick.groupTurn(S, g, Calendar.now(), events, world)
 	logGroupEvents(events)
 end
 

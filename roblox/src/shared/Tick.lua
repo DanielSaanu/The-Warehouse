@@ -119,14 +119,14 @@ local function deposit(w, g)
 end
 
 --- Turn around at either end of the route. dir -1 is the walk home, so turning then means they have arrived.
-function Tick.groupTurn(w, g, now: number, events)
+function Tick.groupTurn(w, g, now: number, events, world)
 	if g.dir == -1 then
 		local ev = deposit(w, g)
 		if ev and events then table.insert(events, ev) end
 	end
 	-- Gossip's main channel (docs/RUNG3.md part 3): they are standing at one end of their route, so the holder there
 	-- is known without a search. The bandit tells his band, the caravan tells the village it just reached.
-	Gossip.arrive(w, g)
+	Gossip.arrive(w, g, world)
 	g.dir = -g.dir
 	g.pauseUntil = now + (if g.dir == 1 then g.pauses[1] else g.pauses[2])
 end
@@ -157,7 +157,7 @@ function Tick.groups(w, world, now: number)
 				local steps = math.floor(g.acc)
 				g.acc -= steps
 				g.pos = math.clamp(g.pos + g.dir * steps, 1, #g.route)
-				if atEnd(g) then Tick.groupTurn(w, g, now, events) end
+				if atEnd(g) then Tick.groupTurn(w, g, now, events, world) end
 			end
 		end
 	end

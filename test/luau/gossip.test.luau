@@ -46,6 +46,14 @@ local function newRecord(seed: number)
 	return w, ps, rng
 end
 
+--- The squad walking back into Kenstow: `from` is home, and `dir == -1` is the walk home, so this is the end at which
+--- Tick.groupTurn calls Gossip.arrive when they get back. (Before QA round 2 these tests called arrive on a squad
+--- standing at pos 1 heading OUT, which only worked because arrive ignored the end and always told the home village.)
+local function comeHome(w, g)
+	g.pos, g.dir = 1, -1
+	return Gossip.arrive(w, g, world)
+end
+
 local function count(t: { any }): number
 	local n = 0
 	for _ in pairs(t) do n += 1 end
@@ -63,11 +71,11 @@ do
 	assert(Gossip.standing(w, ps, "squad") < before, "the squad that saw it thinks worse of you at once")
 	assert(Gossip.standing(w, ps, vk) == before, "their VILLAGE has not heard yet: that is part 3")
 
-	Gossip.arrive(w, w.groups.squad) -- the squad comes home
+	comeHome(w, w.groups.squad) -- the squad comes home
 	local told = Gossip.standing(w, ps, vk)
 	assert(told < before, "once they are home, the village knows")
-	Gossip.arrive(w, w.groups.squad)
-	Gossip.arrive(w, w.groups.squad)
+	comeHome(w, w.groups.squad)
+	comeHome(w, w.groups.squad)
 	assert(Gossip.standing(w, ps, vk) == told, "and it is not booked a second time, however often they come home")
 	print(("   squad %.1f, Kenstow %.1f (was %.1f)"):format(Gossip.standing(w, ps, "squad"), told, before))
 end
@@ -77,7 +85,7 @@ do
 	local w, ps = newRecord(2)
 	Gossip.seed(w, 7, "kill", "hunter", HUNTER, { fleeing = true }, 1, { squad = true })
 	local atSquad = Gossip.standing(w, ps, "squad")
-	Gossip.arrive(w, w.groups.squad)            -- hop 1: the village hears it from the squad
+	comeHome(w, w.groups.squad)            -- hop 1: the village hears it from the squad
 	local atVillage = Gossip.standing(w, ps, Gossip.villageKey(HUNTER))
 	local start = Reputation.START.hunter
 	local firstHand, secondHand = start - atSquad, start - atVillage
@@ -211,7 +219,7 @@ do
 	Gossip.seed(w, 7, "kill", "hunter", HUNTER, { fleeing = true }, 1, { squad = true })
 	local online = Gossip.standing(w, ps, vk)
 	w.players[7] = nil -- they log off before the squad gets home
-	Gossip.arrive(w, w.groups.squad)
+	comeHome(w, w.groups.squad)
 	assert(Gossip.standing(w, ps, vk) == online, "nothing was applied to an absent player")
 	assert(#w.villages[HUNTER].knows == 1, "but the village heard it all the same")
 
@@ -233,7 +241,7 @@ do
 	-- what Restore.player sees: newRep()'s START values, then applyPlayer laying the v2 tribe-type keys on top
 	local saved = { farmer = 55, hunter = -30, plunderer = -60 }
 	for k, v in pairs(saved) do ps.rep[k] = v end
-	Gossip.rekey(w, ps.rep, saved)
+	Save.rekeyRep(w, ps.rep, saved)
 	assert(ps.rep.v1 == 55 and ps.rep.v2 == -30 and ps.rep.v3 == -60, ("the v2 values win: v1 %s v2 %s v3 %s"):format(
 		tostring(ps.rep.v1), tostring(ps.rep.v2), tostring(ps.rep.v3)))
 	assert(ps.rep.farmer == nil and ps.rep.hunter == nil and ps.rep.plunderer == nil, "and the old keys are gone")
@@ -242,7 +250,7 @@ do
 	local saved3 = { v1 = 40, squad = -12 }
 	for k, v in pairs(saved3) do ps3.rep[k] = v end
 	local before = table.clone(ps3.rep)
-	Gossip.rekey(w3, ps3.rep, saved3)
+	Save.rekeyRep(w3, ps3.rep, saved3)
 	for k, v in pairs(before) do assert(ps3.rep[k] == v, "a v3 key is untouched at " .. k) end
 end
 
@@ -362,6 +370,47 @@ do
 	assert(Gossip.standing(w, ps, vk) < before, "and it is still waiting for them when they walk in")
 end
 
+-- QA round 2 (H5): a group's arrival tells the village AT THAT END, never its own village from across the map.
+-- The reviewer's probe: the squad sees a kill, then turns round at the far (forest) end - Kenstow must not move.
+do
+	local w, ps = newRecord(30)
+	local vk = Gossip.villageKey(HUNTER)
+	local before = Gossip.standing(w, ps, vk)
+	Gossip.seed(w, 7, "kill", "hunter", HUNTER, { fleeing = true }, 1, { squad = true })
+	local sq = w.groups.squad
+	sq.pos, sq.dir = #sq.route, 1                   -- at the far end of the walk out
+	sq.pauseUntil = 0
+	Tick.groupTurn(w, sq, 100, {}, world)
+	assert(Gossip.standing(w, ps, vk) == before, "the squad turning round far from home does not tell Kenstow")
+	assert(#w.villages[HUNTER].knows == 0, "Kenstow has heard nothing yet")
+	-- the squad in this fixture walks to Glenworth, so the far end IS a village: that village hears it, one hop out
+	local fk = Gossip.villageKey(FARMER)
+	assert(#w.villages[FARMER].knows == 1 and w.villages[FARMER].hops[1] == 1, "the village at that end hears it instead")
+	assert(sq.dir == -1, "and they turn for home")
+	sq.pos = 1
+	Tick.groupTurn(w, sq, 200, {}, world)            -- back at Kenstow
+	assert(Gossip.standing(w, ps, vk) < before, "Kenstow hears it when they walk in")
+	-- an end that is no village tells nobody
+	local w2 = newRecord(31)
+	Gossip.seed(w2, 7, "kill", "hunter", HUNTER, { fleeing = true }, 1, { squad = true })
+	local s2 = w2.groups.squad
+	s2.to = { x = 1, y = 1 }                         -- the corner of the map: no village there
+	s2.dir = 1
+	assert(Gossip.villageAt(w2, world, 1, 1) == nil, "fixture: no village at the corner")
+	assert(Gossip.arrive(w2, s2, world) == 0, "a forest end exchanges with nobody")
+	for i in ipairs(w2.villages) do assert(#w2.villages[i].knows == 0, "no village heard it") end
+	print(("   the squad's news reaches %s at the far end, Kenstow only on the walk home"):format(fk))
+end
+
+-- owe clamps: an owed sum is bounded by the widest swing a rep can make, so a huge debt cannot grow without end.
+do
+	local w = newRecord(32)
+	w.players[7] = nil
+	for n = 1, 12 do Gossip.seed(w, 7, "kill", "child", HUNTER, { fleeing = true }, 1, { [Gossip.villageKey(HUNTER)] = true }) end
+	local span = Reputation.MAX - Reputation.MIN
+	assert(w.owed[7].rep.v2 == -span, ("owed is clamped at -%d: %s"):format(span, tostring(w.owed[7].rep.v2)))
+end
+
 -- `owed` is bounded: standing owed to somebody who never comes back fades like any other, and is forgotten.
 do
 	local w = newRecord(28)
@@ -383,7 +432,7 @@ do
 	Gossip.seed(w, 7, "kill", "hunter", HUNTER, { fleeing = true }, 1, { squad = true })
 	assert(told == 1, "the player is told when the squad's opinion moves")
 	w.players[7] = nil
-	Gossip.arrive(w, w.groups.squad)
+	comeHome(w, w.groups.squad)
 	w.players[7] = ps
 	Gossip.catchUpPlayer(w, ps, 7)
 	assert(told == 1, "catch-up says nothing: the welcome does that")

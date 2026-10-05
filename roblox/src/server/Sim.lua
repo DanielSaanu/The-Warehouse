@@ -425,11 +425,11 @@ local function killEntity(e, killer, ctx, byEntity)
 	local sawIt = next(seen) ~= nil
 	if killer then
 		lootTo(killer, Combat.loot(e.kind, rng))
+		if not e.species then Standing.sawIt(killer, sawIt) end -- the verdict first, then what it costs you
 		Standing.event(killer, "kill", e.kind, e.tribe, ctx, seen)
 		if e.tribe and not e.species then
 			S.tribes[e.tribe].population = math.max(0, S.tribes[e.tribe].population - 1)
 		end
-		if not e.species then Standing.sawIt(killer, sawIt) end
 		Sim.hud(killer)
 	end
 	-- the family tree keeps the dead, and a role passes to a relative

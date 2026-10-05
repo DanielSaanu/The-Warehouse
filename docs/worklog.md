@@ -12,3 +12,5 @@ paid for. The detail belongs in commits and the docs; this is the timeline.
 - 2026-10-05 · `refactor/ai-friendly` (heavy, H3): gossip QA round 1. rekey keeps v2 values; meet by map tile;
   no rumours about animals; hops per holder; absent players' standing owed on the world (`w.owed`), save v3 → v4;
   Grudge split out of Gossip (400-line ceiling). New rules S4, S5, Q2.
+- 2026-10-05 · `refactor/ai-friendly` (heavy, H5): gossip QA round 2. A group's arrival tells the village at the
+  end it reached, not its own; owed sums clamped; saw-it line before the standing line; rekey → `Save.rekeyRep`. Rule Q3.

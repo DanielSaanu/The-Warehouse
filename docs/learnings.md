@@ -136,6 +136,12 @@ the multiset of hub + new files; then a relative-link check over all tracked `.m
 
 ## Q — QA loop and review
 
+**Q3 — A test that calls the inner function directly can pin the bug in place.** Every gossip test called
+`Gossip.arrive(w, squad)` on a squad standing at pos 1 heading OUT, and passed only because `arrive` ignored which
+end it was at and always told the home village. Drive the rule through the caller that fires it in production
+(`Tick.groupTurn` at a real route end), or set the fixture to the exact state that caller is in.
+*(2026-10-05, handoff H5.)*
+
 **Q2 — Build a test's fixture the way production builds the object, or the test hides the bug.** `Standing.rekey`
 was "lossless" in every hand check because each check started `rep` empty; production seeds `rep` with START at
 every village before rekey runs, so "copy only if empty" never copied and every v2 player was reset. Before
