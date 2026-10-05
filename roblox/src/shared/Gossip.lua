@@ -9,7 +9,8 @@
 -- the HOLDER: a village ("v1".."v3") or a group (its id). A holder is anything that can know a thing and can meet
 -- another holder.
 --
--- Owns: the rumour ring (`w.rumours`), `knows` on every village and group row, `meta.nextRumourId`, and grudge.
+-- Owns: the rumour ring (`w.rumours`), `knows`/`hops` on every village and group row, `meta.nextRumourId`,
+-- and `w.owed` (what absent players have coming). Grudge, the scar, is shared/Grudge.lua.
 -- Does NOT own: what a number MEANS (Reputation's rule), who witnessed what (server/Sides.lua), or when contact
 -- happens (Tick calls in, on a schedule derived from gameSeconds alone, so catch-up and live play agree exactly).
 --   Gossip.seed(w, uid, "kill", "hunter", 2, ctx, day, { v2 = true, squad = true })
@@ -17,6 +18,7 @@
 --   Gossip.meet(w, now)                      -- the EVERY schedule: groups sharing a stretch of road swap
 local Config = require(script.Parent.Config)
 local Reputation = require(script.Parent.Reputation)
+local Grudge = require(script.Parent.Grudge)
 
 local Gossip = {}
 
@@ -24,15 +26,13 @@ Gossip.MAX_RUMOURS = 64   -- the same ring size as Headlines.MAX: one number to 
 Gossip.HOP_FADE = 0.75    -- each exchange weakens the story. §7 says hops, not age.
 Gossip.STALE_DAYS = 14    -- old news stops travelling: it leaves the ring at the daily tick
 Gossip.EVERY = 60         -- game seconds between road-meeting sweeps (a tenth of an in-game day)
-Gossip.GRUDGE_MAX = 3
-Gossip.GRUDGE_GROUP = 0.25 -- the share of a grudge that lands on you for harm done while riding along (part 4)
-Gossip.AMEND_GIFT = 0.1
+Gossip.OWED_MIN = 0.5     -- owed standing that has faded below this is forgotten (it bounds `w.owed`)
 
 --- Set by server/Standing.bind, so the player is TOLD when news moves a holder's opinion of them - a rumour that
 --- arrives silently is a feature nobody can see. nil here keeps this module pure: the tests never set it, and
---- catch-up runs with `Gossip.quiet` on, because a returning player gets the welcome instead of forty lines.
+--- catchUpPlayer applies with `silent`, because a returning player gets the welcome instead of forty lines. (Silence
+--- is a parameter, not a module flag: a flag set by hand stays stuck on if anything between set and reset errors.)
 Gossip.onChange = nil :: ((any, string, number, number) -> ())?
-Gossip.quiet = false
 
 --- Events that become a story somebody carries home. Everything else - a slap, a trade, a night's rest - is instant
 --- and local: a -1 slap is not news, and one long fight's blows would fill the ring on their own.
@@ -64,40 +64,44 @@ local function tribeTypeOf(w, holderKey: string): string?
 	return if t then t.tribeType else nil
 end
 
---- Every holder in the world, as { key, knows }. Villages first, then groups in id order, so a compaction sweep and
---- a debug dump are both deterministic.
+--- A holder's row with its memory ready: `knows[i]` is a rumour id, `hops[i]` how many hands it came through to reach
+--- THIS holder (per holder, never on the shared row: see docs/RUNG3.md part 3, "How it spreads"). Pads with 0.
+local function ready(row)
+	row.knows = row.knows or {}
+	row.hops = row.hops or {}
+	for i = #row.hops + 1, #row.knows do row.hops[i] = 0 end
+	return row
+end
+
+--- Every holder in the world, as { key, knows, hops }. Villages first, then groups in id order, so a compaction
+--- sweep and a debug dump are both deterministic.
 function Gossip.holders(w)
 	local out = {}
 	for i in ipairs(w.tribes) do
 		local v = w.villages and w.villages[i]
 		if v then
-			v.knows = v.knows or {}
-			table.insert(out, { key = Gossip.villageKey(i), knows = v.knows })
+			ready(v)
+			table.insert(out, { key = Gossip.villageKey(i), knows = v.knows, hops = v.hops })
 		end
 	end
 	local ids = {}
 	for id in pairs(w.groups) do table.insert(ids, id) end
 	table.sort(ids, function(a, b) return tostring(a) < tostring(b) end)
 	for _, id in ipairs(ids) do
-		local g = w.groups[id]
-		g.knows = g.knows or {}
-		table.insert(out, { key = tostring(id), knows = g.knows })
+		local g = ready(w.groups[id])
+		table.insert(out, { key = tostring(id), knows = g.knows, hops = g.hops })
 	end
 	return out
 end
 
-local function knowsOf(w, holderKey: string)
+local function rowOf(w, holderKey: string)
 	local vi = string.match(holderKey, "^v(%d+)$")
 	if vi then
 		local v = w.villages and w.villages[tonumber(vi)]
-		if not v then return nil end
-		v.knows = v.knows or {}
-		return v.knows
+		return if v then ready(v) else nil
 	end
 	local g = w.groups[holderKey]
-	if not g then return nil end
-	g.knows = g.knows or {}
-	return g.knows
+	return if g then ready(g) else nil
 end
 
 -- ---------- standing: the read path every hot caller uses ----------
@@ -124,58 +128,18 @@ function Gossip.tribeStanding(w, ps, tribeIdx: number): number
 	return Gossip.standing(w, ps, Gossip.villageKey(tribeIdx))
 end
 
--- ---------- grudge: the scar ----------
---- Grudge is keyed by TRIBE TYPE, not by holder: a scar is what a people carry, and keying it per holder would let
---- it dilute away by eviction. 0 .. GRUDGE_MAX.
-function Gossip.grudge(ps, tribeType: string?): number
-	if not tribeType then return 0 end
-	return (ps.grudge and ps.grudge[tribeType]) or 0
-end
-
-local function setGrudge(ps, tribeType: string, v: number)
-	ps.grudge = ps.grudge or {}
-	ps.grudge[tribeType] = math.clamp(v, 0, Gossip.GRUDGE_MAX)
-end
-
---- What this act adds to the scar. Only serious harm scars; a slap and a hard bargain do not.
-function Gossip.grudgeGain(event: string, victimKind: string?, ctx): number
-	if event ~= "kill" then return 0 end
-	local c = ctx or {}
-	if victimKind == "bandit" then return 0.2 end
-	if c.fleeing then return 0.5 end -- murder of a runner is the worst of it
-	return 0.3
-end
-
---- Harm multiplies by the scar the people already carried. Frozen into the rumour at creation, so what you did is
---- judged by the grudge you had when you did it, not the one you have when the news lands three days later.
-function Gossip.multiplier(ps, tribeType: string?, withGroup: boolean?): number
-	local g = Gossip.grudge(ps, tribeType)
-	if withGroup then g *= Gossip.GRUDGE_GROUP end -- harm done riding with a band spreads thin (§7); part 4 sets this
-	return 1 + g
-end
-
---- Amends: a gift chips at the scar. Time alone barely helps, which is what the long fade below is for.
-function Gossip.amend(ps, tribeType: string?)
-	if not tribeType then return end
-	local g = Gossip.grudge(ps, tribeType)
-	if g > 0 then setGrudge(ps, tribeType, g - Gossip.AMEND_GIFT) end
-end
-
---- Halve over GRUDGE_FADE_DAYS in-game days. A closed form over a day count, never a per-tick decrement: that is
---- what lets a decay measured in YEARS survive a world that slept past the four-week catch-up cap.
-function Gossip.fadeGrudge(ps, days: number)
-	if not ps.grudge or days <= 0 then return end
-	for tribeType, v in pairs(ps.grudge) do
-		local n = v * 0.5 ^ (days / Config.GRUDGE_FADE_DAYS)
-		ps.grudge[tribeType] = if n < 0.01 then nil else n
-	end
-end
+-- ---------- grudge: the scar (shared/Grudge.lua; re-exported under the names every caller already uses) ----------
+Gossip.grudge, Gossip.grudgeGain, Gossip.multiplier = Grudge.grudge, Grudge.gain, Grudge.multiplier
+Gossip.amend, Gossip.fadeGrudge = Grudge.amend, Grudge.fade
 
 -- ---------- the ring ----------
 local function compact(w, goneId: number)
 	for _, h in ipairs(Gossip.holders(w)) do
 		for i = #h.knows, 1, -1 do
-			if h.knows[i] == goneId then table.remove(h.knows, i) end
+			if h.knows[i] == goneId then
+				table.remove(h.knows, i)
+				table.remove(h.hops, i)
+			end
 		end
 	end
 end
@@ -201,7 +165,9 @@ function Gossip.find(w, id: number)
 	return nil
 end
 
---- Old news stops travelling. Called from the daily tick.
+--- Old news stops travelling. Called from the daily tick. Leaving the ring costs nobody anything: a rumour was
+--- applied (or owed, below) at every holder the moment that holder heard it, so this is only the end of the
+--- TELLING. Owed standing that has faded to nothing is dropped here too, which is what bounds `w.owed`.
 function Gossip.dropStale(w, day: number)
 	local ring = w.rumours or {}
 	for i = #ring, 1, -1 do
@@ -210,6 +176,11 @@ function Gossip.dropStale(w, day: number)
 			compact(w, gone.id)
 		end
 	end
+	for uid, o in pairs(w.owed or {}) do
+		local f, left = 0.5 ^ (math.max(0, day - o.day) / Config.REP_FADE_DAYS), false
+		for _, v in pairs(o.rep) do left = left or math.abs(v * f) >= Gossip.OWED_MIN end
+		if not left then w.owed[uid] = nil end
+	end
 end
 
 -- ---------- applying what a holder has heard ----------
@@ -217,86 +188,113 @@ local function playersOf(w)
 	return w.players or {}
 end
 
---- Move one holder's number by one rumour. `strength` falls with hops, so the far tribe gets a weaker, vaguer
---- version of the same story. The deltas are RE-DERIVED from the event here (R4): a saved rumour stores what
---- happened, never its consequences, so it can never disagree with Reputation's rule.
-function Gossip.apply(w, ps, holderKey: string, r)
+--- How far one rumour moves one holder's number, or nil if it does not. The deltas are RE-DERIVED from the event
+--- here (R4): a saved rumour stores what happened, never its consequences, so it can never disagree with
+--- Reputation's rule. `hops` is how many hands it came through to reach this holder: the far tribe gets a weaker,
+--- vaguer version of the same story.
+function Gossip.delta(w, holderKey: string, r, hops: number): number?
 	local tribeType = tribeTypeOf(w, holderKey)
-	if not tribeType then return end
+	if not tribeType then return nil end
 	local victimTribe = r.tribe and w.tribes[r.tribe] and w.tribes[r.tribe].tribeType or nil
-	local deltas = Reputation.deltas(r.event, r.victim, victimTribe, { aggressor = r.aggressor, fleeing = r.fleeing })
-	local d = deltas[tribeType]
-	-- Marked PER HOLDER, not per player: one rumour known in two villages has to move two numbers, and the offline
-	-- replay below has no other way to tell which of those it has already done.
-	ps.heard = ps.heard or {}
-	ps.heard[holderKey] = ps.heard[holderKey] or {}
-	ps.heard[holderKey][r.id] = true
-	if not d or d == 0 then return end
+	local d = Reputation.deltas(r.event, r.victim, victimTribe, { aggressor = r.aggressor, fleeing = r.fleeing })[tribeType]
+	if not d or d == 0 then return nil end
 	if d < 0 then d *= (r.mult or 1) end -- the scar multiplies harm, never kindness
-	local before = Gossip.standing(w, ps, holderKey)
-	local after = Reputation.clamp(before + d * Gossip.HOP_FADE ^ (r.hops or 0))
-	ps.rep[holderKey] = after
-	if Gossip.onChange and not Gossip.quiet then Gossip.onChange(ps, holderKey, before, after) end
+	return d * Gossip.HOP_FADE ^ hops
 end
 
---- Book a rumour at a holder: the ONE place a holder's opinion moves. Appending to `knows` IS applying it, so no
---- rumour can ever be booked twice at the same holder. Returns true if this was new here.
---- The player may be offline - then only `knows` moves, and Gossip.catchUpPlayer applies it when they come back.
---- That is how the news reaches a village while you are away and is waiting for you when you walk in.
-function Gossip.tell(w, holderKey: string, id: number): boolean
-	local knows = knowsOf(w, holderKey)
-	if not knows then return false end
-	for _, k in ipairs(knows) do
+--- Move an online player's number at one holder.
+local function move(w, ps, holderKey: string, d: number, silent: boolean?)
+	local before = Gossip.standing(w, ps, holderKey)
+	local after = Reputation.clamp(before + d)
+	ps.rep[holderKey] = after
+	if Gossip.onChange and not silent then Gossip.onChange(ps, holderKey, before, after) end
+end
+
+--- An ABSENT player's standing moves too, the moment the holder hears it - into `w.owed`, the world's ledger of what
+--- they have coming. A ledger, so it cannot depend on the ring (S1): leaving the ring must not launder a killing.
+--- Faded by Reputation's closed form (P2); fade is linear, so fading the running sum is fading each part.
+local function owe(w, uid: number, holderKey: string, d: number)
+	local day = w.day or 1
+	w.owed = w.owed or {}
+	local o = w.owed[uid]
+	if not o then
+		o = { day = day, rep = {} }
+		w.owed[uid] = o
+	elseif day > o.day then
+		for k, v in pairs(o.rep) do o.rep[k] = Reputation.fade(v, day - o.day) end
+		o.day = day
+	end
+	o.rep[holderKey] = (o.rep[holderKey] or 0) + d
+end
+
+--- Book a rumour at a holder, `hops` hands from the eyewitnesses: the ONE place a holder's opinion moves. Appending to
+--- `knows` IS applying it, so no rumour can ever be booked twice at the same holder - which is also why no
+--- per-player "already heard" set is needed any more. Returns true if this was new here.
+--- The player may be offline: then it goes to `w.owed`, and Gossip.catchUpPlayer pays it when they come back. That
+--- is how the news reaches a village while you are away and is waiting for you when you walk in.
+function Gossip.tell(w, holderKey: string, id: number, hops: number?): boolean
+	local row = rowOf(w, holderKey)
+	if not row then return false end
+	for _, k in ipairs(row.knows) do
 		if k == id then return false end
 	end
 	local r = Gossip.find(w, id)
 	if not r then return false end
-	table.insert(knows, id)
+	local h = hops or 0
+	table.insert(row.knows, id)
+	table.insert(row.hops, h)
+	local d = Gossip.delta(w, holderKey, r, h)
+	if not d then return true end
 	local ps = playersOf(w)[r.about]
-	if ps then Gossip.apply(w, ps, holderKey, r) end
+	if ps then move(w, ps, holderKey, d) else owe(w, r.about, holderKey, d) end
 	return true
 end
 
 --- A thing just happened in front of these holders. Seeds the rumour at every one of them (hops 0: the full strength
 --- of having seen it yourself) and scars the victim's people. NO HOLDERS MEANS NOBODY SAW IT: no rumour, and no
 --- reputation change anywhere in the world. That is §7's "you can outrun your reputation", and it is deliberate.
+--- Only a story that would MOVE somebody's number is news: a deer has no tribe, and an escape from hunters means
+--- nothing to anyone, so neither takes a slot in the ring (QA round 1: a hunting trip evicted real news, and the
+--- villagers then said "They say you killed someone." about a deer).
 function Gossip.seed(w, uid: number, event: string, victimKind: string?, tribeIdx: number?, ctx, day: number, holderKeys)
 	if not Gossip.TRAVELS[event] then return nil end
+	local tribeType = tribeIdx and w.tribes[tribeIdx] and w.tribes[tribeIdx].tribeType or nil
+	if not tribeType then return nil end
+	local c = ctx or {}
+	local moves = false
+	for _, d in pairs(Reputation.deltas(event, victimKind, tribeType, { aggressor = c.aggressor, fleeing = c.fleeing })) do
+		if d ~= 0 then moves = true end
+	end
+	if not moves then return nil end
 	local keys = {}
 	for k in pairs(holderKeys or {}) do table.insert(keys, k) end
 	if #keys == 0 then return nil end
 	table.sort(keys)
 	local ps = playersOf(w)[uid]
-	local tribeType = tribeIdx and w.tribes[tribeIdx] and w.tribes[tribeIdx].tribeType or nil
-	local c = ctx or {}
 	local r = Gossip.push(w, {
-		about = uid, event = event, victim = victimKind, tribe = tribeIdx, day = day, hops = 0,
+		about = uid, event = event, victim = victimKind, tribe = tribeIdx, day = day,
 		mult = if ps then Gossip.multiplier(ps, tribeType, c.withGroup) else 1,
 		aggressor = c.aggressor or nil, fleeing = c.fleeing or nil,
 	})
 	for _, k in ipairs(keys) do Gossip.tell(w, k, r.id) end
-	if ps and tribeType then
-		local gain = Gossip.grudgeGain(event, victimKind, c) * (if c.withGroup then Gossip.GRUDGE_GROUP else 1)
-		if gain > 0 then setGrudge(ps, tribeType, Gossip.grudge(ps, tribeType) + gain) end
+	if ps then
+		local gain = Grudge.gain(event, victimKind, c) * (if c.withGroup then Grudge.GROUP else 1)
+		if gain > 0 then Grudge.set(ps, tribeType, Grudge.grudge(ps, tribeType) + gain) end
 	end
 	return r
 end
 
 -- ---------- how it spreads ----------
---- Two holders swap every rumour the other has and they do not. `hops` lives on the shared row and counts
---- exchanges, so it rises once per hand-off however many holders were standing on each side.
+--- Two holders swap every rumour the other has and they do not. Each arrives one hand further from the eyewitnesses
+--- than at the holder that passed it on, so strength is set by DISTANCE in hands, whatever the order of exchanges.
 function Gossip.exchange(w, a: string, b: string): number
-	local ka, kb = knowsOf(w, a), knowsOf(w, b)
-	if not ka or not kb or a == b then return 0 end
+	local ra, rb = rowOf(w, a), rowOf(w, b)
+	if not ra or not rb or a == b then return 0 end
 	local moved = 0
-	for _, side in ipairs({ { ka, b }, { kb, a } }) do
-		for _, id in ipairs(table.clone(side[1])) do
-			local r = Gossip.find(w, id)
-			if r then
-				local before = r.hops or 0
-				r.hops = before + 1
-				if Gossip.tell(w, side[2], id) then moved += 1 else r.hops = before end
-			end
+	for _, side in ipairs({ { ra, b }, { rb, a } }) do
+		local ids, hops = table.clone(side[1].knows), table.clone(side[1].hops)
+		for i, id in ipairs(ids) do
+			if Gossip.tell(w, side[2], id, (hops[i] or 0) + 1) then moved += 1 end
 		end
 	end
 	return moved
@@ -310,9 +308,16 @@ function Gossip.arrive(w, g): number
 	return Gossip.exchange(w, tostring(g.id), Gossip.villageKey(g.tribe))
 end
 
---- Groups that share a stretch of road swap news. Bucketed by route position so it is O(groups), not O(groups^2):
---- a pairwise sweep at 1 Hz would be 13 million comparisons over a full catch-up. Fires only when the schedule
---- derived from `now` ticks over, so n live seconds and catchUp(n) produce the identical sequence of exchanges.
+--- The map tile a group is standing on, or nil if it has no route yet (a record mid-load) or is MATERIALISED: then
+--- the adapter is walking real bodies and `pos` is out of date, so the abstract position would be a lie.
+local function tileOf(g)
+	if g.materialised or not g.route then return nil end
+	return g.route[g.pos or 1]
+end
+
+--- Groups that share a stretch of road swap news. Bucketed by MAP TILE (2x2 cells), never by `pos` (an index into
+--- each group's OWN route), so it is O(groups), not O(groups^2). Fires only when the schedule derived from `now`
+--- ticks over, so n live seconds and catchUp(n) produce the identical exchanges.
 function Gossip.meet(w, now: number): number
 	local slot = math.floor(now / Gossip.EVERY)
 	if slot <= (w.meta.lastContactSlot or -1) then return 0 end
@@ -321,9 +326,12 @@ function Gossip.meet(w, now: number): number
 	for id in pairs(w.groups) do table.insert(ids, id) end
 	table.sort(ids, function(a, b) return tostring(a) < tostring(b) end)
 	for _, id in ipairs(ids) do
-		local b = tostring(math.floor((w.groups[id].pos or 1) / 2))
-		buckets[b] = buckets[b] or {}
-		table.insert(buckets[b], tostring(id))
+		local at = tileOf(w.groups[id])
+		if at then
+			local b = ("%d,%d"):format(math.floor(at.x / 2), math.floor(at.y / 2))
+			buckets[b] = buckets[b] or {}
+			table.insert(buckets[b], tostring(id))
+		end
 	end
 	local order = {}
 	for b in pairs(buckets) do table.insert(order, b) end
@@ -339,42 +347,44 @@ function Gossip.meet(w, now: number): number
 end
 
 -- ---------- a player who was away ----------
---- Everything the world learned about this player while they were offline, applied from `knows` (the durable side),
---- skipping anything already in their own `heard` set. Called once by Restore.player, after the away-fade.
+--- Pay everything the world learned about this player while they were offline: `w.owed`, faded for the days it
+--- waited, landed silently - Headlines.welcome is what tells them what happened while they were gone. Called once by
+--- Restore.player, after the away-fade and before the player is in `w.players`.
 function Gossip.catchUpPlayer(w, ps, uid: number)
-	ps.heard = ps.heard or {}
-	local ring = {}
-	for _, r in ipairs(w.rumours or {}) do ring[r.id] = true end
-	-- a rumour that left the ring is forgotten having been heard, so the set stays bounded by the ring
-	for holderKey, ids in pairs(ps.heard) do
-		for id in pairs(ids) do
-			if not ring[id] then ids[id] = nil end
-		end
-		if next(ids) == nil then ps.heard[holderKey] = nil end
-	end
-	-- quietly: they have been away, and Headlines.welcome is what tells them what happened while they were gone
-	local was = Gossip.quiet
-	Gossip.quiet = true
-	for _, h in ipairs(Gossip.holders(w)) do
-		local done = ps.heard[h.key]
-		for _, id in ipairs(h.knows) do
-			local r = Gossip.find(w, id)
-			if r and r.about == uid and not (done and done[id]) then Gossip.apply(w, ps, h.key, r) end
-		end
-	end
-	Gossip.quiet = was
+	local o = w.owed and w.owed[uid]
+	if not o then return end
+	w.owed[uid] = nil
+	local wait = math.max(0, (w.day or o.day) - o.day)
+	local keys = {}
+	for k in pairs(o.rep) do table.insert(keys, k) end
+	table.sort(keys)
+	for _, k in ipairs(keys) do move(w, ps, k, Reputation.fade(o.rep[k], wait), true) end
 end
 
---- The newest thing this holder has heard about the player, for Talk.Context.heard. nil if they know nothing.
-function Gossip.latest(w, holderKey: string, uid: number)
-	local knows = knowsOf(w, holderKey)
-	if not knows then return nil end
-	local best = nil
-	for _, id in ipairs(knows) do
-		local r = Gossip.find(w, id)
-		if r and r.about == uid and (not best or r.day >= best.day) then best = r end
+--- A v2 player key is keyed by tribe TYPE ("farmer"), v3 by holder ("v1"): move each old value onto its village and
+--- drop the old key. `saved` (the rep AS SAVED) decides, because the live `rep` was already seeded with START at
+--- every village (Sim.addPlayer): the old value wins unless the saved record itself held that holder key.
+function Gossip.rekey(w, rep, saved)
+	saved = saved or {}
+	local was = table.clone(rep)
+	for i, t in ipairs(w.tribes) do
+		local v, holder = was[t.tribeType], Gossip.villageKey(i)
+		if v ~= nil and saved[holder] == nil then rep[holder] = v end
 	end
-	return best
+	for _, t in ipairs(w.tribes) do rep[t.tribeType] = nil end
+end
+
+--- The newest thing this holder has heard about the player, and how many hands it came through to reach them, for
+--- Talk.Context.heard. nil if they know nothing.
+function Gossip.latest(w, holderKey: string, uid: number)
+	local row = rowOf(w, holderKey)
+	if not row then return nil, nil end
+	local best, bestHops = nil, nil
+	for i, id in ipairs(row.knows) do
+		local r = Gossip.find(w, id)
+		if r and r.about == uid and (not best or r.day >= best.day) then best, bestHops = r, row.hops[i] end
+	end
+	return best, bestHops
 end
 
 return Gossip

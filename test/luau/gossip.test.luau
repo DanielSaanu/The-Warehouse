@@ -41,7 +41,7 @@ local function newRecord(seed: number)
 		Tick.rebuildRoute(g, world)
 		w.groups[spec.id] = g
 	end
-	local ps = { player = { UserId = 7, Name = "Danzo" }, rep = Reputation.newTable(seedRep), grudge = {}, heard = {} }
+	local ps = { player = { UserId = 7, Name = "Danzo" }, rep = Reputation.newTable(seedRep), grudge = {} }
 	w.players[7] = ps
 	return w, ps, rng
 end
@@ -166,7 +166,7 @@ do
 			end
 		end
 		local out = { rumours = #w.rumours }
-		for _, h in ipairs(Gossip.holders(w)) do out[h.key] = table.concat(h.knows, ",") end
+		for _, h in ipairs(Gossip.holders(w)) do out[h.key] = table.concat(h.knows, ",") .. "@" .. table.concat(h.hops, ",") end
 		for holder, v in pairs(ps.rep) do out["rep:" .. holder] = ("%.6f"):format(v) end
 		return out
 	end
@@ -224,6 +224,172 @@ do
 	print(("   away: Kenstow %.1f -> %.1f on return"):format(online, back))
 end
 
+-- ---------- QA round 1 (docs/qa/rung3-part3-round1.md): one test per FIX item, each failing on the old code ----------
+
+-- FIX 1: rekey must let a v2 player's REAL standing win over the START values Sim.addPlayer already seeded.
+-- The old rule ("copy only if the holder is empty") was never true, so every returning v2 player was reset.
+do
+	local w, ps = newRecord(20)
+	-- what Restore.player sees: newRep()'s START values, then applyPlayer laying the v2 tribe-type keys on top
+	local saved = { farmer = 55, hunter = -30, plunderer = -60 }
+	for k, v in pairs(saved) do ps.rep[k] = v end
+	Gossip.rekey(w, ps.rep, saved)
+	assert(ps.rep.v1 == 55 and ps.rep.v2 == -30 and ps.rep.v3 == -60, ("the v2 values win: v1 %s v2 %s v3 %s"):format(
+		tostring(ps.rep.v1), tostring(ps.rep.v2), tostring(ps.rep.v3)))
+	assert(ps.rep.farmer == nil and ps.rep.hunter == nil and ps.rep.plunderer == nil, "and the old keys are gone")
+	-- a v3 record is already keyed by holder: rekey leaves it exactly as saved
+	local w3, ps3 = newRecord(21)
+	local saved3 = { v1 = 40, squad = -12 }
+	for k, v in pairs(saved3) do ps3.rep[k] = v end
+	local before = table.clone(ps3.rep)
+	Gossip.rekey(w3, ps3.rep, saved3)
+	for k, v in pairs(before) do assert(ps3.rep[k] == v, "a v3 key is untouched at " .. k) end
+end
+
+-- FIX 2: road meetings are by PLACE. Both groups at pos 1 are at their own homes, far apart: they must not meet.
+do
+	local w, ps = newRecord(22)
+	Gossip.seed(w, 7, "kill", "hunter", HUNTER, { fleeing = true }, 1, { squad = true })
+	local sq, band = w.groups.squad, w.groups.band
+	sq.pos, band.pos = 1, 1
+	local a, b = sq.route[1], band.route[1]
+	assert(math.abs(a.x - b.x) + math.abs(a.y - b.y) > 4, "the two homes are far apart (fixture check)")
+	w.meta.gameSeconds = Gossip.EVERY
+	Gossip.meet(w, w.meta.gameSeconds)
+	assert(#band.knows == 0, "groups at pos 1 on opposite sides of the map do not meet")
+	-- both at the far end of their routes, which is the same village: now they share a tile, and they do meet
+	sq.pos, band.pos = #sq.route, #band.route
+	local ea, eb = sq.route[sq.pos], band.route[band.pos]
+	assert(math.floor(ea.x / 2) == math.floor(eb.x / 2) and math.floor(ea.y / 2) == math.floor(eb.y / 2), "fixture: same 2x2 cell")
+	band.materialised = true
+	Gossip.meet(w, 2 * Gossip.EVERY)
+	assert(#band.knows == 0, "a MATERIALISED group's pos is stale, so it is not bucketed")
+	band.materialised = nil
+	Gossip.meet(w, 3 * Gossip.EVERY)
+	assert(#band.knows == 1, "groups standing in the same place swap news")
+	assert(band.hops[1] == 1, "one hand from the squad that saw it")
+end
+
+-- FIX 3: only a story that would move somebody's number is news. A deer is not.
+do
+	local w = newRecord(23)
+	assert(Gossip.seed(w, 7, "kill", "deer", nil, nil, 1, { squad = true }) == nil, "an animal kill is not a rumour")
+	assert(Gossip.seed(w, 7, "escape", "hunter", HUNTER, nil, 1, { squad = true }) == nil, "an escape from hunters moves nobody")
+	assert(#w.rumours == 0 and #w.groups.squad.knows == 0, "nothing reached the ring")
+	assert(Gossip.seed(w, 7, "kill", "bandit", BANDIT, nil, 1, { squad = true }) ~= nil, "a bandit killing still is")
+	assert(Gossip.latest(w, "squad", 7).victim == "bandit", "and that is what they talk about")
+end
+
+-- FIX 4: strength is set by how many hands the story came through to reach THIS holder, not by a counter on the
+-- shared row. The reviewer's case: squad -> village -> farmers, then squad -> band. The band is one hand away.
+do
+	local w, ps = newRecord(24)
+	local start = Reputation.START.plunderer
+	Gossip.seed(w, 7, "kill", "hunter", HUNTER, { fleeing = true }, 1, { squad = true })
+	local firstHand = Reputation.START.hunter - Gossip.standing(w, ps, "squad")
+	Gossip.exchange(w, "squad", Gossip.villageKey(HUNTER))
+	Gossip.exchange(w, Gossip.villageKey(HUNTER), Gossip.villageKey(FARMER))
+	Gossip.exchange(w, "squad", "band")
+	local _, bandHops = Gossip.latest(w, "band", 7)
+	local _, farmHops = Gossip.latest(w, Gossip.villageKey(FARMER), 7)
+	local _, squadHops = Gossip.latest(w, "squad", 7)
+	assert(bandHops == 1, ("the band heard it from the eyewitnesses: 1 hop, got %s"):format(tostring(bandHops)))
+	assert(farmHops == 2, "the farmers heard it second hand from the hunters' village")
+	assert(squadHops == 0, "and the eyewitnesses are still eyewitnesses (their line must not turn into hearsay)")
+	-- a hunter killing moves the hunters only; the band's number is START, which is the point of checking hops
+	assert(Gossip.standing(w, ps, "band") == start, "a hunter's murder means nothing to the plunderers")
+	-- the same rumour about a BANDIT moves everyone, so the strengths can be read off directly
+	local w2, ps2 = newRecord(25)
+	Gossip.seed(w2, 7, "kill", "bandit", BANDIT, nil, 1, { squad = true })
+	Gossip.exchange(w2, "squad", Gossip.villageKey(HUNTER))
+	Gossip.exchange(w2, Gossip.villageKey(HUNTER), Gossip.villageKey(FARMER))
+	Gossip.exchange(w2, "squad", "band")
+	local d = Reputation.deltas("kill", "bandit", "plunderer", {}).plunderer
+	assert(math.abs((Gossip.standing(w2, ps2, "band") - start) - d * Gossip.HOP_FADE) < 1e-6,
+		"the band books it at ONE hop, whatever order the exchanges ran in")
+	print(("   eyewitness 0 hops (%.1f), band 1 hop, farmers 2 hops"):format(firstHand))
+end
+
+-- FIX 4b + 5: an offline player gets EXACTLY what an online one would have, even after the story travels on, goes
+-- stale and leaves the ring before they come back. Logging off must not launder a killing (old: online -15,
+-- offline -8.44 after more exchanges; and 0 once the rumour was dropped).
+do
+	local vk = Gossip.villageKey(HUNTER)
+	local AWAY = Gossip.STALE_DAYS + 2
+	local function play(online: boolean)
+		local w, ps = newRecord(26)
+		Gossip.seed(w, 7, "kill", "hunter", HUNTER, { fleeing = true }, 1, { squad = true })
+		if not online then w.players[7] = nil end
+		Gossip.exchange(w, "squad", vk)
+		Gossip.exchange(w, vk, Gossip.villageKey(FARMER)) -- the story travels on, which used to weaken the replay
+		Gossip.exchange(w, "squad", "band")
+		w.day = 1 + AWAY
+		Gossip.dropStale(w, w.day) -- and leaves the ring altogether
+		assert(#w.rumours == 0 and #w.villages[HUNTER].knows == 0, "the rumour is gone from the world")
+		if online then
+			for holder, v in pairs(ps.rep) do ps.rep[holder] = Reputation.fade(v, AWAY) end -- the daily fades they sat through
+		else
+			for holder, v in pairs(ps.rep) do ps.rep[holder] = Reputation.fade(v, AWAY) end -- Standing.away's fade
+			assert(w.owed[7] ~= nil, "what they have coming is on the world, not in the ring")
+			w.players[7] = ps
+			Gossip.catchUpPlayer(w, ps, 7)
+			assert(w.owed[7] == nil, "and it is paid once")
+			Gossip.catchUpPlayer(w, ps, 7)
+		end
+		return Gossip.standing(w, ps, vk), Gossip.standing(w, ps, "squad")
+	end
+	local onV, onS = play(true)
+	local offV, offS = play(false)
+	assert(onV < Reputation.START.hunter, "the village moved")
+	assert(math.abs(onV - offV) < 1e-6, ("away or not, the village thinks the same: online %.4f, offline %.4f"):format(onV, offV))
+	assert(math.abs(onS - offS) < 1e-6, "and so does the squad that saw it")
+	print(("   logged off for %d days: Kenstow %.2f either way"):format(AWAY, offV))
+end
+
+-- FIX 5, eviction: a ring flooded by other news still cannot launder what an absent player did.
+do
+	local w, ps = newRecord(27)
+	local vk = Gossip.villageKey(HUNTER)
+	w.players[7] = nil
+	Gossip.seed(w, 7, "kill", "hunter", HUNTER, { fleeing = true }, 1, { [vk] = true })
+	for _ = 1, Gossip.MAX_RUMOURS + 5 do
+		Gossip.seed(w, 8, "gift", "villager", FARMER, nil, 1, { [Gossip.villageKey(FARMER)] = true })
+	end
+	assert(Gossip.find(w, 1) == nil, "the killing was evicted")
+	local before = Gossip.standing(w, ps, vk)
+	w.players[7] = ps
+	Gossip.catchUpPlayer(w, ps, 7)
+	assert(Gossip.standing(w, ps, vk) < before, "and it is still waiting for them when they walk in")
+end
+
+-- `owed` is bounded: standing owed to somebody who never comes back fades like any other, and is forgotten.
+do
+	local w = newRecord(28)
+	w.players[7] = nil
+	Gossip.seed(w, 7, "kill", "hunter", HUNTER, { fleeing = true }, 1, { squad = true })
+	assert(w.owed[7] ~= nil, "owed")
+	Gossip.dropStale(w, 1 + Config.REP_FADE_DAYS)
+	assert(w.owed[7] ~= nil, "a month later it is halved, not gone")
+	Gossip.dropStale(w, 1 + 7 * Config.REP_FADE_DAYS)
+	assert(w.owed[7] == nil, "after seven half-lives it is below OWED_MIN and dropped")
+end
+
+-- CONSIDER 1: a returning player's catch-up is silent, live news is not - and silence is a parameter, so nothing can
+-- leave it stuck on.
+do
+	local w, ps = newRecord(29)
+	local told = 0
+	Gossip.onChange = function() told += 1 end
+	Gossip.seed(w, 7, "kill", "hunter", HUNTER, { fleeing = true }, 1, { squad = true })
+	assert(told == 1, "the player is told when the squad's opinion moves")
+	w.players[7] = nil
+	Gossip.arrive(w, w.groups.squad)
+	w.players[7] = ps
+	Gossip.catchUpPlayer(w, ps, 7)
+	assert(told == 1, "catch-up says nothing: the welcome does that")
+	Gossip.onChange = nil
+end
+
 -- The worst case IN BYTES, so a future shape change has to argue with a number rather than a feeling
 -- (docs/RUNG3.md part 3). Save.check has already proved the shape is what JSON gives back unchanged, so encoding it
 -- the same way HttpService would is just a matter of counting.
@@ -270,5 +436,23 @@ do
 	assert(perHolder < 2048, ("per holder, everything known: %.0f B"):format(perHolder))
 	print(("   world %d B -> %d B: gossip's worst case is %d B over %d holders (%.0f B each)"):format(
 		before, full, cost, holders, perHolder))
+end
+-- `owed` in bytes: what absent players have coming, worst case = every one of them owed at every holder. It is the
+-- one gossip node that DOES grow with players, so it gets its own number (and OWED_MIN fades it out, see above).
+do
+	local w = newRecord(12)
+	local stamp = { seed = 1, rngState = 1, savedAt = 1758600000 }
+	local before = jsonLen(Save.encode(w, stamp))
+	local PLAYERS = 32
+	w.owed = {}
+	for n = 1, PLAYERS do
+		local rep = {}
+		for _, h in ipairs(Gossip.holders(w)) do rep[h.key] = -12.345678901234 end
+		w.owed[4100000000 + n] = { day = 120, rep = rep }
+	end
+	local cost = jsonLen(Save.encode(w, stamp)) - before
+	local each = cost / PLAYERS
+	assert(each < 256, ("owed per absent player, owed at all %d holders: %.0f B"):format(#Gossip.holders(w), each))
+	print(("   owed: %d absent players at all %d holders = %d B (%.0f B each)"):format(PLAYERS, #Gossip.holders(w), cost, each))
 end
 print("gossip ok")

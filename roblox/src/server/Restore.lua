@@ -61,7 +61,7 @@ function Restore.player(ps, saved, x: number, y: number): (number, number)
 	ps.lastSeenDay = lastSeen -- kept so a player who leaves before seeing the welcome is still 'away since then'
 	local away = math.max(0, S.day - lastSeen)
 	-- a v2 key is keyed by tribe TYPE: move each onto that tribe's village holder before anything reads it
-	Standing.rekey(ps)
+	Standing.rekey(ps, saved.rep)
 	-- fade for the days that passed, THEN apply what the world learned about them while they were gone
 	Standing.away(ps, away)
 	-- "You were gone eleven days": the world's headlines since they left, from the tribes that would tell them -
@@ -159,7 +159,7 @@ function Restore.apply(data, slept: number?): (boolean, string?)
 	for _, r in ipairs(regions.list) do r.live, r.tide = { deer = 0, boar = 0, wolf = 0 }, false end
 	S.meta, S.calamity, S.regions, S.tribes = rec.meta, rec.calamity, regions, rec.tribes
 	S.people, S.groups, S.camps, S.bags = rec.people, rec.groups, rec.camps, rec.bags
-	S.villages, S.rumours = rec.villages, rec.rumours -- gossip: a v2 save migrated in with everybody knowing nothing
+	S.villages, S.rumours, S.owed = rec.villages, rec.rumours, rec.owed -- gossip (+ what absent players have coming)
 	Calendar.bind(S.meta)
 	S.meta.worldId = S.meta.worldId or Restore.newWorldId() -- a world saved before worlds had ids gets one now
 	Villagers.reset() -- the tribe rows are new tables: rescan, and give a save from before farms its plot rows

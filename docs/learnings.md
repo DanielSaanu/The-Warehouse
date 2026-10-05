@@ -1,6 +1,6 @@
 # Learnings
 
-**Created:** 2026-09-23 · **Last updated:** 2026-09-27
+**Created:** 2026-09-23 · **Last updated:** 2026-10-05
 
 Rules that **generalise** — things a session got wrong once and should never get wrong again. One-off typos and
 trivia stay in the QA goals file or the commit message; they do not earn a line here.
@@ -35,7 +35,19 @@ Gossip books a rumour at a HOLDER, so one rumour legitimately moves several numb
 keyed by rumour alone, so a rumour known in two villages moved the first village's number and silently skipped the
 second. It is now `ps.heard[holderKey][id]`. The general shape: if the write is per (a, b), the "already done" set
 is per (a, b) too, and a set keyed by less than that is a bug that only shows up in the second case.
-*(2026-09-23, rung 3 part 3.)*
+*(2026-09-23, rung 3 part 3. Since H3 the gossip case needs no such set: applying at tell time made `knows` the
+only one.)*
+
+**S4 — A quantity that differs per reader does not live on the shared row.** Gossip's `hops` was one counter on
+the rumour, but "how many hands did this come through" is a fact about each holder that heard it. On the shared
+row it rose with every exchange anywhere, so strength depended on exchange order, a replay later read a bigger
+number than the live path had, and the eyewitnesses' own story turned into hearsay. Put it beside the per-reader
+link (`hops[i]` next to `knows[i]`). Same for anything "as seen by" someone. *(2026-10-05, handoff H3.)*
+
+**S5 — "Apply it later" from a capped transport is S1 again.** Replaying `knows` for a player who was offline
+made the ring a ledger by the back door: whatever left the ring before they returned was never applied. If
+something is owed, write what is owed at the moment it becomes owed (`w.owed`), and let the transport drop freely.
+*(2026-10-05, handoff H3.)*
 
 **S1 — A capped list can be a memory, but never a ledger.**
 Anything with an eviction rule (an LRU, a ring, a "keep the last N") *heals when it evicts*. So a number that is
@@ -123,6 +135,12 @@ retype). Prove "lose nothing" mechanically: every non-blank line of the old file
 the multiset of hub + new files; then a relative-link check over all tracked `.md`. *(2026-09-27, handoff H2.)*
 
 ## Q — QA loop and review
+
+**Q2 — Build a test's fixture the way production builds the object, or the test hides the bug.** `Standing.rekey`
+was "lossless" in every hand check because each check started `rep` empty; production seeds `rep` with START at
+every village before rekey runs, so "copy only if empty" never copied and every v2 player was reset. Before
+asserting a migration or a merge, trace the real call order (`Sim.addPlayer` -> `applyPlayer` -> `rekey`) and seed
+the fixture to match. *(2026-10-05, handoff H3.)*
 
 **Q1 — A pure test suite cannot see a missing side effect.** Every gossip rule passed `test:luau` while the player
 was never TOLD their standing had changed: the rule moved the right number, and "the number moves visibly" is not

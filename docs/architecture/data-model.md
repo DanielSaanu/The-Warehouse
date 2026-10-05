@@ -31,9 +31,10 @@ world
 ├─ calendar    calamity { kind, active, day, warnedDay }
 ├─ regions[]   per 16x16: grass, deer, boar, wolf                 36 rows, fixed
 ├─ tribes[]    type, villageId, stock{}, population, walled, surnames, news
-├─ villages[]  id, knows[]                (rung 3 part 3: knows[] is what this village has heard. tribeId derived)
-├─ rumours[]   id, about, event, victim, victimPerson, tribe, day, hops, mult   (part 3: a 64-row ring)
-├─ groups{}    id, kind, tribe, from, to, pos, dir, acc, speed, pauses, fullSize, knows[],
+├─ villages[]  id, knows[], hops[]        (rung 3 part 3: knows[] is what this village has heard. tribeId derived)
+├─ rumours[]   id, about, event, victim, victimPerson, tribe, day, mult   (part 3: a 64-row ring; hops are per holder)
+├─ owed[]      about, day, rep{holder: delta}   (v4: standing an absent player has coming, paid on join)
+├─ groups{}    id, kind, tribe, from, to, pos, dir, acc, speed, pauses, fullSize, knows[], hops[],
 │              lateTarget, carry{}, members[] {kind, role, person}, pauseUntil, replenishAt, retreatUntil
 ├─ people      nextId, rows: the full Families.Person minus `entity` (`group` = on the road with that group)
 ├─ camps{}     owner, x, y, litUntil, out

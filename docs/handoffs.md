@@ -1,6 +1,6 @@
 # Handoffs — routine → heavy
 
-**Created:** 2026-09-23 · **Last updated:** 2026-09-27
+**Created:** 2026-09-23 · **Last updated:** 2026-10-05
 
 A routine session appends here the moment an escalation trigger fires (CLAUDE.md, "Model policy and
 escalation"). The heavy agent reads this file first, works the open entries, records its full reasoning in
@@ -27,9 +27,15 @@ Resolution (added by the heavy agent under the same entry):
 
 ## Open
 
-_None._
+*(none)*
 
 ## Resolved
+
+### H3 — Gossip QA round 1 (6/10): five FIX items in Gossip, Standing.rekey and the meet rule — 2026-10-05 — RESOLVED
+- **Resolved 2026-10-05 (heavy):** all five FIX items fixed with a test each; absent players' standing is now owed on
+  the world at tell time (`w.owed`), hops per holder, save `VERSION` 3 → 4 in place, Grudge split out (Danzo: dev
+  mode, a reset is acceptable, lost rep not recovered). → `docs/RUNG3.md` part 3 "QA round 1",
+  `docs/qa/rung3-part3-round1.md` "Builder decisions", learnings S4, S5, Q2.
 
 ### H2 — Split docs/ARCHITECTURE.md and docs/DESIGN.md into hub + per-section files — 2026-09-27 — RESOLVED
 - **Resolved 2026-09-27 (heavy):** both kept at their paths as hubs with a § / rule-ID → file table; text moved

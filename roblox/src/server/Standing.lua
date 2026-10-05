@@ -157,19 +157,11 @@ function Standing.away(ps, days: number)
 	Gossip.catchUpPlayer(S, ps, ps.player.UserId)
 end
 
---- A v2 player key is keyed by tribe TYPE. Copy each onto that tribe's village holder, keep anything already a
---- holder key, and drop the old keys. Lossless, and it runs once per returning player (no PLAYER_VERSION bump,
---- because applyPlayer discards the whole record on a mismatch).
-function Standing.rekey(ps)
-	local byType = {}
-	for i, t in ipairs(S.tribes) do byType[t.tribeType] = Gossip.villageKey(i) end
-	for key, v in pairs(table.clone(ps.rep)) do
-		local holder = byType[key]
-		if holder then
-			if ps.rep[holder] == nil then ps.rep[holder] = v end
-			ps.rep[key] = nil
-		end
-	end
+--- A v2 player key is keyed by tribe TYPE: move each onto that tribe's village holder (the rule, and why `saved` is
+--- what decides, is Gossip.rekey's - it is pure so test:luau covers it). No PLAYER_VERSION bump, because applyPlayer
+--- discards the whole record on a mismatch.
+function Standing.rekey(ps, savedRep)
+	Gossip.rekey(S, ps.rep, savedRep)
 end
 
 -- ---------- what a village has heard, in words ----------
@@ -184,11 +176,12 @@ local SAID = {
 --- through several hands is hedged, because that is what a weak rumour is.
 function Standing.heard(ps, holderKey: string?): string?
 	if not holderKey then return nil end
-	local r = Gossip.latest(S, holderKey, ps.player.UserId)
+	local r, hops = Gossip.latest(S, holderKey, ps.player.UserId)
 	if not r then return nil end
 	local line = SAID[r.event]
 	if not line then return nil end
-	if (r.hops or 0) >= 2 then return "There is talk about you, though nobody here is sure of it." end
+	-- hops AT THIS HOLDER, so the eyewitnesses stay sure of what they saw however far the story has travelled since
+	if (hops or 0) >= 2 then return "There is talk about you, though nobody here is sure of it." end
 	return line
 end
 

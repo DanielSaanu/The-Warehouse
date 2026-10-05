@@ -26,6 +26,7 @@ State.state = {
 	villages = {},    -- [i] = { id, knows } : what THIS village has heard about each player (rung 3 part 3).
 	                  -- Its own tier, not a field on the tribe row, because rung 4 gives a tribe several villages.
 	rumours = {},     -- the ring of what is travelling: Gossip.MAX_RUMOURS of them, oldest evicted
+	owed = {},        -- [userId] = { day, rep }: standing an ABSENT player has coming, paid on join (Gossip.owe)
 	people = nil,     -- Families.Registry: everyone who was ever born in this world
 	regions = nil,    -- Ecology.Regions (+ live counts)
 	groups = {},      -- [id] = group record

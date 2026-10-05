@@ -7,7 +7,7 @@ plus a few headlines.
 
 **Key modules**
 - `shared/Save.lua` holds the saved shape. `encode` copies named fields only, so nothing is saved by accident.
-  Id-keyed maps are written as arrays of rows. `VERSION` 3, `PLAYER_VERSION` 1.
+  Id-keyed maps are written as arrays of rows. `VERSION` 4, `PLAYER_VERSION` 1.
 - `server/Restore.lua` has `snapshot()` (what a save writes) and `apply()` (the restore constructor that rebuilds
   everything not saved).
 - `server/Persistence.lua` is the ONLY DataStore code. Its policy: never write a key you failed to read, one

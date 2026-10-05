@@ -81,16 +81,21 @@ function Debug.run(cmd: string, ...): any
 		-- the ring, and who knows what. Part 3 cannot be QA'd without being able to see this.
 		local out = { ("%d rumours in flight, next id %d"):format(#(S.rumours or {}), (S.meta.nextRumourId or 0) + 1) }
 		for _, r in ipairs(S.rumours or {}) do
-			table.insert(out, ("  #%d day %d %s%s hops %d x%.2f%s"):format(r.id, r.day, r.event,
-				if r.victim then " " .. r.victim else "", r.hops or 0, r.mult or 1,
+			table.insert(out, ("  #%d day %d %s%s x%.2f%s"):format(r.id, r.day, r.event,
+				if r.victim then " " .. r.victim else "", r.mult or 1,
 				if r.fleeing then " (fleeing)" elseif r.aggressor then " (they drew first)" else ""))
 		end
 		for _, h in ipairs(Gossip.holders(S)) do
 			local who = h.key
 			local i = Gossip.tribeOf(S, h.key)
 			if i and S.tribes[i] then who = ("%s [%s]"):format(h.key, Map.village(S.tribes[i].villageId).name) end
-			table.insert(out, ("  %s knows %s"):format(who, if #h.knows == 0 then "nothing" else table.concat(h.knows, ", ")))
+			local known = {}
+			for n, id in ipairs(h.knows) do table.insert(known, ("#%d@%d"):format(id, h.hops[n] or 0)) end -- id@hops here
+			table.insert(out, ("  %s knows %s"):format(who, if #known == 0 then "nothing" else table.concat(known, ", ")))
 		end
+		local owedTo = 0
+		for _ in pairs(S.owed or {}) do owedTo += 1 end
+		table.insert(out, ("  owed to %d absent player(s)"):format(owedTo))
 		if ps then
 			local parts = {}
 			for holder, v in pairs(ps.rep) do table.insert(parts, ("%s %d"):format(holder, math.floor(v))) end

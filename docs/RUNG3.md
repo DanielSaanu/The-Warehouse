@@ -249,13 +249,14 @@ Two contact rules, both O(number of groups), both driven only by `gameSeconds`:
    every rumour neither has. This is the main channel and it is free: "a lone bandit tells his band when he gets
    home", the caravan arrives, the squad comes back.
 2. **Meeting on the road.** When `math.floor(now / Gossip.EVERY)` increments, groups are bucketed by
-   `math.floor(tile / 2)` of their current route tile and everything in a bucket exchanges. Bucketing makes it
+   `math.floor(x / 2), math.floor(y / 2)` of the map tile they stand on (`route[pos]`; never `pos` itself, and a
+   materialised group is skipped because its `pos` is stale) and everything in a bucket exchanges. Bucketing makes it
    O(n), not O(n²) — a pairwise sweep at 1 Hz would be 13 million comparisons over a full catch-up.
 
-An exchange is `Gossip.tell(w, ps, holder, id)` per rumour in the other holder's `knows`. Rumour rows are shared,
-so `hops` lives on the row and means "how many exchanges this rumour has been through": it is incremented once per
-successful `tell` that is not the seeding one. Strength is `Gossip.HOP_FADE ^ hops`, so the far tribe gets a
-weaker, vaguer version — which is exactly the "done when".
+An exchange is `Gossip.tell(w, holder, id, hops)` per rumour in the other holder's `knows`. **Hops are per
+holder** (`hops[i]` beside `knows[i]`): a rumour reaches B at one more hop than A had it at. (As first built, `hops`
+was one counter on the shared row, so strength depended on the order of exchanges — superseded by QA round 1,
+below.) Strength is `Gossip.HOP_FADE ^ hops`, so the far tribe gets a weaker, vaguer version — the "done when".
 
 ### Does gossip spread during catch-up?
 
@@ -389,6 +390,37 @@ village ↔ tribe type is 1:1, so "the village knows, the tribe does not" is not
 tribe several villages; when it does, that is a change of key inside `Gossip.standing`'s fallback chain and
 nothing else.
 
+### QA round 1 (2026-10-05, handoff H3): what changed and why
+
+Round 1 scored 6/10 with five FIX items (`docs/qa/rung3-part3-round1.md`). Verdicts, so nobody re-derives them:
+
+- **Absent players are paid at tell time, not replayed from `knows`.** The replay design lost every rumour that went
+  stale or was evicted before the player came back — logging off laundered a killing, and it broke S1 (the ring
+  was acting as a ledger). Now `Gossip.tell` moves an online player's number at once, or adds the delta to
+  `w.owed[uid].rep[holder]`, a world-level ledger faded by `Reputation.fade` (linear, so fading the sum is exact).
+  `Gossip.catchUpPlayer` pays it, faded for the days it waited, silently. An online player and an offline one end
+  on the same number (tested, after the rumour has left the ring). `ps.heard` is gone: `knows` is the only dedupe.
+  `w.owed` is the one gossip node that grows with players: 154 B per absent player owed at all 5 holders today
+  (measured, asserted in bytes), and `Gossip.dropStale` forgets an entry once it has faded below `OWED_MIN` = 0.5
+  (about seven `REP_FADE_DAYS` half-lives for a murder).
+  Rejected: *replay-before-evict* (needs the same ledger, but only at eviction, and still has to know who already
+  heard what) and *pinning rumours about absent players in the ring* (one absent killer could fill the ring and
+  block everyone else's news).
+- **Hops per holder** (above). The eyewitnesses' line stays "They say..." however far the story travels.
+- **Road meetings by map tile** (above). Bucketing by `pos` made two groups at their own homes "meet" across the map.
+- **Only news that moves somebody's number is seeded**: no tribe (an animal) or all-zero deltas (an escape from
+  hunters) means no rumour, so a hunting trip no longer evicts real news.
+- **`rekey` lets the v2 value win** unless the saved record itself held the holder key; it is now pure
+  (`Gossip.rekey`) and tested from a `newRep()`-seeded table. Players loaded under the old rule were reset to START;
+  Danzo ruled 2026-10-05 that the project is in development mode and that is not worth recovering.
+- **Silence is a parameter**, not the old `Gossip.quiet` module flag that an error could leave stuck on.
+- **Save `VERSION` 3 → 4**, in place: each known rumour keeps the hop count its row had; `owed` starts empty, so news
+  told to a holder while a player was offline under v3 is not paid (dev mode: accepted). Older code reading a v4
+  key goes NO-SAVE and leaves it alone. `PLAYER_VERSION` stays 1 (an old key's `heard` is ignored).
+- **Grudge moved to `shared/Grudge.lua`** (Gossip passed the 400-line ceiling); Gossip re-exports the old names.
+- Deferred: a rebuilt group inheriting the dead crew's `ps.rep[id]` (needs a group generation stamp, so it waits
+  for part 4's group identity); an id → row index for `Gossip.find` (O(64²) per exchange is cheap at this size).
+
 **Done when:**
 
 - `npm run test:luau` passes a new `test/luau/gossip.test.luau`: a rumour seeded at the squad does not move the
@@ -398,7 +430,8 @@ nothing else.
   seconds *including* every exchange; and the worst case above is asserted in bytes, so a future shape change has
   to argue with a number.
 - `npm test` passes `save.test.luau`: `Save.check(encode)` with the gossip nodes, `decode(encode)` deep-equal, and
-  a v2 fixture migrating in place with every group and village getting an empty `knows` and nothing else changed.
+  a v2 fixture migrating in place with every group and village getting an empty `knows` and nothing else changed
+  (and, since round 1, a v3 fixture migrating to v4 with each holder keeping the hop count it had).
 - In Studio: kill a hunter where exactly one person sees it, walk the other way, and watch the news reach their
   village over the next in-game day — and reach the far tribe later still, weaker and vaguer. Kill one where
   nobody at all sees it, and watch nothing happen, to you or to the headline. Then go back and do it again, and

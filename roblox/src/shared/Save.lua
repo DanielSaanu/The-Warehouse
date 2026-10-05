@@ -15,10 +15,11 @@ local WorldGen = require(script.Parent.WorldGen)
 
 local Save = {}
 
-Save.VERSION = 3        -- the shape of the world key; bump it with a step in Save.migrate
+Save.VERSION = 4        -- the shape of the world key; bump it with a step in Save.migrate
 Save.PLAYER_VERSION = 1 -- NEVER bump without an upgrade path: applyPlayer DISCARDS a record whose version differs,
                         -- so a bump wipes every player's coin, inventory and standing. New player fields are
-                        -- additive and optional instead (rung 3 part 3 added `grudge` and `heard` that way).
+                        -- additive and optional instead (rung 3 part 3 added `grudge` that way; `heard` came
+                        -- and went the same way, and an old key that still carries it is simply ignored).
 Save.MET_CAP = 128        -- remembered faces per player (ids are small numbers: ~0.5 KB at the cap)
 Save.PRUNE_DAYS = 8 * Config.WEEK_DAYS -- the dead keep their full record this long, then only a gravestone
 
@@ -52,7 +53,9 @@ local PLAYER = { "x", "y", "hp", "goalStage", "goalDone", "metSurvivor" }
 -- gossip (docs/RUNG3.md part 3): the ring of what is travelling, and `knows` per holder. A rumour stores the EVENT,
 -- never its consequences - the reputation deltas are re-derived when it is applied, so a saved rumour cannot disagree
 -- with Reputation's rule (R4).
-local RUMOUR = { "id", "about", "event", "victim", "tribe", "day", "hops", "mult", "aggressor", "fleeing" }
+-- `hops` is per holder (`hops[i]` beside `knows[i]`), not on the rumour: how far a story has come depends on who
+-- is hearing it. `owed` is what each absent player has coming (Gossip.owe), as rows because its key is a UserId.
+local RUMOUR = { "id", "about", "event", "victim", "tribe", "day", "mult", "aggressor", "fleeing" }
 local VILLAGE = { "id" }
 
 local function sortedBy(rows, key: string)
@@ -76,7 +79,7 @@ function Save.encode(w, stamp: { seed: number, rngState: number, savedAt: number
 	local out = {
 		meta = pick(w.meta, META),
 		calamity = pick(w.calamity, CALAMITY),
-		regions = {}, tribes = {}, groups = {}, camps = {}, bags = {}, villages = {}, rumours = {},
+		regions = {}, tribes = {}, groups = {}, camps = {}, bags = {}, villages = {}, rumours = {}, owed = {},
 		people = { nextId = w.people.nextId, rows = {} },
 	}
 	out.meta.version, out.meta.genVersion = Save.VERSION, WorldGen.GEN_VERSION
@@ -90,14 +93,16 @@ function Save.encode(w, stamp: { seed: number, rngState: number, savedAt: number
 	end
 	for i, v in ipairs(w.villages or {}) do
 		local row = pick(v, VILLAGE)
-		row.knows = copy(v.knows or {})
+		row.knows, row.hops = copy(v.knows or {}), copy(v.hops or {})
 		out.villages[i] = row
 	end
 	for i, r in ipairs(w.rumours or {}) do out.rumours[i] = pick(r, RUMOUR) end
+	for uid, o in pairs(w.owed or {}) do table.insert(out.owed, { about = uid, day = o.day, rep = copy(o.rep) }) end
+	sortedBy(out.owed, "about")
 	for _, g in pairs(w.groups) do
 		local row = pick(g, GROUP)
 		row.from, row.to, row.lateTarget = pos(g.from), pos(g.to), pos(g.lateTarget)
-		row.knows = copy(g.knows or {})
+		row.knows, row.hops = copy(g.knows or {}), copy(g.hops or {})
 		row.pauses, row.carry, row.members = copy(g.pauses), copy(g.carry), {}
 		for i, m in ipairs(g.members) do row.members[i] = { kind = m.kind, role = m.role, person = m.person } end
 		table.insert(out.groups, row)
@@ -139,6 +144,27 @@ function Save.migrate(data)
 		data.meta.version = 3
 		v = 3
 	end
+	if v == 3 then
+		-- v3 -> v4 (2026-10-05, gossip QA round 1): hops move from the shared rumour row to each holder, and absent
+		-- players' standing is OWED on the world instead of replayed from `knows` on return. Each known rumour gets
+		-- the hop count its row had (the best figure there is); `owed` starts empty, so news a holder heard while a
+		-- player was offline under v3 is not paid to them - dev mode, Danzo 2026-10-05: worth nothing to carry.
+		local hopsOf = {}
+		for _, r in ipairs(data.rumours or {}) do
+			hopsOf[r.id] = r.hops or 0
+			r.hops = nil
+		end
+		local function fill(row)
+			row.knows = row.knows or {}
+			row.hops = {}
+			for i, id in ipairs(row.knows) do row.hops[i] = hopsOf[id] or 0 end
+		end
+		for _, row in ipairs(data.villages or {}) do fill(row) end
+		for _, g in ipairs(data.groups) do fill(g) end
+		data.owed = {}
+		data.meta.version = 4
+		v = 4
+	end
 	return data
 end
 
@@ -155,19 +181,20 @@ function Save.decode(data)
 	end
 	local w = {
 		meta = copy(data.meta), calamity = copy(data.calamity), regions = copy(data.regions), tribes = copy(data.tribes),
-		groups = {}, camps = {}, bags = {}, villages = {}, rumours = copy(data.rumours or {}),
+		groups = {}, camps = {}, bags = {}, villages = {}, rumours = copy(data.rumours or {}), owed = {},
 		people = { nextId = data.people.nextId, people = {} },
 	}
 	w.calamity.flood = nil
 	for i, row in ipairs(data.villages or {}) do
 		local v = copy(row)
-		v.knows = v.knows or {}
+		v.knows, v.hops = v.knows or {}, v.hops or {}
 		w.villages[i] = v
 	end
+	for _, row in ipairs(data.owed or {}) do w.owed[row.about] = { day = row.day, rep = copy(row.rep or {}) } end
 	for _, row in ipairs(data.groups) do
 		local g = copy(row)
 		g.carry, g.members = g.carry or {}, g.members or {} -- an empty table has no JSON shape of its own
-		g.knows = g.knows or {}
+		g.knows, g.hops = g.knows or {}, g.hops or {}
 		w.groups[g.id] = g
 	end
 	for _, row in ipairs(data.people.rows) do
@@ -201,19 +228,9 @@ function Save.encodePlayer(ps, day: number, worldId: string?)
 	out.version, out.lastSeenDay = Save.PLAYER_VERSION, day
 	out.inv = { coin = ps.inv.coin, slots = copy(ps.inv.slots) }
 	out.rep, out.rest = copy(ps.rep), copy(ps.rest)
-	-- gossip (part 3). `grudge` is a small tribeType -> number map. `heard` is which rumours have already been booked
-	-- AT WHICH HOLDER, so the replay on the next join cannot double-count: sets are written as sorted arrays, the same
-	-- trick `met` uses, because a number-keyed map would come back string-keyed from JSON.
+	-- gossip (part 3): `grudge` is a small tribeType -> number map. What the world learned while they were away is on
+	-- the WORLD (`owed`), not here, so nothing about rumours is in the player's key.
 	out.grudge = copy(ps.grudge or {})
-	out.heard = {}
-	for holder, ids in pairs(ps.heard or {}) do
-		local list = {}
-		for id in pairs(ids) do table.insert(list, id) end
-		if #list > 0 then
-			table.sort(list)
-			out.heard[holder] = list
-		end
-	end
 	-- the people this player has met (they see names, not trades): ids, newest kept if the list ever gets long
 	out.met, out.metWorld = {}, worldId
 	for id in pairs(ps.met or {}) do table.insert(out.met, id) end
@@ -233,11 +250,6 @@ function Save.applyPlayer(ps, data, worldId: string?): (number?, number?)
 	for tribe, v in pairs(data.rep) do ps.rep[tribe] = v end
 	ps.rest = copy(data.rest)
 	ps.grudge = copy(data.grudge or {})
-	ps.heard = {}
-	for holder, ids in pairs(data.heard or {}) do
-		ps.heard[holder] = {}
-		for _, id in ipairs(ids) do ps.heard[holder][id] = true end
-	end
 	-- Person ids mean nothing in another world: after a reset, id 2 is somebody else, and a stranger would be named.
 	ps.met = {}
 	if worldId ~= nil and data.metWorld == worldId then
