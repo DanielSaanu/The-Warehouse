@@ -1,0 +1,16 @@
+{
+  "name": "town_hall",
+  "width": 48,
+  "height": 48,
+  "background": "transparent",
+  "pixelated": true,
+  "export": false,
+  "layers": [
+    {
+      "id": "t",
+      "name": "town_hall",
+      "type": "image",
+      "src": "sprites/town_hall.txt"
+    }
+  ]
+}

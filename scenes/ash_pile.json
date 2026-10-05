@@ -1,0 +1,29 @@
+{
+  "name": "ash_pile",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "export": false,
+  "notes": "Borrowed: Objects for 16x16 tilesets, CC-BY 3.0: Art by MrBeast. Commissioned by OpenGameArt.org (http://opengameart.org). OBJ (2,0).",
+  "layers": [
+    {
+      "id": "t",
+      "name": "ash_pile",
+      "type": "image",
+      "src": "library/opengameart/objects-for-16x16-tilesets/objects.png",
+      "crop": {
+        "x": 32,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "x": 0,
+      "y": 0,
+      "outline": {
+        "color": "#3d212d",
+        "size": 1
+      }
+    }
+  ]
+}

@@ -1,0 +1,633 @@
+{
+  "name": "preview_borrowed",
+  "width": 300,
+  "height": 340,
+  "background": "#85c769",
+  "pixelated": true,
+  "export": false,
+  "layers": [
+    {
+      "id": "well",
+      "type": "scene",
+      "src": "scenes/well.json",
+      "x": 4,
+      "y": 4
+    },
+    {
+      "id": "fence",
+      "type": "scene",
+      "src": "scenes/fence.json",
+      "x": 24,
+      "y": 4
+    },
+    {
+      "id": "fence_post",
+      "type": "scene",
+      "src": "scenes/fence_post.json",
+      "x": 76,
+      "y": 4
+    },
+    {
+      "id": "barn",
+      "type": "scene",
+      "src": "scenes/barn.json",
+      "x": 96,
+      "y": 4
+    },
+    {
+      "id": "watchtower",
+      "type": "scene",
+      "src": "scenes/watchtower.json",
+      "x": 148,
+      "y": 4
+    },
+    {
+      "id": "hay_bale",
+      "type": "scene",
+      "src": "scenes/hay_bale.json",
+      "x": 168,
+      "y": 4
+    },
+    {
+      "id": "hay_bale_tied",
+      "type": "scene",
+      "src": "scenes/hay_bale_tied.json",
+      "x": 188,
+      "y": 4
+    },
+    {
+      "id": "trough",
+      "type": "scene",
+      "src": "scenes/trough.json",
+      "x": 208,
+      "y": 4
+    },
+    {
+      "id": "beehive",
+      "type": "scene",
+      "src": "scenes/beehive.json",
+      "x": 244,
+      "y": 4
+    },
+    {
+      "id": "sack",
+      "type": "scene",
+      "src": "scenes/sack.json",
+      "x": 264,
+      "y": 4
+    },
+    {
+      "id": "barrel",
+      "type": "scene",
+      "src": "scenes/barrel.json",
+      "x": 4,
+      "y": 72
+    },
+    {
+      "id": "bucket",
+      "type": "scene",
+      "src": "scenes/bucket.json",
+      "x": 24,
+      "y": 72
+    },
+    {
+      "id": "crop_wheat",
+      "type": "scene",
+      "src": "scenes/crop_wheat.json",
+      "x": 44,
+      "y": 72
+    },
+    {
+      "id": "crop_carrot",
+      "type": "scene",
+      "src": "scenes/crop_carrot.json",
+      "x": 64,
+      "y": 72
+    },
+    {
+      "id": "crop_cabbage",
+      "type": "scene",
+      "src": "scenes/crop_cabbage.json",
+      "x": 84,
+      "y": 72
+    },
+    {
+      "id": "soil_rows",
+      "type": "scene",
+      "src": "scenes/soil_rows.json",
+      "x": 104,
+      "y": 72
+    },
+    {
+      "id": "sunflower",
+      "type": "scene",
+      "src": "scenes/sunflower.json",
+      "x": 172,
+      "y": 72
+    },
+    {
+      "id": "sheep",
+      "type": "scene",
+      "src": "scenes/sheep.json",
+      "x": 192,
+      "y": 72
+    },
+    {
+      "id": "cow",
+      "type": "scene",
+      "src": "scenes/cow.json",
+      "x": 212,
+      "y": 72
+    },
+    {
+      "id": "chicken",
+      "type": "scene",
+      "src": "scenes/chicken.json",
+      "x": 232,
+      "y": 72
+    },
+    {
+      "id": "banner_farmer",
+      "type": "scene",
+      "src": "scenes/banner_farmer.json",
+      "x": 252,
+      "y": 72
+    },
+    {
+      "id": "hiring_board",
+      "type": "scene",
+      "src": "scenes/hiring_board.json",
+      "x": 272,
+      "y": 72
+    },
+    {
+      "id": "banner_hunter",
+      "type": "scene",
+      "src": "scenes/banner_hunter.json",
+      "x": 4,
+      "y": 124
+    },
+    {
+      "id": "tent",
+      "type": "scene",
+      "src": "scenes/tent.json",
+      "x": 24,
+      "y": 124
+    },
+    {
+      "id": "tent_green",
+      "type": "scene",
+      "src": "scenes/tent_green.json",
+      "x": 60,
+      "y": 124
+    },
+    {
+      "id": "stockade",
+      "type": "scene",
+      "src": "scenes/stockade.json",
+      "x": 96,
+      "y": 124
+    },
+    {
+      "id": "stockade_gate",
+      "type": "scene",
+      "src": "scenes/stockade_gate.json",
+      "x": 132,
+      "y": 124
+    },
+    {
+      "id": "loot_heap",
+      "type": "scene",
+      "src": "scenes/loot_heap.json",
+      "x": 152,
+      "y": 124
+    },
+    {
+      "id": "banner_plunderer",
+      "type": "scene",
+      "src": "scenes/banner_plunderer.json",
+      "x": 172,
+      "y": 124
+    },
+    {
+      "id": "floor_wood",
+      "type": "scene",
+      "src": "scenes/floor_wood.json",
+      "x": 192,
+      "y": 124
+    },
+    {
+      "id": "floor_stone",
+      "type": "scene",
+      "src": "scenes/floor_stone.json",
+      "x": 212,
+      "y": 124
+    },
+    {
+      "id": "floor_tile",
+      "type": "scene",
+      "src": "scenes/floor_tile.json",
+      "x": 232,
+      "y": 124
+    },
+    {
+      "id": "floor_brick",
+      "type": "scene",
+      "src": "scenes/floor_brick.json",
+      "x": 252,
+      "y": 124
+    },
+    {
+      "id": "hearth",
+      "type": "scene",
+      "src": "scenes/hearth.json",
+      "x": 272,
+      "y": 124
+    },
+    {
+      "id": "table",
+      "type": "scene",
+      "src": "scenes/table.json",
+      "x": 4,
+      "y": 176
+    },
+    {
+      "id": "stool",
+      "type": "scene",
+      "src": "scenes/stool.json",
+      "x": 24,
+      "y": 176
+    },
+    {
+      "id": "bench",
+      "type": "scene",
+      "src": "scenes/bench.json",
+      "x": 44,
+      "y": 176
+    },
+    {
+      "id": "chair",
+      "type": "scene",
+      "src": "scenes/chair.json",
+      "x": 64,
+      "y": 176
+    },
+    {
+      "id": "chest",
+      "type": "scene",
+      "src": "scenes/chest.json",
+      "x": 84,
+      "y": 176
+    },
+    {
+      "id": "crate",
+      "type": "scene",
+      "src": "scenes/crate.json",
+      "x": 104,
+      "y": 176
+    },
+    {
+      "id": "bookshelf",
+      "type": "scene",
+      "src": "scenes/bookshelf.json",
+      "x": 124,
+      "y": 176
+    },
+    {
+      "id": "anvil",
+      "type": "scene",
+      "src": "scenes/anvil.json",
+      "x": 144,
+      "y": 176
+    },
+    {
+      "id": "counter",
+      "type": "scene",
+      "src": "scenes/counter.json",
+      "x": 164,
+      "y": 176
+    },
+    {
+      "id": "market_awning",
+      "type": "scene",
+      "src": "scenes/market_awning.json",
+      "x": 184,
+      "y": 176
+    },
+    {
+      "id": "candelabra",
+      "type": "scene",
+      "src": "scenes/candelabra.json",
+      "x": 204,
+      "y": 176
+    },
+    {
+      "id": "bedroll",
+      "type": "scene",
+      "src": "scenes/bedroll.json",
+      "x": 224,
+      "y": 176
+    },
+    {
+      "id": "hide_rug",
+      "type": "scene",
+      "src": "scenes/hide_rug.json",
+      "x": 244,
+      "y": 176
+    },
+    {
+      "id": "washing_line",
+      "type": "scene",
+      "src": "scenes/washing_line.json",
+      "x": 4,
+      "y": 212
+    },
+    {
+      "id": "rubble",
+      "type": "scene",
+      "src": "scenes/rubble.json",
+      "x": 56,
+      "y": 212
+    },
+    {
+      "id": "bones",
+      "type": "scene",
+      "src": "scenes/bones.json",
+      "x": 76,
+      "y": 212
+    },
+    {
+      "id": "skull",
+      "type": "scene",
+      "src": "scenes/skull.json",
+      "x": 96,
+      "y": 212
+    },
+    {
+      "id": "ash_pile",
+      "type": "scene",
+      "src": "scenes/ash_pile.json",
+      "x": 116,
+      "y": 212
+    },
+    {
+      "id": "fallen_log",
+      "type": "scene",
+      "src": "scenes/fallen_log.json",
+      "x": 136,
+      "y": 212
+    },
+    {
+      "id": "stump",
+      "type": "scene",
+      "src": "scenes/stump.json",
+      "x": 156,
+      "y": 212
+    },
+    {
+      "id": "tombstone",
+      "type": "scene",
+      "src": "scenes/tombstone.json",
+      "x": 176,
+      "y": 212
+    },
+    {
+      "id": "grave_cross",
+      "type": "scene",
+      "src": "scenes/grave_cross.json",
+      "x": 196,
+      "y": 212
+    },
+    {
+      "id": "arrows_in_ground",
+      "type": "scene",
+      "src": "scenes/arrows_in_ground.json",
+      "x": 216,
+      "y": 212
+    },
+    {
+      "id": "pine",
+      "type": "scene",
+      "src": "scenes/pine.json",
+      "x": 236,
+      "y": 212
+    },
+    {
+      "id": "tree_autumn",
+      "type": "scene",
+      "src": "scenes/tree_autumn.json",
+      "x": 256,
+      "y": 212
+    },
+    {
+      "id": "pine_tall",
+      "type": "scene",
+      "src": "scenes/pine_tall.json",
+      "x": 276,
+      "y": 212
+    },
+    {
+      "id": "dead_tree",
+      "type": "scene",
+      "src": "scenes/dead_tree.json",
+      "x": 4,
+      "y": 248
+    },
+    {
+      "id": "dead_tree_tall",
+      "type": "scene",
+      "src": "scenes/dead_tree_tall.json",
+      "x": 24,
+      "y": 248
+    },
+    {
+      "id": "bush",
+      "type": "scene",
+      "src": "scenes/bush.json",
+      "x": 44,
+      "y": 248
+    },
+    {
+      "id": "berry_bush",
+      "type": "scene",
+      "src": "scenes/berry_bush.json",
+      "x": 64,
+      "y": 248
+    },
+    {
+      "id": "mushrooms",
+      "type": "scene",
+      "src": "scenes/mushrooms.json",
+      "x": 84,
+      "y": 248
+    },
+    {
+      "id": "flower_red",
+      "type": "scene",
+      "src": "scenes/flower_red.json",
+      "x": 104,
+      "y": 248
+    },
+    {
+      "id": "flower_purple",
+      "type": "scene",
+      "src": "scenes/flower_purple.json",
+      "x": 124,
+      "y": 248
+    },
+    {
+      "id": "flower_white",
+      "type": "scene",
+      "src": "scenes/flower_white.json",
+      "x": 144,
+      "y": 248
+    },
+    {
+      "id": "boulder",
+      "type": "scene",
+      "src": "scenes/boulder.json",
+      "x": 164,
+      "y": 248
+    },
+    {
+      "id": "boulder_mossy",
+      "type": "scene",
+      "src": "scenes/boulder_mossy.json",
+      "x": 184,
+      "y": 248
+    },
+    {
+      "id": "rocks_grey",
+      "type": "scene",
+      "src": "scenes/rocks_grey.json",
+      "x": 204,
+      "y": 248
+    },
+    {
+      "id": "rocks_brown",
+      "type": "scene",
+      "src": "scenes/rocks_brown.json",
+      "x": 224,
+      "y": 248
+    },
+    {
+      "id": "lily_pad",
+      "type": "scene",
+      "src": "scenes/lily_pad.json",
+      "x": 244,
+      "y": 248
+    },
+    {
+      "id": "lantern_post",
+      "type": "scene",
+      "src": "scenes/lantern_post.json",
+      "x": 264,
+      "y": 248
+    },
+    {
+      "id": "item_bow",
+      "type": "scene",
+      "src": "scenes/item_bow.json",
+      "x": 4,
+      "y": 300
+    },
+    {
+      "id": "item_spear",
+      "type": "scene",
+      "src": "scenes/item_spear.json",
+      "x": 24,
+      "y": 300
+    },
+    {
+      "id": "item_arrows",
+      "type": "scene",
+      "src": "scenes/item_arrows.json",
+      "x": 44,
+      "y": 300
+    },
+    {
+      "id": "item_rope",
+      "type": "scene",
+      "src": "scenes/item_rope.json",
+      "x": 64,
+      "y": 300
+    },
+    {
+      "id": "item_herbs",
+      "type": "scene",
+      "src": "scenes/item_herbs.json",
+      "x": 84,
+      "y": 300
+    },
+    {
+      "id": "item_meat",
+      "type": "scene",
+      "src": "scenes/item_meat.json",
+      "x": 104,
+      "y": 300
+    },
+    {
+      "id": "item_grain",
+      "type": "scene",
+      "src": "scenes/item_grain.json",
+      "x": 124,
+      "y": 300
+    },
+    {
+      "id": "item_trinket",
+      "type": "scene",
+      "src": "scenes/item_trinket.json",
+      "x": 144,
+      "y": 300
+    },
+    {
+      "id": "item_ring",
+      "type": "scene",
+      "src": "scenes/item_ring.json",
+      "x": 164,
+      "y": 300
+    },
+    {
+      "id": "item_map",
+      "type": "scene",
+      "src": "scenes/item_map.json",
+      "x": 184,
+      "y": 300
+    },
+    {
+      "id": "item_torch",
+      "type": "scene",
+      "src": "scenes/item_torch.json",
+      "x": 204,
+      "y": 300
+    },
+    {
+      "id": "item_apple",
+      "type": "scene",
+      "src": "scenes/item_apple.json",
+      "x": 224,
+      "y": 300
+    },
+    {
+      "id": "item_cheese",
+      "type": "scene",
+      "src": "scenes/item_cheese.json",
+      "x": 244,
+      "y": 300
+    },
+    {
+      "id": "item_backpack",
+      "type": "scene",
+      "src": "scenes/item_backpack.json",
+      "x": 264,
+      "y": 300
+    },
+    {
+      "id": "item_pot",
+      "type": "scene",
+      "src": "scenes/item_pot.json",
+      "x": 4,
+      "y": 320
+    }
+  ]
+}

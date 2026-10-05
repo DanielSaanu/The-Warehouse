@@ -1,0 +1,29 @@
+{
+  "name": "flower_red",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "export": false,
+  "notes": "Borrowed: Kenney Roguelike RPG Pack, CC0. RPG (29,9).",
+  "layers": [
+    {
+      "id": "t",
+      "name": "flower_red",
+      "type": "image",
+      "src": "library/kenney/roguelike-rpg-pack/Spritesheet__roguelikeSheet_transparent.png",
+      "crop": {
+        "x": 493,
+        "y": 153,
+        "w": 16,
+        "h": 16
+      },
+      "x": 0,
+      "y": 0,
+      "outline": {
+        "color": "#3d212d",
+        "size": 1
+      }
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "name": "banner_plunderer",
+  "width": 16,
+  "height": 48,
+  "background": "transparent",
+  "pixelated": true,
+  "export": false,
+  "notes": "Borrowed: Kenney Roguelike RPG Pack, CC0. RPG (49,0).",
+  "layers": [
+    {
+      "id": "t",
+      "name": "banner_plunderer",
+      "type": "image",
+      "src": "library/kenney/roguelike-rpg-pack/Spritesheet__roguelikeSheet_transparent.png",
+      "crop": {
+        "x": 833,
+        "y": 0,
+        "w": 16,
+        "h": 48
+      },
+      "x": 0,
+      "y": 0,
+      "outline": {
+        "color": "#3d212d",
+        "size": 1
+      },
+      "hue": -28
+    }
+  ]
+}

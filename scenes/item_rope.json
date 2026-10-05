@@ -1,0 +1,25 @@
+{
+  "name": "item_rope",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "export": false,
+  "notes": "Borrowed: Shade 16x16 RPG Icons, CC0. CMP (5,0).",
+  "layers": [
+    {
+      "id": "t",
+      "name": "item_rope",
+      "type": "image",
+      "src": "library/local/ico/pixelquest16-oct-2025-camping.png",
+      "crop": {
+        "x": 80,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "x": 0,
+      "y": 0
+    }
+  ]
+}

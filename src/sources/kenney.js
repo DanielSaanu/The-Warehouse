@@ -61,7 +61,7 @@ export async function search(query = '', { online = true } = {}) {
 /** Download a pack zip and unpack every image into library/kenney/<slug>/ */
 export async function fetch(slug, { onProgress = () => {} } = {}) {
   const page = await fetchText(`https://kenney.nl/assets/${slug}`);
-  const zipUrl = (page.match(/href="(https?:\/\/kenney\.nl\/media\/pages\/assets\/[^"]+\.zip)"/) || page.match(/href="([^"]+\.zip)"/) || [])[1];
+  const zipUrl = (page.match(/href=["'](https?:\/\/kenney\.nl\/media\/pages\/assets\/[^"']+\.zip)["']/) || page.match(/href=["']([^"']+\.zip)["']/) || [])[1];
   if (!zipUrl) throw new Error(`no zip link found on https://kenney.nl/assets/${slug}. Open it in a browser, download the zip and drop the PNGs in library/kenney/${slug}/`);
   const abs = zipUrl.startsWith('http') ? zipUrl : new URL(zipUrl, 'https://kenney.nl').href;
   onProgress(`downloading ${abs}`);

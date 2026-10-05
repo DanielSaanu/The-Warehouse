@@ -1,0 +1,16 @@
+{
+  "name": "drying_rack",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "export": false,
+  "layers": [
+    {
+      "id": "t",
+      "name": "drying_rack",
+      "type": "image",
+      "src": "sprites/drying_rack.txt"
+    }
+  ]
+}

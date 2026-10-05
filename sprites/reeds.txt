@@ -1,0 +1,18 @@
+# name: reeds
+# palette: . = transparent, G = #85c769, W = #773833, j = #c7e68e, o = #3d212d
+................
+................
+....ooo.........
+....oWo.....ooo.
+....oWo.....oWo.
+....oWo.....oWo.
+ooo.ooo.....oWo.
+ojo.oGo.ooo.ooo.
+oGo.oGo.ojo.oGo.
+oGo.oGo.oGo.oGo.
+oGo.oGo.oGo.oGo.
+oGo.oGo.oGo.oGo.
+oGo.oGo.oGo.oGo.
+oGo.oGo.oGo.oGo.
+oGo.oGo.oGo.oGo.
+ooo.ooo.ooo.ooo.

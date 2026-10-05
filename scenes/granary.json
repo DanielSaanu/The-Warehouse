@@ -1,0 +1,16 @@
+{
+  "name": "granary",
+  "width": 32,
+  "height": 32,
+  "background": "transparent",
+  "pixelated": true,
+  "export": false,
+  "layers": [
+    {
+      "id": "t",
+      "name": "granary",
+      "type": "image",
+      "src": "sprites/granary.txt"
+    }
+  ]
+}
