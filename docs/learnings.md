@@ -91,6 +91,12 @@ the map the records were made on. A save-format change bumps `Save.VERSION`; a g
 `GEN_VERSION` and means a new world. Confusing the two silently deletes the world Danzo is playing.
 *(2026-09-23, handoff H1.)*
 
+**P4 — A mode that must never touch the real save is gated where the store is OPENED, and read once at boot.**
+Returning early from `loadWorld` is not enough on its own: a later code path (a test hook, a new feature) that
+calls the store directly would still reach the real data. So dev mode also makes `getStore()` refuse, and the flag
+is read once, because a mode that flips mid-session puts a throwaway world on the path to the real key. Default the
+mode to the side that cannot lose data. *(2026-10-05, handoff H4.)*
+
 ## T — Tooling
 
 **T2 — Rojo does NOT sync into a Studio session that is already in Play, and a Studio `require` cache is per

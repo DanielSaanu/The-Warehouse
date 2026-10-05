@@ -13,6 +13,7 @@ local Sim = require(script.Parent:WaitForChild("Sim"))
 local Interact = require(script.Parent:WaitForChild("Interact"))
 local Persistence = require(script.Parent:WaitForChild("Persistence"))
 local Restore = require(script.Parent:WaitForChild("Restore"))
+local Dev = require(script.Parent:WaitForChild("Dev"))
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local WorldInit = Remotes:WaitForChild("WorldInit") :: RemoteEvent
@@ -95,6 +96,7 @@ local function sendWorld(st)
 	-- interest management re-sends the entities it can see
 	st.known = {}
 	Sim.hud(st)
+	if Dev.on then Sim.text(st, Dev.NOTICE) end -- the only dev text; an ordinary game has none
 end
 
 local joining = {} :: { [number]: boolean }
@@ -200,19 +202,22 @@ Persistence.start(Restore.snapshot, function() return players end, function() re
 -- Test hooks (see docs/qa/rung2-part2.md). From a script: ServerStorage.Debug:Invoke("teleport", 40, 50).
 -- From the Studio command bar or a tool sandbox that cannot invoke bindables: set the `Debug` attribute on
 -- Workspace to a command line ("calamity flood", "teleport 40 50", "give food 3") and read `DebugResult`.
-local HttpService = game:GetService("HttpService")
-local debug = Instance.new("BindableFunction")
-debug.Name = "Debug"
-debug.OnInvoke = function(cmd, ...) return Sim.debug(cmd, ...) end
-debug.Parent = ServerStorage
-workspace:GetAttributeChangedSignal("Debug"):Connect(function()
-	local line = workspace:GetAttribute("Debug")
-	if type(line) ~= "string" or line == "" then return end
-	local args = {}
-	for word in line:gmatch("%S+") do table.insert(args, tonumber(word) or word) end
-	local cmd = table.remove(args, 1)
-	local ok, result = pcall(Sim.debug, cmd, table.unpack(args))
-	local text = if type(result) == "table" then HttpService:JSONEncode(result) else tostring(result)
-	workspace:SetAttribute("DebugResult", (if ok then "" else "ERROR ") .. text)
-	workspace:SetAttribute("Debug", "")
-end)
+-- DEV mode only (handoff H4): an ordinary game creates neither the bindable nor the listener.
+if Dev.on then
+	local HttpService = game:GetService("HttpService")
+	local debug = Instance.new("BindableFunction")
+	debug.Name = "Debug"
+	debug.OnInvoke = function(cmd, ...) return Sim.debug(cmd, ...) end
+	debug.Parent = ServerStorage
+	workspace:GetAttributeChangedSignal("Debug"):Connect(function()
+		local line = workspace:GetAttribute("Debug")
+		if type(line) ~= "string" or line == "" then return end
+		local args = {}
+		for word in line:gmatch("%S+") do table.insert(args, tonumber(word) or word) end
+		local cmd = table.remove(args, 1)
+		local ok, result = pcall(Sim.debug, cmd, table.unpack(args))
+		local text = if type(result) == "table" then HttpService:JSONEncode(result) else tostring(result)
+		workspace:SetAttribute("DebugResult", (if ok then "" else "ERROR ") .. text)
+		workspace:SetAttribute("Debug", "")
+	end)
+end

@@ -27,24 +27,16 @@ Resolution (added by the heavy agent under the same entry):
 
 ## Open
 
-### H4 — A development-mode switch: easy testing, one flag back to an ordinary player — 2026-10-05 — OPEN
-- **Trigger:** 1 (new project-wide mode), 2 (`shared/Config.lua`), 3 (decides whether a dev server loads or writes the DataStore)
-- **Doc:** `docs/architecture/` (persistence section) and `CLAUDE.md` (record the policy); `roblox/src/server/README.md`
-- **Observed:** Danzo, 2026-10-05: "project wide we are in DEVELOPMENT mode as such we need to not worry about my personal
-  save or player character or progression and we need to be easily able to test things and also it should be easily
-  turned off so that we can have testing from the perspective of an ordinary player."
-- **Evidence:** what exists today: `Config.SAVE_WORLD` (Persistence.lua:77 → NO-SAVE), `ps.noSave`, the Debug command
-  set in `server/Debug.lua` (`savetest` gated by `RunService:IsStudio()`, `jump`, `farms`, `gossip`).
-- **Routine session's read (guess):** one switch, e.g. `Config.DEV`, on by default for now. When on: saves are
-  disposable (fresh or throwaway world, or a separate DataStore key so the real one is never touched), Debug commands
-  available, maybe a dev HUD line saying DEV. When off: exactly what an ordinary player gets. That means no Debug
-  commands, the real save, and no dev text. Must default safe for a published game (Studio-only, or off outside Studio?).
-- **Decision needed:** the shape of the switch (one flag vs flag + `IsStudio`), what each mode changes, where saves go in
-  dev, and how Danzo flips it (one line in Config, or a Studio attribute). Record the policy in CLAUDE.md so every
-  session knows dev saves are disposable. Do not touch Studio while a QA reviewer may be using it.
-- **Blocked routine work:** none. Runs after the gossip QA loop, so it doesn't change code under review.
+*(none)*
 
 ## Resolved
+
+### H4 — A development-mode switch: easy testing, one flag back to an ordinary player — 2026-10-05 — RESOLVED
+- **Danzo decided:** dev saves nothing at all; forced off outside Studio; toggled in Studio, not in code.
+- **Resolved 2026-10-05 (heavy):** `Workspace.DevMode` (boolean attribute; not set = on in Studio, read once at boot):
+  on = no DataStore read or write, a fresh world each Play, Debug console, a DEV notice; off = the real save, no Debug,
+  no dev text. `shared/DevMode.lua` + `server/Dev.lua`; Studio-checked both ways. → `docs/architecture/as-built.md` §12,
+  `CLAUDE.md`, `docs/systems/saving.md`, learnings P4.
 
 ### H6 — A materialised group walks its route index while its bodies stand still — 2026-10-05 — RESOLVED
 - **Resolved 2026-10-05 (heavy):** the leader's route rule is now pure `Tick.leaderStep` (`pos` moves only with the

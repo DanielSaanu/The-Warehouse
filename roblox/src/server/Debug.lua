@@ -25,6 +25,7 @@ local Persistence = require(script.Parent:WaitForChild("Persistence"))
 local Map = require(script.Parent:WaitForChild("Map"))
 local Villagers = require(script.Parent:WaitForChild("Villagers"))
 local Standing = require(script.Parent:WaitForChild("Standing"))
+local Dev = require(script.Parent:WaitForChild("Dev"))
 
 local Debug = {}
 
@@ -40,6 +41,7 @@ function Debug.bind(ctx)
 end
 
 function Debug.run(cmd: string, ...): any
+	if not Dev.on then return "Debug is off: DEV mode is off (handoff H4)" end -- an ordinary game has no console
 	local args = { ... }
 	local ps
 	for _, p in pairs(S.players) do ps = p break end

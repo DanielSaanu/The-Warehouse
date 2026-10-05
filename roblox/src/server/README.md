@@ -20,7 +20,8 @@ Read this first. Update it in the same commit as any move. Sizes are line counts
 | `Sides.lua` | who takes whose side in a fight | 280 |
 | `Villagers.lua` | a villager's day: out to a plot in the morning, home to a hut door at night, home at a run from wolves and strange bandits; scans huts and plots off the map. What the farms YIELD is `shared/Farms.lua` (pure, in `Tick.daily`, saved as `tribes[].plots`) | 152 |
 | `Interact.lua` | the F key: talk, trade, rest, gifts | 344 |
-| `Debug.lua` | the test console (Workspace attribute `Debug`) | 290 |
+| `Debug.lua` | the test console (Workspace attribute `Debug`); DEV mode only | 325 |
+| `Dev.lua` | development mode, read once at boot: `Dev.on` (Studio, and `Workspace.DevMode` not unticked; rule in `shared/DevMode.lua`) | 16 |
 
 ## Track A progress (the plan's save-critical steps)
 
@@ -84,3 +85,10 @@ Read this first. Update it in the same commit as any move. Sizes are line counts
 
 **Parked on purpose (Danzo, 2026-09-18): do not continue Track B without asking.** What is carved so far is tested
 and smoke-tested in Studio but **no QA reviewer has looked at it** — run `/qa-loop` on it before building on it.
+
+## Development mode (handoff H4, 2026-10-05)
+
+- [x] `Workspace.DevMode` (a boolean attribute; Danzo ticks it in Properties). In Studio, ticked or not set = DEV:
+      `Persistence` never opens the DataStore (NO-SAVE "DEV mode", `getStore` errors), every Play is a fresh world,
+      the Debug console exists, a DEV notice on join. Unticked = the ordinary game on the real save. Outside Studio
+      always off. Read once at boot. Detail: `docs/ARCHITECTURE.md` §12 (`docs/architecture/as-built.md`).
