@@ -23,3 +23,6 @@ paid for. The detail belongs in commits and the docs; this is the timeline.
   agents, notes only, no code). Systems hub points at them. CLAUDE.md: `Grid.lua` → `client/Viewport.lua` (Grid was removed in rung 2 part 1).
 - 2026-10-05 · `claude/nifty-pascal-3ryiwv`: world-expansion plan drawn as a design board (256² map, 16 villages, asset
   list). `docs/art-sources.md` records the free-pack research (licences read, previews not seen) and the gaps to draw.
+- 2026-10-05 · `claude/nifty-pascal-3ryiwv`: fetched all 15 free packs into `library/` (Kenney ×5, OpenGameArt ×7,
+  itch ×5 via its free-download endpoint into `library/local/<code>/`), looked at every sheet, and wrote "Verified
+  contents" in `docs/art-sources.md`: 27 have, 61 borrow, 6 check, 31 draw. Kenney fetcher fixed (single-quoted hrefs).
