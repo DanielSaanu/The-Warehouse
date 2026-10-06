@@ -58,3 +58,4 @@ paid for. The detail belongs in commits and the docs; this is the timeline.
 - 2026-10-06 — H10 (heavy, qa round 2 fix) on h9-sim-carve: a ride's leg resets on any turn, folded or not (pure `Belong.legStep`, jumps over 6 tiles are not road); test failed first; Studio natural leg `rode 54 of 54`, 7 coin, Kenstow +2; "off the goods". → `docs/qa/archive/rung3-part4-p1-ride-round2.md`, learnings Q4.
 - 2026-10-06 — qa round 3 (7/10) on rung3-part4-p1-ride: a rider reading a talk window is not counted as lagging or walking off; squad members name their leader; the leader keeps the window after a topic.
 - 2026-10-06 — qa summary rung3-part4-p1-ride: 7 / 6 / 7, target 8 not reached; rounds archived. → `docs/qa/rung3-part4-p1-ride-summary.md`.
+- 2026-10-06 — qa round 4 (8/10, Danzo's extra round) on rung3-part4-p1-ride: a rider reading a window is waited for and the ride never ends silently; "1 hide". → `docs/qa/rung3-part4-p1-ride-summary.md`.

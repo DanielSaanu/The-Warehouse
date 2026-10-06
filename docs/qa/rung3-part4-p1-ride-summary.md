@@ -1,14 +1,15 @@
 # QA summary: rung 3 part 4 phase 1 (ask, ride, arrive)
 
-Goals: [`rung3-part4-p1-ride.md`](rung3-part4-p1-ride.md). Branch `h9-sim-carve` (phase 1 + H9 + the three rounds).
-Three rounds of one Opus reviewer, each in Studio (DevMode). Target 8.0 not reached. Verbatim reports:
-`docs/qa/archive/rung3-part4-p1-ride-round{1,2,3}.md`.
+Goals: [`rung3-part4-p1-ride.md`](rung3-part4-p1-ride.md). Branch `h9-sim-carve` (phase 1 + H9 + four rounds).
+Three rounds of one Opus reviewer, each in Studio (DevMode), then a 4th at Danzo's request. Target 8.0 reached in
+round 4. Verbatim reports: `docs/qa/archive/rung3-part4-p1-ride-round{1,2,3,4}.md`.
 
 | Round | Score | Main finding |
 |---|---|---|
 | 1 | 7/10 | A rider who joined mid-leg was paid and credited for road never walked (`rode 25 of 25` standing still). |
 | 2 | 6/10 | The round 1 fix regressed: legs walked while folded piled into `walked` (`rode 53 of 163`, 2 coin for a full leg). |
 | 3 | 7/10 | Leaving the yes window open (it freezes movement) became a −3 walk-off; the squad leader said "ask the one in charge". |
+| 4 | 8/10 | Every never-seen Studio item works (natural ride `rode 55 of 55`, 7 coin, Kenstow +2.25); a long read still ended the ride silently. |
 
 ## Fixed
 
@@ -19,6 +20,8 @@ Three rounds of one Opus reviewer, each in Studio (DevMode). Target 8.0 not reac
   54)`, Kenstow 0 → 2.25. "Keep bandits off the goods" (no carts drawn). Rule → learnings Q4.
 - **Round 3:** a rider with a talk window open is neither lagging nor walking off; squad members name their leader,
   the leader invites; `ps.dialogue.e` kept after a topic.
+- **Round 4:** a reader is waited for like a lagger and still counts road within NEAR; a fold that ends a ride says
+  "They went on without you."; the pot line says "1 hide".
 - **Before the loop (H9):** a leader boxed in by a crowd gets out (`server/Walk.lua`, `shared/Steer.lua`), and `pos`
   follows the body. Round 2 saw the first natural Glenworth → Kenstow leg with no Debug `arrive`.
 
@@ -35,10 +38,12 @@ Three rounds of one Opus reviewer, each in Studio (DevMode). Target 8.0 not reac
 - A move key closing a choiceless window: a client change, and phase 1 promised none.
 - "You walked off on us. Not today." instead of "I gave you my answer." after a walk-off: a new `Belong.ask` answer; phase 2's talk.
 - A turn's own second of movement is not counted (`legStep` returns 0 on a new leg); the same for rider and leg, so pay is unaffected.
+- A "squad leader" title in the hunter's dialogue: phase 2 talk; members already name the leader.
+- The caravan master's witness flee stalls a ride ~30 s with no word: phase 2 barks / phase 3 `ctx.withGroup`.
 - The caravan master uses the `merchant` sprite; a distinct look waits for the wagon / sprite-size work in the inbox.
 
-## Open after round 3
+## Open after round 4
 
-- The round 3 fixes were checked by tests and lint only, not in Studio.
-- Not seen in Studio by any round: blows on your own group blocked, kill loot going into the pot, the mid-route
-  walk-off line on screen, the arrival coin notice on screen. The sourcemap diff was not re-run (no `rojo.exe` on the Mac).
+- The round 4 fixes were checked by tests and lint only, not in Studio.
+- Not seen in Studio by any round: a squad ride to its home end (carry value paid at `dir == -1`), two riders at
+  once, a late joiner live. The sourcemap diff was not re-run (no `rojo.exe` on the Mac).

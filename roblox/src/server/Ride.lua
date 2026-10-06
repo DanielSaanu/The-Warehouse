@@ -150,9 +150,13 @@ local function tickGroup(g, now: number, step: number)
 		elseif not g.materialised then
 			-- folded away because every player walked off: a rider who was already far had walked off
 			local line = finish(ps, g, uid, r.farSince == nil)
-			if line then say(ps, g, line) end
-		elseif ps.dialogue then
-			r.farSince = nil -- reading a window (which holds the player still) is not lagging or walking off
+			if line then say(ps, g, line) else State.text(ps, "They went on without you. The ride is over.", "warn") end
+		elseif ps.dialogue and l then
+			-- reading a window (which holds the player still) is not walking off: still with them, or lagging
+			r.farSince = nil
+			local d = cheb(ps.x, ps.y, l.x, l.y)
+			if d <= Belong.NEAR then r.rode += step end
+			if Belong.wait(d, g.waitLeft or 0) and d > lag then lag, lagger = d, ps end
 		elseif l then
 			local d = cheb(ps.x, ps.y, l.x, l.y)
 			if d <= Belong.NEAR then r.rode += step end
@@ -243,7 +247,7 @@ function Ride.pot(ps, loot)
 	if not g then return loot end
 	local goods = {}
 	for item, n in pairs(loot) do
-		if item ~= "coin" and n > 0 then table.insert(goods, ("%d %s"):format(n, Items.def(item).label)) end
+		if item ~= "coin" and n > 0 then table.insert(goods, ("%d %s"):format(n, if n == 1 then Items.def(item).name else Items.def(item).label)) end
 	end
 	if #goods == 0 then return loot end
 	Bands.addCarry(g, loot)
