@@ -215,7 +215,7 @@ end
 
 --- Squad and band members, one line each. The band's line is what you hear before they draw.
 function Talk.groupLine(kind: string, ctx: Context): string
-	if kind == "hunter" then return "Squad's out for deer. Walk with us if you like, but don't spook the game." end
+	if kind == "hunter" then return "Squad's out for deer. Want to walk with us? Ask the one in charge." end
 	if kind == "bandit" then return "Wrong road, friend." end
 	if kind == "caravan_guard" then return "Talk to the master. I'm just here to look mean." end
 	return "..."

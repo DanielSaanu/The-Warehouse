@@ -90,6 +90,17 @@ BOSS(Danzo):
 
 instead of it just being a rain cycle every 60 seconds we could first off make it farther apart like once every in game week there is a flood or a beast tide or a blizzard or a drought 
 
+**2026-10-06, Danzo (a suggestion, "take it with a pinch of salt"):** vehicles. A caravan brings an actual caravan
+(wagon) with it, and the group's position is worked out from where the wagon is, not the leader. In an attack the
+wagon can be destroyed: that is a failed expedition, and the survivors go back to the nearest village. Not decided;
+it would be a design decision (→ CLAUDE.md trigger 1) and probably a save change (trigger 3). Raised during H9.
+
+**2026-10-06, Danzo: sprite sizes, and where the game ends up.** Not everything should be a 16x16 sprite:
+buildings, and later the caravans/wagons, need to be bigger. The end goal is a Pokemon-style open world (a village
+with buildings, forests, buildings you can walk into, clear floor levels). Indoor areas and floors can come "way
+later". Ties to `docs/design/open-questions.md` "A little bit of the third dimension", where interiors and real
+elevation are parked in rung 4. The bigger-sprite half is the renderer and the sprite format (→ trigger 2).
+
 ### 2026-09-18, Danzo, mid-Palworld-video (raw; the agreed parts moved to DESIGN.md)
 
 - Palworld is fun because of the sheer amount of freedom. By the end you are in a Gundam firing lasers with

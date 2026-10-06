@@ -54,3 +54,4 @@ paid for. The detail belongs in commits and the docs; this is the timeline.
 - 2026-10-06 · `h9-sim-carve` (heavy, H9): `groupStep`/`followPath` carved into `server/Walk.lua` (Sim 1227 → 1152); a leader
   swaps with its own, bodies detour round crowds, hunts give up (`shared/Steer.lua`); `pos` moves only on where the leader
   stands (`Tick.leaderStep`). 12 test blocks (10 failed on the old code first; 2 are guards); Studio-checked. → `docs/systems/population.md`, learnings S8.
+- 2026-10-06 — qa round 1 (7/10) on rung3-part4-p1-ride: a late joiner no longer gets paid for road they never walked (Ride counts every group's leg), a walk-out spends the day's ask, a far rider at arrival gets a line, squad line points at the leader.

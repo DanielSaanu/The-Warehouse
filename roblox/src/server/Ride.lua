@@ -97,6 +97,7 @@ local function finish(ps, g, uid, away: boolean): string?
 	local d = Belong.leaveDelta(grade)
 	if grade == "clean" and (r.legs or 0) == 0 then d = 0 end -- no standing for joining and leaving on the spot
 	if d ~= 0 then Standing.apply(ps, tostring(g.id), { [S.tribes[g.tribe].tribeType] = d }) end
+	if grade == "left" then ps.asked = ps.asked or {} ps.asked[g.id] = S.day end -- walking out spends the day's ask
 	return Talk.leave(grade)
 end
 
@@ -138,11 +139,8 @@ function Ride.topic(ps, topic: string, e): { string }
 end
 
 --- 1 Hz, for every group with riders: count the road each rider walked with them, wait for one who lags, and let
---- go of one who walked off, disconnected or died.
-local function tickGroup(g, now: number)
-	local step = math.abs((g.pos or 1) - (g.lastPos or g.pos or 1))
-	g.lastPos = g.pos
-	g.walked = (g.walked or 0) + step
+--- go of one who walked off, disconnected or died. `step` is this second's road, counted for every group.
+local function tickGroup(g, now: number, step: number)
 	local l = leaderOf(g)
 	local lag, lagger = 0, nil
 	for uid, r in pairs(g.riders) do
@@ -178,7 +176,11 @@ end
 
 function Ride.tick(now: number)
 	for _, g in pairs(S.groups) do
-		if g.riders and next(g.riders) then tickGroup(g, now) else g.holding = false end
+		-- the leg's road is counted with or without riders, so a late joiner is paid for the part they walked
+		local step = math.abs((g.pos or 1) - (g.lastPos or g.pos or 1))
+		g.lastPos = g.pos
+		g.walked = (g.walked or 0) + step
+		if g.riders and next(g.riders) then tickGroup(g, now, step) else g.holding = false end
 	end
 end
 
@@ -213,6 +215,8 @@ function Ride.arrive(g)
 					say(ps, g, Talk.arrival({ dest = name, home = name, scarce = scarce, pay = coin, heard = rode and inVillage }), "good")
 				end
 				print(("[Ride] %s paid %d at %s (rode %d of %d)"):format(ps.player.Name, coin, name, r.rode, g.walked or 0))
+			elseif ps and not ps.dead then
+				State.text(ps, "You weren't with them at the end. No share for you.", "warn")
 			end
 			r.rode = 0
 		end

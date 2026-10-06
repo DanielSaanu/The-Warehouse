@@ -71,3 +71,4 @@ desertion, betrayal, `ctx.withGroup`), phase 4 (first to spot it). The squad's c
 ## Useful Debug commands
 
 `group caravan|squad`, `summon <group>`, `teleport x y`, `state`, `day`, `strike <entityId> [dmg]`.
+`summon` collapses a materialised group first, which silently ends any ride with it (a Debug artifact).
