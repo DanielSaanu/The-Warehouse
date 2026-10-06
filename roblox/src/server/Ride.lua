@@ -151,6 +151,8 @@ local function tickGroup(g, now: number, step: number)
 			-- folded away because every player walked off: a rider who was already far had walked off
 			local line = finish(ps, g, uid, r.farSince == nil)
 			if line then say(ps, g, line) end
+		elseif ps.dialogue then
+			r.farSince = nil -- reading a window (which holds the player still) is not lagging or walking off
 		elseif l then
 			local d = cheb(ps.x, ps.y, l.x, l.y)
 			if d <= Belong.NEAR then r.rode += step end

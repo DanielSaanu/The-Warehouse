@@ -128,7 +128,9 @@ local function talkTo(ps, e)
 	elseif e.group then
 		if e.kind == "bandit" and rep < -10 then dialogue(ps, "bandit", { Talk.groupLine("bandit", ctx) }) return end
 		if not Reputation.willTalk(rep) then dialogue(ps, e.label, { Talk.refusal(ctx) }) return end
-		dialogue(ps, e.label, { Talk.groupLine(e.kind, ctx) }, Ride.choices(ps, e), e.kind)
+		local g = S.groups[e.group]
+		local boss = g and g.leader ~= e.id and S.entities[g.leader] -- a member points at the one in charge
+		dialogue(ps, e.label, { Talk.groupLine(e.kind, ctx, boss and boss.first or nil) }, Ride.choices(ps, e), e.kind)
 		ps.dialogue.e = e.id
 	elseif e.kind == "baby" then
 		Sim.text(ps, ("%s. Asleep. Best leave it that way."):format(e.first or "The baby"))
@@ -279,7 +281,10 @@ function Interact.topic(ps, topic: string)
 	-- part 4: a group leader's "ride" and "leave" (server/Ride.lua decides; the window just shows the answer)
 	if (topic == "ride" or topic == "leave") and ps.dialogue and ps.dialogue.e then
 		local e = S.entities[ps.dialogue.e]
-		if e then dialogue(ps, ps.dialogue.with, Ride.topic(ps, topic, e), nil, ps.dialogue.role) end
+		if e then
+			dialogue(ps, ps.dialogue.with, Ride.topic(ps, topic, e), nil, ps.dialogue.role)
+			ps.dialogue.e = e.id -- the window is still with the leader
+		end
 		return
 	end
 	if not ps.dialogue or ps.dialogue.role ~= "guard" then return end
