@@ -167,8 +167,13 @@ g.riders, g.walked, g.lastPos, g.waitLeft, g.holding = { [7] = { rode = 30, legs
 g.lastDir = -1
 ps.ride, ps.asked = "squad", { squad = 1 }
 assert(same(plain, Save.encode(w, stamp)), "riders are scratch: the world key does not change (Q3)")
-local p1 = Save.encodePlayer({ x = 1, y = 1, hp = 5, inv = { coin = 3, slots = {} }, rep = ps.rep, rest = {}, grudge = {} }, 1, "w")
-assert(p1.ride == nil and p1.asked == nil, "nor does the player key")
+local bare = { x = 1, y = 1, hp = 5, inv = { coin = 3, slots = {} }, rep = ps.rep, rest = {}, grudge = {} }
+local p0 = Save.encodePlayer(bare, 1, "w")
+-- phase 2's session memory rides on the player too: the bark fade and the day you walked off (never saved)
+bare.ride, bare.asked, bare.leftOn = "squad", { squad = 1 }, { squad = 1 }
+bare.barks = { said = { [1] = 3 }, at = { lag = 5 }, last = "Keep up!", lastAt = 5, start = 0 }
+local p1 = Save.encodePlayer(bare, 1, "w")
+assert(same(p0, p1), "nor does the player key: no ride, ask, walk-off or bark memory in it")
 local ok, err = Save.check(plain)
 assert(ok, "the save checks: " .. tostring(err))
 local back = Save.decode(plain)

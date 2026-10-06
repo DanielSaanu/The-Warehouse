@@ -213,6 +213,13 @@ Each is one branch, one goals file in `docs/qa/`, one QA loop. Luau gates every 
 - Done when: tests show the most specific line wins, no line twice in a row, a teaching line goes quiet after 3.
   In Studio: the 30-second test passes with someone who has not read this doc, and every bark has a face on screen.
 - Goals file: `docs/qa/rung3-part4-p2-guidance.md`.
+- **Built 2026-10-06 (H11)**, branch `rung3-part4-p2`: `shared/Barks.lua` (pure, `test/luau/barks.test.luau`) and
+  `server/RoadTalk.lua` (the facts, and a speaker on the rider's screen); `whatnow` on everyone in your group
+  (`Talk.whatNow`); "You walked off on us. Not today." (`Belong.ask` answer `walked`); "Maren Greenton, squad leader".
+  Ten facts (the eight plus `spooked`, QA phase 1's silent witness flee, and `road`); no client, save or `Sim.lua`
+  change. Not built: a move key closing a choiceless window (part 4 is still "no client change"). The calls made
+  inside the plan (urgency order, gaps, specificity, the fade, the face rule): `docs/qa/rung3-part4-p2-guidance.md`
+  "Builder's calls".
 
 **Phase 3: sides, the band and betrayal (the band half of the done-when)**
 - What: the band's ask rules; others read a rider as the group; desertion and betrayal; `ctx.withGroup`.

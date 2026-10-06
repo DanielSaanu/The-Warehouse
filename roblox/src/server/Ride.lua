@@ -4,10 +4,11 @@
 -- this gathers their facts from the live world and says the lines.
 -- A rider is SCRATCH (`g.riders[userId]`, `ps.ride`), never saved and never a row in `g.members` (learnings S7):
 -- `members` is people, and three rules count it. A disconnect, a death or a server stop ends a ride at no cost (Q1).
--- Owns: `g.riders`, `g.walked`, `g.lastPos`, `g.lastDir`, `g.waitLeft`, `g.holding` (set up by Bands.scratch), `ps.ride`,
--- `ps.asked`. Does NOT own the group's route or carry (Bands, Tick) or anybody's standing (Standing).
+-- Owns: `g.riders`, `g.walked`, `g.lastPos`, `g.lastDir`, `g.waitLeft`, `g.holding` (set up by Bands.scratch),
+-- `ps.ride`, `ps.asked`, `ps.leftOn`. Does NOT own the group's route or carry (Bands, Tick) or anybody's
+-- standing (Standing). Phase 2's barks are server/RoadTalk.lua (it owns `g.talk` and `ps.barks`).
 --   Ride.choices(ps, e)          -- the talk-window topics this person offers you, or nil
---   Ride.topic(ps, topic, e)     -- "ride" or "leave": the lines to show
+--   Ride.topic(ps, topic, e)     -- "ride", "leave" or "whatnow": the lines to show
 --   Ride.tick(now)               -- 1 Hz: who walked with them, who lags, who walked off
 --   Ride.holds(g)                -- the leader is waiting for a rider (Walk.groupStep)
 --   Ride.arrive(g)               -- at an end, before Bands.turn: pay, and seed the `rode` rumour
@@ -28,6 +29,7 @@ local Map = require(script.Parent:WaitForChild("Map"))
 local Calendar = require(script.Parent:WaitForChild("Calendar"))
 local Standing = require(script.Parent:WaitForChild("Standing"))
 local Bands = require(script.Parent:WaitForChild("Bands"))
+local RoadTalk = require(script.Parent:WaitForChild("RoadTalk"))
 
 local Ride = {}
 local S = State.state
@@ -78,12 +80,13 @@ local function heardKill(ps, g): string?
 	return if best and best.event == "kill" and best.tribe == g.tribe then best.victim else nil
 end
 
---- The leader offers "ride" (or "leave", if you are with them). Phase 1: the caravan and the squad; the band's own
---- ask rules are phase 3.
+--- The leader offers "ride" (or "leave", if you are with them); anyone in your own group answers "what now" (phase
+--- 2). The caravan and the squad; the band's own ask rules are phase 3.
 function Ride.choices(ps, e): { string }?
 	local g = e.group and S.groups[e.group]
-	if not g or g.leader ~= e.id or g.kind == "band" then return nil end
-	return { if ps.ride == g.id then "leave" else "ride" }
+	if not g or g.kind == "band" then return nil end
+	if ps.ride == g.id then return if g.leader == e.id then { "whatnow", "leave" } else { "whatnow" } end
+	return if g.leader == e.id then { "ride" } else nil
 end
 
 --- How a ride ends. `away` (Q1: a disconnect, a death, a group gone) costs nothing and says nothing; otherwise the
@@ -97,7 +100,10 @@ local function finish(ps, g, uid, away: boolean): string?
 	local d = Belong.leaveDelta(grade)
 	if grade == "clean" and (r.legs or 0) == 0 then d = 0 end -- no standing for joining and leaving on the spot
 	if d ~= 0 then Standing.apply(ps, tostring(g.id), { [S.tribes[g.tribe].tribeType] = d }) end
-	if grade == "left" then ps.asked = ps.asked or {} ps.asked[g.id] = S.day end -- walking out spends the day's ask
+	if grade == "left" then -- walking out spends the day's ask, and the re-ask says why (phase 2)
+		ps.asked, ps.leftOn = ps.asked or {}, ps.leftOn or {}
+		ps.asked[g.id], ps.leftOn[g.id] = S.day, S.day
+	end
 	return Talk.leave(grade)
 end
 
@@ -112,7 +118,7 @@ local function ask(ps, g): { string }
 	local farmer = 1
 	for i, tr in ipairs(S.tribes) do if tr.tribeType == "farmer" then farmer = i end end
 	local answer, detail = Belong.ask({
-		kind = g.kind, busy = busy(g, now), askedToday = ps.asked[g.id] == S.day,
+		kind = g.kind, busy = busy(g, now), askedToday = ps.asked[g.id] == S.day, walkedOff = (ps.leftOn or {})[g.id] == S.day,
 		riders = count(g.riders), cap = Config.RIDERS_MAX, grudge = Grudge.grudge(ps, t.tribeType),
 		heardKill = heardKill(ps, g), groupRep = Standing.at(ps, tostring(g.id)), villageRep = Standing.tribe(ps, g.tribe),
 		farmerRep = Standing.tribe(ps, farmer),
@@ -122,16 +128,30 @@ local function ask(ps, g): { string }
 		c.reason = detail
 		return { Talk.joinNo(answer, c) }
 	end
-	g.riders[uid] = { rode = 0, legs = 0 }
+	g.riders[uid] = { rode = 0, legs = 0, joined = true, hp = ps.hp } -- `joined`: a member's first bark, next second
 	ps.ride = g.id
 	g.waitLeft = Belong.WAIT
 	print(("[Ride] %s rides with the %s"):format(ps.player.Name, g.id))
 	return { Talk.joinYes(g.kind, c) }
 end
 
---- A talk-window topic from the leader. Returns the lines to show.
+--- Route tiles left to the end the group is walking to.
+local function left(g): number
+	return if g.dir == -1 then (g.pos or 1) - 1 else #(g.route or {}) - (g.pos or 1)
+end
+
+--- "What now" (phase 2): the leader says the plan and how far, a member what the boss told them.
+local function whatNow(g, e): string
+	local l = leaderOf(g)
+	return Talk.whatNow(if g.leader == e.id then "leader" else "member", { kind = g.kind, dest = (endOf(g, g.dir)),
+		home = Map.village(S.tribes[g.tribe].villageId).name, left = math.max(0, left(g)),
+		pause = Calendar.now() < (g.pauseUntil or 0), homeward = g.dir == -1, boss = l and l.first or nil })
+end
+
+--- A talk-window topic from someone in a group. Returns the lines to show.
 function Ride.topic(ps, topic: string, e): { string }
 	local g = e.group and S.groups[e.group]
+	if g and topic == "whatnow" then return { if ps.ride == g.id then whatNow(g, e) else "You're not with us." } end
 	if not g or g.leader ~= e.id then return { "Ask the one in charge." } end
 	if topic == "ride" then return ask(ps, g) end
 	if ps.ride ~= g.id then return { "You're not with us." } end
@@ -178,6 +198,11 @@ local function tickGroup(g, now: number, step: number)
 		g.waitLeft -= 1
 		if Ride.face then Ride.face(l, Combat.dirTo(l.x, l.y, lagger.x, lagger.y)) end
 	end
+	if l and g.materialised and next(g.riders) then
+		local dest, ti = endOf(g, g.dir)
+		RoadTalk.tick(g, l, now, if g.holding then lagger else nil, { dest = dest, ti = ti, left = left(g), -- home: outbound only
+			home = if g.dir == 1 then Map.village(S.tribes[g.tribe].villageId).name else nil })
+	end
 end
 
 function Ride.tick(now: number)
@@ -185,8 +210,11 @@ function Ride.tick(now: number)
 		-- the leg's road is counted with or without riders, so a late joiner is paid for the part they walked; a turn
 		-- anywhere (folded too) starts a new leg (H10, Belong.legStep)
 		local step, newLeg = Belong.legStep(g, g.pos or 1, g.dir or 1)
-		if newLeg then for _, r in pairs(g.riders or {}) do r.rode = 0 end end
-		if g.riders and next(g.riders) then tickGroup(g, now, step) else g.holding = false end
+		if newLeg then
+			for _, r in pairs(g.riders or {}) do r.rode = 0 end
+			RoadTalk.newLeg(g) -- the road's news is new again
+		end
+		if g.riders and next(g.riders) then tickGroup(g, now, step) else g.holding = false RoadTalk.drop(g) end
 	end
 end
 
@@ -216,6 +244,7 @@ function Ride.arrive(g)
 					r.legs += 1
 				end
 				local scarce = if ti then Items.def(Trade.NEEDS[S.tribes[ti].tribeType]).label else nil
+				if ti then RoadTalk.say(ps, g, { { fact = "arrived", dest = name, who = "member" } }, Calendar.now()) end
 				-- the squad's far end is a wood with nothing to pay: no line, the hunt is the point there
 				if pot > 0 or ti then
 					say(ps, g, Talk.arrival({ dest = name, home = name, scarce = scarce, pay = coin, heard = rode and inVillage }), "good")

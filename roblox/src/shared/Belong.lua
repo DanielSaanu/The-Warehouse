@@ -28,6 +28,7 @@ export type Facts = {
 	kind: string,           -- caravan / squad / band
 	busy: boolean,          -- fighting or running for home
 	askedToday: boolean,
+	walkedOff: boolean?,    -- and the ask was spent by walking off on them mid-route (phase 2: the re-ask says so)
 	riders: number, cap: number,
 	grudge: number,         -- the player's grudge with this group's tribe type
 	heardKill: string?,     -- the victim kind of the newest killing of their tribe they have heard about, if any
@@ -36,10 +37,10 @@ export type Facts = {
 }
 
 --- The leader's answer. Checks in order, the first that fires wins (most specific first). Returns the answer key
---- ("busy", "asked", "full", "grudge", "heard", "standing", "snub" or "yes") and a detail for the line.
+--- ("busy", "asked", "walked", "full", "grudge", "heard", "standing", "snub" or "yes") and a detail for the line.
 function Belong.ask(f: Facts): (string, string?)
 	if f.busy then return "busy", nil end
-	if f.askedToday then return "asked", nil end
+	if f.askedToday then return if f.walkedOff then "walked" else "asked", nil end
 	if f.riders >= f.cap then return "full", nil end
 	if f.grudge >= Belong.GRUDGE_NO then return "grudge", nil end
 	if f.heardKill then return "heard", f.heardKill end

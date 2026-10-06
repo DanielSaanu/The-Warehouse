@@ -1,6 +1,6 @@
 # Learnings
 
-**Created:** 2026-09-23 · **Last updated:** 2026-10-06
+**Created:** 2026-09-23 · **Last updated:** 2026-10-06 (S9)
 
 Rules that **generalise** — things a session got wrong once and should never get wrong again. One-off typos and
 trivia stay in the QA goals file or the commit message; they do not earn a line here.
@@ -81,6 +81,12 @@ road every side tile is equally far, and at a corner only the goal itself is clo
 fire. It read as working for months because nothing ever showed it failing; a caravan master stood ringed by his
 own guards for minutes. Write the test where the fallback is the ONLY way out (ringed, blocked on a straight
 line), and watch it fail before the fix. *(2026-10-06, handoff H9.)*
+
+**S9 — A one-shot "say this next" flag is cleared when it is DELIVERED, not when it is attempted.** RoadTalk queued
+a rider's "joined" bark and cleared the flag on the next tick, but every bark is suppressed while a talk window is
+open, and the yes window is always open the second after the yes, so the line could never show. Anything that can
+be silently dropped downstream (a gap, a fade, an open window, nobody on screen) must hand back whether it went out,
+and the caller clears on that. *(2026-10-06, handoff H11, caught in review before Studio.)*
 
 ## P — Persistence
 

@@ -27,6 +27,22 @@ Resolution (added by the heavy agent under the same entry):
 
 ## Open
 
+### H11 — Build rung 3 part 4 phase 2: the obvious layer (barks, "what now", road talk) — 2026-10-06 — OPEN
+- **Trigger:** 1 (a new system with design choices inside an approved plan), 2 (likely a pure module in `shared/`)
+- **Doc:** `docs/plans/rung3-part4-belonging.md` "Phase 2" and "Slightly obvious what to do" (the guidance layer)
+- **Observed:** phase 1 is through QA (8/10 in round 4, `docs/qa/rung3-part4-p1-ride-summary.md`); Danzo said "phase2".
+- **Evidence:** branch `rung3-part4-p2`, cut from `h9-sim-carve` at 3c8360a (not yet merged to main).
+- **Routine session's read:** build what the plan's phase 2 says (`Barks.lua` with the first eight facts and the fade,
+  `whatnow` on every member, road talk). Fold in the items QA deferred to phase 2 (summary "Deferred"): a "squad
+  leader" title on the hunter leader's window, a line when the master's witness flee holds a ride, a walk-off line
+  that teaches the −3 ("You walked off on us. Not today." on the re-ask), and a move key closing a choiceless window
+  only if the plan's "no client change" no longer holds for phase 2 (ask Danzo if so).
+- **Decision needed:** any plan question phase 2 leaves open; bring it back rather than guess.
+- **Blocked routine work:** the phase 2 QA loop (`docs/qa/rung3-part4-p2-guidance.md`, written by the builder).
+- **Built 2026-10-06 (heavy), Studio checks pending:** `shared/Barks.lua` + `server/RoadTalk.lua`, `whatnow`, the
+  walk-off re-ask, the squad leader's title; tests, lint, sourcemap, build green. Stays OPEN until Studio is seen.
+  → plan "Phase 2", `docs/qa/rung3-part4-p2-guidance.md` "Builder's calls", learnings S9.
+
 ## Resolved
 
 ### H10 — A rider's leg is counted across folded turns, so a natural ride pays a fraction — 2026-10-06 — RESOLVED
