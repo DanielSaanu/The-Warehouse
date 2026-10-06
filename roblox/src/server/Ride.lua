@@ -9,7 +9,7 @@
 --   Ride.choices(ps, e)          -- the talk-window topics this person offers you, or nil
 --   Ride.topic(ps, topic, e)     -- "ride" or "leave": the lines to show
 --   Ride.tick(now)               -- 1 Hz: who walked with them, who lags, who walked off
---   Ride.holds(g)                -- the leader is waiting for a rider (Sim's groupStep)
+--   Ride.holds(g)                -- the leader is waiting for a rider (Walk.groupStep)
 --   Ride.arrive(g)               -- at an end, before Bands.turn: pay, and seed the `rode` rumour
 --   Ride.blocks(ps, e)           -- a blow on your own group is stopped (Sim.attack)
 --   Ride.pot(ps, loot)           -- a rider's kill: goods to the pot, coin back to the killer (Sim's killEntity)

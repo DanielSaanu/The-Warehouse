@@ -1,6 +1,6 @@
 # Learnings
 
-**Created:** 2026-09-23 · **Last updated:** 2026-10-05
+**Created:** 2026-09-23 · **Last updated:** 2026-10-06
 
 Rules that **generalise** — things a session got wrong once and should never get wrong again. One-off typos and
 trivia stay in the QA goals file or the commit message; they do not earn a line here.
@@ -75,6 +75,13 @@ list as people: `materialise` makes a body per row, `Tick.daily` refills by coun
 replacements, skewed the break and sat in the world key after they left. Grep the list's name, read every loop and
 `#`, and if any reader assumes the old kind, give the new kind its own field (`g.riders`). *(2026-10-05, handoff H7.)*
 
+**S8 — Measure "closer" in the metric the move uses, and test a fallback in the exact shape that triggers it.**
+`followPath`'s side-step took a neighbour strictly closer by Chebyshev distance, but steps are 4-way: on a straight
+road every side tile is equally far, and at a corner only the goal itself is closer, so the fallback could never
+fire. It read as working for months because nothing ever showed it failing; a caravan master stood ringed by his
+own guards for minutes. Write the test where the fallback is the ONLY way out (ringed, blocked on a straight
+line), and watch it fail before the fix. *(2026-10-06, handoff H9.)*
+
 ## P — Persistence
 
 **P1 — A change to the PLAYER key is additive-optional, never a version bump.**
@@ -121,7 +128,9 @@ way if it fails. *(2026-09-23, rung 3 part 3 - the standing-change line.)*
 stand.** Following the caravan by teleporting onto the tile beside the leader parked a body on the leader's next
 step, and the leader stalled; read as "the caravan is broken" it cost three Play restarts. Follow from BEHIND
 (the side the route came from), at a distance, and before blaming the code, move the harness away and see whether
-the fault goes with it. *(2026-10-05, handoff H8.)*
+the fault goes with it. *(2026-10-05, handoff H8.)* The same goes for blockers you spawn: read the map first (`exports/world_1.txt`).
+A stranger parked on the tile inside Glenworth's one GATE is an impassable wall, and a leader waiting there is right
+(2026-10-06, H9).
 
 **T1 — The line ceiling in `test/structure.test.js` is a design input, not a lint you notice at the end.**
 `ALLOWED` is a ratchet that *may only shrink*, and `server/Sim.lua` sits at 1282 against 1285. So "add it to Sim"

@@ -51,3 +51,6 @@ paid for. The detail belongs in commits and the docs; this is the timeline.
   (34 sprites, all `"export": false`, sheet unchanged); `scenes/preview_expansion_art.json` shows them beside Kenney tiles.
 - 2026-10-05 · `claude/nifty-pascal-3ryiwv`: every borrowed item is now a crop scene (89, outlined to match Kenney Tiny);
   7 more drawn (palisade + gate, cage, ruined watchtower, roadside shrine, bridge, battle debris). All export:false, sheet unchanged.
+- 2026-10-06 · `h9-sim-carve` (heavy, H9): `groupStep`/`followPath` carved into `server/Walk.lua` (Sim 1227 → 1152); a leader
+  swaps with its own, bodies detour round crowds, hunts give up (`shared/Steer.lua`); `pos` moves only on where the leader
+  stands (`Tick.leaderStep`). 12 test blocks (10 failed on the old code first; 2 are guards); Studio-checked. → `docs/systems/population.md`, learnings S8.

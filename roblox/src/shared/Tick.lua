@@ -134,11 +134,18 @@ end
 --- One decision for a materialised group's leader standing at (ex, ey). `walking` is whether it already has a path.
 --- ops: free(x, y) -> bool, step(r) (one tile), path(x, y, budget) -> bool (a real path was found). Returns "turn"
 --- (at the end: call groupTurn), "lost" (give up: collapse the group), or nil.
---- `pos` moves ONLY with the bodies (QA round 3, H6): it used to advance whenever the leader was not beside the next
---- tile, even when the path failed - so after a chase the squad stood in the forest while `pos` walked home, Kenstow
---- heard the news and the hide was banked. Off the road, `pos` re-anchors to where the leader really is.
+--- `pos` moves ONLY on where the leader STANDS (H6, H9): onto a route tile up to CATCH_UP ahead it has reached, beside
+--- a taken END tile (arrived), or, off the road, the route tile nearest it. Never on a plan: it once advanced when a
+--- path was planned, so a leader boxed in a crowd (its path dropped at the first blocked step, re-planned every
+--- think) stood still while `pos` ran 1 -> 56 (H9), and before that walked home without the squad (H6).
+Tick.SKIP = 3 -- a crowd on the road: aim for the first free route tile up to this many past the taken one
+Tick.CATCH_UP = Tick.SKIP + 1 -- and recognise the leader standing there
 function Tick.leaderStep(g, ex: number, ey: number, walking: boolean, ops): string?
 	if walking then return nil end -- the end is reached when the walk is FINISHED, not when it is planned
+	for k = Tick.CATCH_UP, 1, -1 do
+		local t = g.route[g.pos + g.dir * k]
+		if t and t.x == ex and t.y == ey then g.pos, g.stuck = g.pos + g.dir * k, 0 break end
+	end
 	local nextI = g.pos + g.dir
 	if nextI < 1 or nextI > #g.route then
 		local e = g.route[g.pos]
@@ -147,15 +154,18 @@ function Tick.leaderStep(g, ex: number, ey: number, walking: boolean, ops): stri
 	end
 	local r = g.route[nextI]
 	if math.abs(ex - r.x) + math.abs(ey - r.y) <= 1 then
-		if ops.free(r.x, r.y) then ops.step(r) g.pos = nextI g.stuck = 0
-		elseif ex == r.x and ey == r.y then g.pos = nextI g.stuck = 0
+		if ops.free(r.x, r.y) then ops.step(r) g.stuck = 0 -- `pos` follows next think, once the body is on it
 		else
-			-- somebody is standing on the next tile: after a few tries, walk on to the one after it
+			-- somebody is standing on the next tile: after a few tries, walk on to the first free one past it
 			g.stuck = (g.stuck or 0) + 1
-			local after = g.route[nextI + g.dir]
+			local after, beyond = nil, false
+			for k = 1, Tick.SKIP do
+				local t = g.route[nextI + g.dir * k]
+				if t then beyond = true if ops.free(t.x, t.y) then after = t break end end
+			end
 			if g.stuck > 3 and after and ops.path(after.x, after.y, Tick.LEADER_BUDGET) then
-				g.pos, g.stuck = nextI + g.dir, 0
-			elseif g.stuck > 3 and not after then
+				g.stuck = 0
+			elseif g.stuck > 3 and not beyond then
 				-- the END tile is taken (another group's member waits on the same spawn): beside it is arrived (part 4)
 				g.pos, g.stuck = nextI, 0
 			end
@@ -164,7 +174,7 @@ function Tick.leaderStep(g, ex: number, ey: number, walking: boolean, ops): stri
 		return nil
 	end
 	if ops.path(r.x, r.y, Tick.LEADER_BUDGET) then
-		g.pos, g.stuck, g.lost = nextI, 0, 0
+		g.stuck, g.lost = 0, 0
 		return nil
 	end
 	-- pulled off the road (a chase): head for the nearest route tile with a bigger budget, and say where they are

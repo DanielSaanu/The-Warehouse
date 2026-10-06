@@ -49,14 +49,15 @@ Notes from 2026-10-05, for rung 4 (more map, more villages, many more NPCs). Not
 - **Unbounded searches.** `WorldGen.route` without `maxNodes` (`Tick.lua:95`, `Bands.lua:40`) and the
   `WorldGen.reachable` flood (`WorldGen.lua:676`) cover the whole map. Soft: cost grows with the square of the
   map side.
-- **One body per tile on one-tile roads.** The side-step in `followPath` (`Sim.lua:173`) handles one blocker. More
-  traffic means more stand-offs on roads and at gates. Guess.
+- **One body per tile on one-tile roads.** Since H9 a blocked body detours round a crowd (`shared/Steer.lua`, within
+  4 tiles) and a leader swaps with its own people (`server/Walk.lua`). A body standing still in a ONE-tile gap (a
+  village gate) still blocks everyone: they wait, by design. More traffic means more of that. Guess.
 - **Feelings by tribe type, kin by tribe index.** `Witness.lua:20` (`TRIBE_FEELING`) and `Party` / `Seer`
   (`Witness.lua:40`) carry no village. Two farmer tribes like each other at 45; whether a second village of the
   same tribe is kin is unstated. A design question, not a bug yet.
 - **`WorldGen.villageAt` is a linear scan.** `WorldGen.lua:811`, used by `Sides.sheltered` and animal spawns. Fine
   to dozens of villages.
-- **Line ceilings.** `pathTo`, `followPath` and `pickNpcTarget` live in `Sim.lua` (1254 / 1255,
+- **Line ceilings.** `pathTo` and `pickNpcTarget` live in `Sim.lua` (`followPath` moved to `Walk.lua`, H9; was 1254 / 1255,
   `test/structure.test.js:20`); `Sides.lua` is 293 / 400. Any growth here waits on Track B.
 
 Measure first: `Sides.witnessed` ms per call and 10 Hz loop ms at ~200 entities in one brawl; how often `pathTo`

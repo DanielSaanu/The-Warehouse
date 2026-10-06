@@ -1,6 +1,6 @@
 # Handoffs — routine → heavy
 
-**Created:** 2026-09-23 · **Last updated:** 2026-10-05
+**Created:** 2026-09-23 · **Last updated:** 2026-10-06
 
 A routine session appends here the moment an escalation trigger fires (CLAUDE.md, "Model policy and
 escalation"). The heavy agent reads this file first, works the open entries, records its full reasoning in
@@ -27,26 +27,15 @@ Resolution (added by the heavy agent under the same entry):
 
 ## Open
 
-### H9 — A materialised leader stalls in a crowd while its `pos` walks on without it — 2026-10-05 — OPEN
-- **Trigger:** 4 (Studio behaviour the session could not fix in one honest attempt), 2 (`shared/Tick.lua`), 6 (Sim's AI)
-- **Doc:** `docs/qa/rung3-part4-p1-ride.md` "Known limitations"; `docs/systems/population.md`
-- **Observed (Studio, DevMode, 2026-10-05, phase 1 play-through):** the caravan master boxed in at Glenworth's and
-  Kenstow's squares (own guards, villagers, the merchant, a player beside him) stood still for 60–110 s while
-  `group caravan` showed `pos` running 1 → 56 (and once 56 → 1). The squad's four hunters stood on `hunt` toward a
-  boar 4 tiles away for minutes (`e107`, unreachable), its pos oscillating 27 ↔ 29. Leaving the squad did not unjam it,
-  so it is not Ride. Cause read from the code: `Tick.leaderStep` sets `g.pos = nextI` when a path is PLANNED, and
-  `followPath` drops a path after 4 blocked steps, so each think plans again and `pos` advances with no step (S6).
-- **Evidence:** I tried "advance `pos` only when beside the tile" with a test that failed without it; in Studio the
-  boxed leader then stood still for 90 s instead of drifting (my harness stood beside it, so this is confounded, → T5).
-  The drift may be what eventually un-sticks a boxed leader, so I reverted it rather than ship an unproven change.
-- **Heavy agent's read:** the real fix is in the body, not the record: `followPath`'s side-step only takes a strictly
-  closer tile, so a leader ringed by its own followers (who keep within 2 tiles) never gets out. That is Sim's AI
-  (Track B2, parked), and Sim has 0 lines of headroom. It also makes part 4 rides flaky to test (Debug `arrive`).
-- **Decision needed:** whether to fix it now (where: a Sim carve of `groupStep`/`followPath`, i.e. more of B2) or
-  after part 4; and whether the record should stop on a planned path once the body can move.
-- **Blocked routine work:** nothing hard-blocked; a full Glenworth → Kenstow ride in Studio is luck until fixed.
+*(none)*
 
 ## Resolved
+
+### H9 — A materialised leader stalls in a crowd while its `pos` walks on without it — 2026-10-05 — RESOLVED
+- **Danzo decided (2026-10-06):** fix now, by a Sim carve of `groupStep`/`followPath` (only that slice of B2).
+- **Resolved 2026-10-06 (heavy):** carved into `server/Walk.lua`; the old side-step could never fire (4-way steps); now a
+  leader swaps with its own, bodies detour round crowds, hunts give up (`shared/Steer.lua`), `pos` moves only on where
+  the leader stands; Studio-checked. → `docs/systems/population.md` "Walking in a crowd (H9)", learnings S8.
 
 ### H8 — Build rung 3 part 4 phase 1: ask, ride, arrive — 2026-10-05 — RESOLVED
 - **Resolved 2026-10-05 (heavy):** built: `shared/Belong.lua` (pure, `belong.test.luau`), `server/Ride.lua`, hooks in

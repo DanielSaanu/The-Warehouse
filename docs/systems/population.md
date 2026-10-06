@@ -13,8 +13,9 @@ walk routes between villages. Wildlife is counts per region: grass, deer, boar a
 - `shared/Ecology.lua` holds the daily herbivore/predator tick, drift between regions, and the edges "breathing".
 - `server/Bands.lua` handles groups as records with a route. Near a player (materialised) they're entities
   walking the route. Collapsed, only `pos` advances (`Tick.groups`). Materialised, the leader's route rule is
-  `Tick.leaderStep` (pure, tested): `pos` moves only when the bodies do, and a leader that cannot get back to the
-  road is reported "lost" and the group collapses (H6).
+  `Tick.leaderStep` (pure, tested): `pos` moves only on where the leader stands (H6, H9), and a leader that cannot
+  get back to the road is reported "lost" and the group collapses (H6). The bodies walk in `server/Walk.lua`
+  (`groupStep`, `followPath`), with the rules for a crowd in `shared/Steer.lua` (H9, below).
 - `server/Ride.lua` + `shared/Belong.lua` (rung 3 part 4): a player rides with a group as SCRATCH (`g.riders`,
   `ps.ride`), never as a `members` row and never saved (learnings S7, ARCHITECTURE §13). The leader waits up to
   `Belong.WAIT` s a leg for a rider more than `Belong.LAG` tiles behind; a rider's kill goods go into `g.carry`.
@@ -30,6 +31,53 @@ walk routes between villages. Wildlife is counts per region: grass, deer, boar a
 - `homeTile` and `workTile` are scratch on the entity, never saved.
 - Anything new that joins a group: check every reader of `g.members` first (materialise, the daily refill, the
   band's break all count it as people) (→ S7).
+- A body standing still in a one-tile gap (a village gate) blocks a group for as long as it stands there. That is
+  the honest outcome, not a stall: check the map before reading it as one (→ T5).
+
+## Walking in a crowd (handoff H9, 2026-10-06)
+
+**Seen** (Studio, 2026-10-05): the caravan master, boxed in at Glenworth's and Kenstow's squares, stood still for
+60–110 s while `pos` ran 1 → 56; the squad stood on `hunt` toward an unreachable boar for minutes.
+
+**Why.** (1) `followPath`'s side-step wanted a free neighbour *strictly closer by Chebyshev* to the waypoint after
+the blocked one. Steps are 4-way, so on a straight road every side tile is equally far and at a corner only the goal
+itself is closer: the side-step could never fire (→ S8). A blocked body waited, dropped its path after 4 tries,
+and its brain planned the same path again. (2) `Tick.leaderStep` set `pos` when a path was PLANNED, so each re-plan
+advanced it with no step (S6 again). (3) `huntStep` re-planned toward an unreachable quarry for ever.
+
+**Decided** (Danzo: fix now, by a Sim carve of `groupStep`/`followPath`; the rest is the heavy session's call):
+- **The body.** `followPath` and `groupStep` moved to `server/Walk.lua` (`Sim.lua` 1227 → 1152). A blocked step, from
+  the second blocked tick: `Steer.unblock` (1) lets a group's LEADER trade places with one of its own idle people
+  (`Steer.maySwap`: same group, not fighting, broken or mid-swing; never a stranger, never a follower pushing the
+  leader); else (2) a breadth-first detour over free ground within `Steer.REACH` = 4 tiles that rejoins the path up
+  to `REJOIN` = 8 waypoints on, whose first step may be onto one of its own (the swap happens there); else (3) it
+  waits, and after 4 tries drops the path as before. Followers take `Steer.followSpot`: within 2 tiles of the leader,
+  not on its next two path tiles, nearest the follower, so they stay behind instead of crossing in front.
+- **The record (`pos`).** `pos` never moves on a plan. It moves only on where the leader STANDS: onto a route tile
+  up to `Tick.CATCH_UP` = 4 ahead that it is standing on; beside a taken END tile (arrived, phase 1); or, off the
+  road, the route tile nearest it (H6's re-anchor). When the next route tile is taken, the leader aims for the first
+  FREE route tile up to `Tick.SKIP` = 3 past it (it used to aim only at the one after, which a crowd also fills).
+  A boxed leader that cannot move therefore holds `pos`; nothing un-sticks it but the body, which is the point.
+  Ride's `walked` (counted from `pos` deltas) is honest as a result: a rider is no longer credited for road the
+  record walked alone.
+- **Hunting.** `Steer.missed`: `GIVE_UP` = 3 failed plans toward one target and the body drops it, then
+  `Steer.shuns` it for `SHUN` = 60 game seconds (`pickNpcTarget` skips it).
+- **Not changed:** the A* (`WorldGen.route` still ignores bodies; `WorldGen.lua` is at its ceiling), the save, and
+  the collapsed tick. Cost: a detour is a BFS of at most 81 tiles, run only by a body blocked for 2+ ticks.
+
+**Tests** (`test/luau/steer.test.luau`; all but two failed on the old code first, and those two, "walled in" and "a real walk", are guards against over-fixing): ringed by its own; strangers on the road;
+own guard at its side with strangers round it; walled in by strangers (waits, walks through nobody); swap limits;
+a detour is connected and ends where the path did; follow spot; give up and shun; boxed leader keeps `pos` (old
+rule: `pos` 56, the Studio symptom); `pos` follows a real walk to the turn; one and two taken route tiles.
+
+**Studio** (DevMode, 2026-10-06, the player 7+ tiles behind, → T5): the leader ringed by three strangers with its
+guard ahead swapped out in 1.6 s; two taken road tiles past Glenworth's gate were walked round in about 3 s with
+`pos` held, then caught up; a hunter beside a boar in a sealed pocket gave up within 1 s and did not return to it;
+no `[Sim] think` warnings. A stranger parked in the gate itself held the caravan, correctly.
+
+**Later: a wagon.** (Idea in `ideas/INBOX.md`, not decided.) Nothing here assumes the leader is a person:
+`Tick.leaderStep` takes a position (`ex, ey`) and moves `pos` from it, so anchoring `pos` to a wagon is the adapter
+passing the wagon's tile instead of the leader's; a wagon that cannot be swapped would simply be walked round.
 
 ## Expansion: deficits at scale
 
@@ -68,8 +116,8 @@ Notes from 2026-10-05, for rung 4 (more map, several villages per tribe, many mo
   create and on every restore. Soft: regions x tiles grows with the square of the map side.
 - **Catch-up is per second x every group.** `Tick.lua:230`. Measured 3 ms at 3 groups (`as-built.md:27`); 40
   groups plus the registry scans could reach the ~50 ms slicing line (`modules-and-limits.md:89`). Guess: linear.
-- **Line ceilings and pinned tests.** `Sim.lua` is 1254 lines against its 1255 ceiling (`test/structure.test.js:20`),
-  so any population code added there fails H1 until Track B carves it. `test/luau/worldgen.test.luau:48` pins
+- **Line ceilings and pinned tests.** `Sim.lua` is 1152 lines against its 1153 ceiling (`test/structure.test.js:20`,
+  after H9), so any population code added there fails H1 until Track B carves it. `test/luau/worldgen.test.luau:48` pins
   `#world.villages == 3`.
 
 Measure first: live entity count and 10 Hz loop ms with several villages materialised; catch-up ms at the cap with
