@@ -164,6 +164,7 @@ end
 local stamp = { seed = 1, rngState = 1, savedAt = 0 }
 local plain = Save.encode(w, stamp)
 g.riders, g.walked, g.lastPos, g.waitLeft, g.holding = { [7] = { rode = 30, legs = 1 } }, 30, 4, 12, true
+g.lastDir = -1
 ps.ride, ps.asked = "squad", { squad = 1 }
 assert(same(plain, Save.encode(w, stamp)), "riders are scratch: the world key does not change (Q3)")
 local p1 = Save.encodePlayer({ x = 1, y = 1, hp = 5, inv = { coin = 3, slots = {} }, rep = ps.rep, rest = {}, grudge = {} }, 1, "w")
@@ -173,5 +174,52 @@ assert(ok, "the save checks: " .. tostring(err))
 local back = Save.decode(plain)
 assert(back and back.rumours[1].event == "rode", "a `rode` rumour round-trips with Save.VERSION " .. Save.VERSION)
 assert(Save.VERSION == 4 and Save.PLAYER_VERSION == 1, "no version bump for part 4 (Q3)")
+
+-- ---------- the leg (H10): a turn starts a new one wherever it happens, and a jump is not road ----------
+-- QA round 2 saw `rode 53 of 163`: the leg was reset only at a MATERIALISED arrival, so the two legs the caravan
+-- walked folded piled into `walked`. Drive a 56-tile route the way Tick.groups does (folded, 2 tiles some seconds),
+-- there and back, then ride the third leg from start to end, as Ride.tick would.
+do
+	local leg = { walked = 0, lastPos = 1 }
+	local pos, dir, rode = 1, 1, 0
+	local function second(moved: number, riding: boolean)
+		pos = math.clamp(pos + dir * moved, 1, 56)
+		local step, newLeg = Belong.legStep(leg, pos, dir)
+		if newLeg then rode = 0 end
+		if riding then rode += step end
+	end
+	-- two folded legs: out (1 -> 56) and back (56 -> 1), turning at each end as Tick.groupTurn does
+	for _ = 1, 2 do
+		local t = 0
+		while (dir == 1 and pos < 56) or (dir == -1 and pos > 1) do t += 1 second(if t % 2 == 0 then 2 else 1, false) end
+		dir = -dir
+		second(0, false) -- the pause at the end: the turn is seen
+	end
+	assert(leg.walked == 0, "a turn starts the leg again, folded or not (walked " .. leg.walked .. ")")
+	-- the third leg, ridden from end to end
+	while pos < 56 do second(1, true) end
+	assert(leg.walked == 55 and rode == 55, ("a ridden leg is the whole leg: rode %d of %d"):format(rode, leg.walked))
+	assert(Belong.heard(rode, leg.walked), "and the village hears it")
+	assert(Belong.share(Belong.CARAVAN_POT, 2, 2, 4, rode, leg.walked) == 7, "a full leg with two guards pays 30/4 = 7")
+	-- the round-1 goal still holds: a late joiner is paid only for the road after they joined
+	dir = -dir
+	second(0, false)
+	for _ = 1, 30 do second(1, false) end
+	while pos > 1 do second(1, true) end
+	assert(leg.walked == 55 and rode == 25, ("a late joiner rode %d of %d, not the whole leg"):format(rode, leg.walked))
+	-- a jump is not road: Debug summon, or Bands.collapse snapping `pos` to the nearest route index
+	local before = leg.walked
+	pos = 40
+	local step = Belong.legStep(leg, pos, dir)
+	assert(step == 0 and leg.walked == before, "a summon's jump of 39 tiles is not walked")
+	assert(Belong.legStep(leg, pos - Belong.JUMP, dir) == Belong.JUMP, "a crowd catch-up within JUMP is road")
+	-- a turn mid-route (the squad turns for home laden, Bands.addCarry) starts a new leg too
+	local s, fresh = Belong.legStep(leg, pos - Belong.JUMP, 1)
+	assert(fresh and s == 0 and leg.walked == 0, "a turn anywhere starts a new leg")
+	-- a fresh record (server start, Bands.scratch) is not a turn
+	local new = { walked = 0, lastPos = 10 }
+	local s2, fresh2 = Belong.legStep(new, 11, -1)
+	assert(not fresh2 and s2 == 1 and new.walked == 1, "the first second after a start is not a new leg")
+end
 
 print("    belong ok")

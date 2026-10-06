@@ -27,9 +27,12 @@ Resolution (added by the heavy agent under the same entry):
 
 ## Open
 
-*(none)*
-
 ## Resolved
+
+### H10 — A rider's leg is counted across folded turns, so a natural ride pays a fraction — 2026-10-06 — RESOLVED
+- **Resolved 2026-10-06 (heavy):** pure `Belong.legStep` starts a new leg on any change of `dir` (folded turns too) and
+  ignores jumps over 6 tiles; test failed first; Studio natural leg after two folded: `rode 54 of 54`, 7 coin, Kenstow
+  +2. → `docs/qa/rung3-part4-p1-ride-round2.md` Builder decisions, plan phase 1 "The leg", learnings Q4.
 
 ### H9 — A materialised leader stalls in a crowd while its `pos` walks on without it — 2026-10-05 — RESOLVED
 - **Danzo decided (2026-10-06):** fix now, by a Sim carve of `groupStep`/`followPath` (only that slice of B2).

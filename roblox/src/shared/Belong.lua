@@ -6,6 +6,7 @@
 -- with the same facts? Nothing reads a player-only field.
 --   local answer, reason = Belong.ask(facts)    -- "yes" or why not
 --   local coin = Belong.share(pot, alive, fullSize, shares, rode, walked)
+--   local step, newLeg = Belong.legStep(g, g.pos, g.dir)  -- 1 Hz: the leg's road, reset at every turn
 local Items = require(script.Parent.Items)
 
 local Belong = {}
@@ -20,6 +21,7 @@ Belong.LEAVE = 12          -- tiles from the leader that count as walking off
 Belong.LEAVE_SECONDS = 10  -- for this long
 Belong.NEAR = 6            -- close enough to count as walking with them
 Belong.HEARD_HALF = 0.5    -- walk at least this much of a leg and the village hears you rode with them
+Belong.JUMP = 6            -- route tiles in one second past which `pos` was moved, not walked (Tick.CATCH_UP is 4)
 Belong.CLEAN, Belong.LEFT = 2, -3 -- standing with the group for leaving at an end, and mid-route
 
 export type Facts = {
@@ -75,6 +77,27 @@ function Belong.share(pot: number, alive: number, fullSize: number, shares: numb
 	if pot <= 0 or shares <= 0 or walked <= 0 or rode <= 0 then return 0 end
 	local cut = math.clamp(alive / math.max(1, fullSize), 0, 1)
 	return math.floor(pot * cut / shares * math.min(1, rode / walked))
+end
+
+export type Leg = { walked: number?, lastPos: number?, lastDir: number? }
+
+--- One second of a group's leg, kept on `leg` (the group record's scratch: `walked`, `lastPos`, `lastDir`). A new
+--- direction is a new leg wherever the turn happened (a folded Tick.groupTurn, a materialised Bands.turn, a squad
+--- turning for home laden): `walked` starts again and the caller zeroes each rider's `rode` (H10). A move bigger
+--- than JUMP in one second is nobody's road (Debug summon, Bands.collapse snapping `pos` to the route).
+--- Returns this second's road (0 on a new leg) and whether a new leg began.
+function Belong.legStep(leg: Leg, pos: number, dir: number): (number, boolean)
+	local last = leg.lastPos or pos
+	local turned = leg.lastDir ~= nil and leg.lastDir ~= dir
+	leg.lastPos, leg.lastDir = pos, dir
+	if turned then
+		leg.walked = 0
+		return 0, true
+	end
+	local step = math.abs(pos - last)
+	if step > Belong.JUMP then step = 0 end
+	leg.walked = (leg.walked or 0) + step
+	return step, false
 end
 
 --- Did they ride enough of the leg that the village hears of it?

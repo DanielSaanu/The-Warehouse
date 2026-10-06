@@ -185,7 +185,7 @@ function Talk.joinYes(kind: string, c: RideContext): string
 	if kind == "squad" and c.homeward then return ("Heading home to %s with the kill. Keep the wolves off it. You get a cut."):format(c.dest) end
 	if kind == "squad" then return ("We're out for deer in %s. Hit what we hit. Hides go home, you get a cut."):format(c.dest) end
 	if kind == "band" then return "We wait for the farm road. When we go, you go. Loot's split at camp." end
-	return ("Walk with us to %s. Keep bandits off the carts. Your share's paid when we get there."):format(c.dest)
+	return ("Walk with us to %s. Keep bandits off the goods. Your share's paid when we get there."):format(c.dest)
 end
 
 --- The no, with its reason. The reason is the world talking: what they heard, what you are to them.

@@ -221,7 +221,7 @@ function Debug.run(cmd: string, ...): any
 			local d = cheb(r.x, r.y, ps.x, ps.y)
 			if d < bestD then bestI, bestD = i, d end
 		end
-		g.pos = bestI
+		g.pos, g.lastPos = bestI, bestI -- a summon is not road walked (Ride, H10)
 		g.pauseUntil = 0
 		return ("%s moved to route index %d (%d tiles away)"):format(g.id, bestI, bestD)
 	elseif cmd == "freeze" then

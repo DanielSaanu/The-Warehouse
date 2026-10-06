@@ -182,6 +182,13 @@ every village before rekey runs, so "copy only if empty" never copied and every 
 asserting a migration or a merge, trace the real call order (`Sim.addPlayer` -> `applyPlayer` -> `rekey`) and seed
 the fixture to match. *(2026-10-05, handoff H3.)*
 
+**Q4 — A per-cycle counter resets on the cycle's own signal, not on one of the paths that ends it.** Round 1 reset a
+rider's leg (`g.walked`) in `Ride.arrive`, which only a MATERIALISED turn calls, so every leg a group walked folded
+piled into the next ridden one (`rode 53 of 163`, paid 2 not 7). It passed its own Studio check because Debug
+`summon` + `arrive` reset the leg by hand. Find the state that defines the cycle (here `dir`) and reset on its
+change, so every path that ends a cycle (folded, live, catch-up, a debug command) resets it; then test the path the
+repro did NOT use. *(2026-10-06, handoff H10.)*
+
 **Q1 — A pure test suite cannot see a missing side effect.** Every gossip rule passed `test:luau` while the player
 was never TOLD their standing had changed: the rule moved the right number, and "the number moves visibly" is not
 something a pure function can assert. The Studio smoke test found it in one line. So for anything the player is

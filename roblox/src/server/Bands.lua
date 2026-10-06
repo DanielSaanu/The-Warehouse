@@ -67,7 +67,7 @@ end
 function Bands.scratch(g)
 	g.entities, g.leader, g.trail, g.materialised = {}, nil, {}, false
 	g.target, g.aggroUntil, g.lastSeen = nil, 0, nil
-	g.riders, g.walked, g.lastPos, g.waitLeft, g.holding = {}, 0, g.pos, 0, false -- part 4: players riding along (Ride.lua)
+	g.riders, g.walked, g.lastPos, g.lastDir, g.waitLeft, g.holding = {}, 0, g.pos, g.dir, 0, false -- part 4: Ride.lua
 end
 
 local function makeGroup(id: string, kind: string, tribeIdx: number, from: WorldGen.Pos, to: WorldGen.Pos, specs, pauses)

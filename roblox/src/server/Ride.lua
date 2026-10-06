@@ -4,7 +4,7 @@
 -- this gathers their facts from the live world and says the lines.
 -- A rider is SCRATCH (`g.riders[userId]`, `ps.ride`), never saved and never a row in `g.members` (learnings S7):
 -- `members` is people, and three rules count it. A disconnect, a death or a server stop ends a ride at no cost (Q1).
--- Owns: `g.riders`, `g.walked`, `g.lastPos`, `g.waitLeft`, `g.holding` (set up by Bands.scratch), `ps.ride`,
+-- Owns: `g.riders`, `g.walked`, `g.lastPos`, `g.lastDir`, `g.waitLeft`, `g.holding` (set up by Bands.scratch), `ps.ride`,
 -- `ps.asked`. Does NOT own the group's route or carry (Bands, Tick) or anybody's standing (Standing).
 --   Ride.choices(ps, e)          -- the talk-window topics this person offers you, or nil
 --   Ride.topic(ps, topic, e)     -- "ride" or "leave": the lines to show
@@ -176,10 +176,10 @@ end
 
 function Ride.tick(now: number)
 	for _, g in pairs(S.groups) do
-		-- the leg's road is counted with or without riders, so a late joiner is paid for the part they walked
-		local step = math.abs((g.pos or 1) - (g.lastPos or g.pos or 1))
-		g.lastPos = g.pos
-		g.walked = (g.walked or 0) + step
+		-- the leg's road is counted with or without riders, so a late joiner is paid for the part they walked; a turn
+		-- anywhere (folded too) starts a new leg (H10, Belong.legStep)
+		local step, newLeg = Belong.legStep(g, g.pos or 1, g.dir or 1)
+		if newLeg then for _, r in pairs(g.riders or {}) do r.rode = 0 end end
 		if g.riders and next(g.riders) then tickGroup(g, now, step) else g.holding = false end
 	end
 end
