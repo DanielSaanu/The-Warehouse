@@ -206,7 +206,7 @@ Each is one branch, one goals file in `docs/qa/`, one QA loop. Luau gates every 
 - **The leg (H10, 2026-10-06):** a leg is the road since the group's last TURN, wherever that turn happened (folded,
   materialised, a squad turning laden): pure `Belong.legStep` resets `walked` and each rider's `rode` on any change
   of `dir`, and a `pos` jump over `Belong.JUMP` (6) is not road. Studio, natural leg after two folded ones:
-  `rode 54 of 54`, 7 coin, a `rode` rumour, Kenstow +2. Detail: `docs/qa/rung3-part4-p1-ride-round2.md`.
+  `rode 54 of 54`, 7 coin, a `rode` rumour, Kenstow +2. Detail: `docs/qa/archive/rung3-part4-p1-ride-round2.md`.
 
 **Phase 2: the obvious layer**
 - What: `Barks.lua` with the first eight facts and the fade; `whatnow` on every member; road talk lines.
