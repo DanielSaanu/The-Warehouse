@@ -96,10 +96,12 @@ Resolution (added by the heavy agent under the same entry):
   format bump is fine (development mode). Write a goals file in `docs/qa/` before the loop.
 - **Decision needed:** how to split it into reviewable steps; anything the plan leaves open goes to Danzo.
 - **Model:** Danzo asked for **Fable 5.1** directly (2026-10-07), overriding the "last rung" rule for this work.
-- **Where it stands (2026-10-07, evening):** step 2 BUILT on `world-expansion`: `WorldPlans`/`WorldVillages`/`WorldPlaces`,
-  `WorldGen` the hub (205 lines, allow-list entry gone), 256 x 256, 16 villages, OFFSET 33, `GEN_VERSION` 2, Viewport
-  multi-tile sprites, previews rewritten, 64 scenes exported, `roblox build` run (Danzo uploads). Tests and lint green.
-  Next: Danzo's Studio Play + upload, then the QA loop on `docs/qa/world-expansion-p2.md`; then steps 3–4.
+- **Where it stands (2026-10-07, night):** step 2 built and through the QA loop (7 / 7 / 8, target met) on PR #16
+  (`claude/blissful-bardeen-fpjfxl`, from `world-expansion`): `WorldGen` the hub over Grid / WorldLand / WorldPlans /
+  WorldVillages / WorldRoads / WorldPlaces / WorldSigns, 256 x 256, 16 villages, Kenney's houses 3 x 2 and a 4 x 3
+  gatehouse, walkable forests and hills, two-tile roads, a minimap. Danzo's Play and sheet upload are the real check.
+  Next: steps 3 (a tribe holds several villages, rosters by tier, save bump) and 4 (scale), each with its own goals file.
+  Still OPEN for those.
 - **Blocked routine work:** H12 (paused by Danzo) and the phase 2 QA loop (paused).
 
 ## Resolved

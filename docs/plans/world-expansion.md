@@ -1,8 +1,9 @@
 # World expansion: the bigger map, more villages, big buildings
 
 **Status:** approved to build 2026-10-07 (Danzo), branch `world-expansion` (cut from `rung3-part4-p2` at 65d3c1f).
-**Step 2 built 2026-10-07 (Fable)**: the 256 x 256 map, sixteen villages from `WorldPlans`, the road tree, the places,
-multi-tile buildings in the renderer, previews, tests (`docs/qa/world-expansion-p2.md` is the goals file). Steps 3–4 open.
+**Step 2 built and through QA 2026-10-07 (Fable)**: the 256 x 256 map, sixteen villages from `WorldPlans`, the road tree
+with the king's roads and a road at every ford, the places, Kenney's houses and a stone gatehouse as multi-tile buildings,
+walkable forests and hills, a minimap. QA 7 / 7 / 8 (`docs/qa/world-expansion-p2-summary.md`). Steps 3–4 open.
 Handoff H13. Copied from Danzo's private design board "World Expansion Plan" (claude.ai artifact, 2026-10-05) so
 every session can read it; the board is now a picture of this doc, not the source.
 
