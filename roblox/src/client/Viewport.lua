@@ -148,16 +148,13 @@ function Viewport.setCamera(self: Viewport, cx: number, cy: number)
 	self.cy = math.clamp(cy, self.rows / 2, math.max(self.rows / 2, h - self.rows / 2))
 end
 
-function Viewport.setNight(self: Viewport, alpha: number)
-	self.night.BackgroundTransparency = 1 - math.clamp(alpha, 0, 1)
-end
+function Viewport.setNight(self: Viewport, alpha: number) self.night.BackgroundTransparency = 1 - math.clamp(alpha, 0, 1) end
 
 --- Park a slot at world tile (tx, ty) and paint it.
 local function assign(self: Viewport, s: Slot, tx: number, ty: number)
 	local t = self.tilePx
 	s.tx, s.ty = tx, ty
-	local pos = UDim2.fromOffset((tx - 1) * t, (ty - 1) * t)
-	s.ground.Position, s.object.Position = pos, pos
+	s.ground.Position = UDim2.fromOffset((tx - 1) * t, (ty - 1) * t)
 	local gdef = TileTypes.Ground[WorldGen.ground(self.world, tx, ty)]
 	-- animated ground joins the animation already in progress, so scrolling never rewinds the water a frame
 	local want = gdef.sprite
@@ -165,10 +162,17 @@ local function assign(self: Viewport, s: Slot, tx: number, ty: number)
 	if abase then want = abase .. "_" .. self.waterFrame end
 	if s.ground.Name ~= want then Sprites.Apply(s.ground, want) s.ground.Name = want end
 	local o = WorldGen.object(self.world, tx, ty)
-	if o == 0 then
-		s.object.Visible = false
+	local odef = if o ~= 0 then TileTypes.Object[o] else nil
+	if not odef or odef.sprite == "" then
+		s.object.Visible = false -- nothing here, or the body of a multi-tile object: its anchor draws the whole sprite
 	else
-		local odef = TileTypes.Object[o]
+		-- A sprite bigger than a tile stands with its bottom-left on this tile and hangs over the tiles above and to the
+		-- right (a 48x48 hall on a 3x2 footprint, a 16x32 pine). Rows further south draw over rows further north.
+		local sp = Sprites.Sprites[odef.sprite]
+		local cw, ch = if sp then sp.W / ART else 1, if sp then sp.H / ART else 1
+		s.object.Size = UDim2.fromOffset(t * cw, t * ch)
+		s.object.Position = UDim2.fromOffset((tx - 1) * t, (ty - ch) * t)
+		s.object.ZIndex = ty
 		if s.object.Name ~= odef.sprite then Sprites.Apply(s.object, odef.sprite) s.object.Name = odef.sprite end
 		s.object.Visible = true
 	end
@@ -296,13 +300,9 @@ function Viewport.repaint(self: Viewport, tx: number, ty: number)
 end
 
 --- Repaint everything (a flood).
-function Viewport.repaintAll(self: Viewport)
-	for _, s in ipairs(self.slots) do s.tx = 0 end
-end
+function Viewport.repaintAll(self: Viewport) for _, s in ipairs(self.slots) do s.tx = 0 end end
 
-function Viewport.setMarker(self: Viewport, x: number?, y: number?)
-	self.markerTile = if x and y then { x = x, y = y } else nil
-end
+function Viewport.setMarker(self: Viewport, x: number?, y: number?) self.markerTile = if x and y then { x = x, y = y } else nil end
 
 --- Hit flash: a red-white blink and a nudge away from the attacker.
 function Viewport.flash(self: Viewport, id: any, color: Color3?, seconds: number?)
@@ -412,9 +412,7 @@ function Viewport.removeEntity(self: Viewport, id: any)
 	self.badges[id] = nil -- the badge was a child of the image, so it went with it
 end
 
-function Viewport.getEntity(self: Viewport, id: any): Entity?
-	return self.entities[id]
-end
+function Viewport.getEntity(self: Viewport, id: any): Entity? return self.entities[id] end
 
 --- Convert a screen position (e.g. a tap) to a tile, or nil if outside the play area.
 function Viewport.screenToTile(self: Viewport, sx: number, sy: number): (number?, number?)

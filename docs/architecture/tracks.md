@@ -136,7 +136,9 @@ after collapse/materialise).
 down as a regression script — welcome village defends, wary village watches, predation, band retreats at half.
 **B3 — name the owners (R2/R3).** `Economy`, then `Standing`, then `Population`. **Proof a slice is owned:** grep
 for writes outside the owner, expect zero, put the grep in the commit. **Gate:** test + lint + grep.
-**B4 — split `WorldGen.lua`** into generate / query / encode. **Gate:** test + lint.
+**B4 — split `WorldGen.lua`** into generate / query / encode. **Gate:** test + lint. **Done 2026-10-07** with the world
+expansion step 2: `Grid` (query), `WorldLand` / `WorldPlans` / `WorldVillages` / `WorldRoads` / `WorldPlaces` (generate),
+`WorldGen` (order, encode, 205 lines). Every old name is re-exported, so no caller changed.
 
 ### Every save blocker has a Track A home
 

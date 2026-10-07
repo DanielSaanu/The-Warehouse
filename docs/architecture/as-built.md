@@ -127,7 +127,9 @@ left (learnings S7).
 What must outlast a session already does: the group's opinion of you is `ps.rep[groupId]` (holder-keyed since part
 3), and the ride itself becomes a `rode` rumour, a new value in the ring's existing `event` field.
 
-**Owners (R2).** `Ride` owns `g.riders`, `g.walked`, `g.lastPos`, `g.waitLeft`, `g.holding`, `ps.ride`, `ps.asked`.
+**Owners (R2).** `Ride` owns `g.riders`, `g.walked`, `g.lastPos`, `g.waitLeft`, `g.holding`, `ps.ride`, `ps.asked`,
+`ps.leftOn` (phase 2: the day you walked off, so the re-ask says so). `RoadTalk` (phase 2) owns `g.talk` and
+`ps.barks` (the bark fade: session memory). All scratch; Save encodes groups and players by whitelist.
 A rider's kill goods reach `g.carry` through `Bands.addCarry`, so Bands stays the one writer of the saved group
 fields. The rules are pure in `shared/Belong.lua`.
 

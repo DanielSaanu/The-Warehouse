@@ -27,6 +27,81 @@ Resolution (added by the heavy agent under the same entry):
 
 ## Open
 
+### H11 — Build rung 3 part 4 phase 2: the obvious layer (barks, "what now", road talk) — 2026-10-06 — RESOLVED
+- **Trigger:** 1 (a new system with design choices inside an approved plan), 2 (likely a pure module in `shared/`)
+- **Doc:** `docs/plans/rung3-part4-belonging.md` "Phase 2" and "Slightly obvious what to do" (the guidance layer)
+- **Observed:** phase 1 is through QA (8/10 in round 4, `docs/qa/rung3-part4-p1-ride-summary.md`); Danzo said "phase2".
+- **Evidence:** branch `rung3-part4-p2`, cut from `h9-sim-carve` at 3c8360a (not yet merged to main).
+- **Routine session's read:** build what the plan's phase 2 says (`Barks.lua` with the first eight facts and the fade,
+  `whatnow` on every member, road talk). Fold in the items QA deferred to phase 2 (summary "Deferred"): a "squad
+  leader" title on the hunter leader's window, a line when the master's witness flee holds a ride, a walk-off line
+  that teaches the −3 ("You walked off on us. Not today." on the re-ask), and a move key closing a choiceless window
+  only if the plan's "no client change" no longer holds for phase 2 (ask Danzo if so).
+- **Decision needed:** any plan question phase 2 leaves open; bring it back rather than guess.
+- **Blocked routine work:** the phase 2 QA loop (`docs/qa/rung3-part4-p2-guidance.md`, written by the builder).
+- **Built 2026-10-06 (heavy), Studio checks pending:** `shared/Barks.lua` + `server/RoadTalk.lua`, `whatnow`, the
+  walk-off re-ask, the squad leader's title; tests, lint, sourcemap, build green. Stays OPEN until Studio is seen.
+  → plan "Phase 2", `docs/qa/rung3-part4-p2-guidance.md` "Builder's calls", learnings S9.
+- **Studio 2026-10-07 (routine, PC, DevMode, seed 1):** seen working: "Brilo: Stay by the master. Watch the road."
+  after the yes; lag "Keep up!" from the master; "Pelin: Gweno's spooked. We hold here."; road talk ("Glenworth's
+  short of tools, they say."); "Nearly at Glenworth." / "Made it." then the pay line (rode 53 of 53, 7 coin); `whatnow`
+  on a guard ("About 12 paces yet.") and the master at an end ("We rest here a while, then on to Glenworth."), not on a
+  squad hunter when not riding; "You walked off on us. Not today."; "Maren Greenton, squad leader". No Output errors.
+  **Open:** (1) a spawned bandit got "Gweno: Bandits! Guard the master!" said BY the master (the hostile speaker does
+  not prefer a member); (2) the lag fade x3/short/quiet not counted in Studio (log gaps), unit test only; (3) the
+  30-second test needs someone who has not read the plan. **(3) passed 2026-10-07: Danzo rode Glenworth → Kenstow
+  himself, "it worked! and i clearly understood what to do".** Minor: a guard barks as "Brilo" but his window says
+  "caravan guard"; a spook with no named threat when the fight is outside the 8-tile "seen" range.
+- **RESOLVED 2026-10-07 (heavy):** (1) fixed test-first and seen in Studio (a guard says "Guard the master!"; the
+  master alone on screen says "Bandits! Stand with us."); (2) and the minors go to the phase 2 QA loop.
+  → `docs/qa/rung3-part4-p2-guidance.md` "Builder's calls", learnings S10.
+
+### H12 — The first week has dead air, and the caravan must not be the whole game — 2026-10-07 — OPEN
+- **Trigger:** 1 (a design decision with several reasonable options; it adds to `docs/DESIGN.md`), 8 (Danzo's ask
+  reshapes what the opening and rung 3's end are for)
+- **Doc:** `docs/design/build-rungs.md` (rung 3 / rung 4), `docs/design/long-arc.md`, `docs/PRINCIPLES.md`;
+  the opening is `shared/Talk.lua` `Talk.survivor` + `Talk.goal` (GOAL_STAGES survivor → road → guard → sell → shelter)
+- **Observed:** Danzo, 2026-10-07, after playing phase 2: "there is a gap between starting and being told to join a
+  caravan and after where im just told to be inside for 7 days later which is boring admittedly also i dont want the
+  joining the caravan to be the main objective we need more fun things for the player to do and experiment with after
+  were done with this rung". Two problems: (a) the opening has dead stretches: nothing points from the survivor's
+  lines to the caravan, and after "Sell a hide" the goal line sits on "Be inside walls or by a fire before day 7" for
+  days with nothing to do; (b) beyond the caravan the player has too few things to try and play with.
+- **Evidence:** `roblox/src/shared/Talk.lua:96-119`; `server/Goals.lua`; rung 3 part 4 phases 3–4 still to build
+  (`docs/plans/rung3-part4-belonging.md`).
+- **Routine session's read (guess):** (a) is small and belongs now. The goal line could hand off to the caravan as one
+  of several things, and the dead days before the calamity need something to do. (b) is a "what comes after rung 3"
+  question: a short menu of toys and systems the player can experiment with (sandbox verbs, not more quests), ranked
+  by fun per build cost, that reuses what exists (witness/sides, gossip, groups, farms, wildlife, trade).
+- **Decision needed:** a proposal Danzo can pick from, NO code: (a) 2–3 options for filling the first week (what the
+  goal line and the people say, and what there is to do before day 7), with a recommendation; (b) a ranked list of
+  5–8 "fun things to experiment with" for after rung 3 (each: what the player does, why it is fun → PRINCIPLES IDs,
+  what existing systems it reuses, rough size, what it risks), and where each fits against rung 4 in `build-rungs.md`.
+  Write it as one new doc under `docs/plans/` (under ~300 lines). Do not edit DESIGN or build-rungs until Danzo picks.
+- **Blocked routine work:** none. Phase 3 of part 4 can go ahead in parallel.
+- **Proposal written 2026-10-07 (heavy):** `docs/plans/first-week-and-toys.md`. (a) recommends option B (the line
+  widens into one untried verb at a time, the guard answers "what now", the warning spreads by people from day 5);
+  (b) ranks eight toys, top three: bait and lure, say things (tell/warn/lie), the first hireling. Stays OPEN until
+  Danzo picks (three questions at the end of the doc).
+
+### H13 — World expansion: 256 x 256 map, 16 villages, multi-tile buildings — 2026-10-07 — OPEN
+- **Trigger:** 1 (design inside the plan), 2 (`shared/WorldGen.lua`, the renderer and sprite/scene format),
+  3 (a tribe holds many villages: save format), 6 (WorldGen and tick cost at 7x the area)
+- **Doc:** `docs/plans/world-expansion.md` (copied from Danzo's "World Expansion Plan" board, with his calls)
+- **Observed:** Danzo, 2026-10-07: "pause on all of that and focus on adding more elements that make the world
+  entertaining to be in we should start with the map and buildings … swap to fable 5.1 and run a qa loop to do the
+  stuff in the commit". His calls: 256 x 256, 16 villages as drawn, interiors later (big outsides first).
+- **Evidence:** branch `world-expansion` from 65d3c1f; art in 1d4098e and bc183f3 (all `export: false`).
+- **Routine session's read (guess):** build order phases 2–4 plus multi-tile buildings, in that order; save
+  format bump is fine (development mode). Write a goals file in `docs/qa/` before the loop.
+- **Decision needed:** how to split it into reviewable steps; anything the plan leaves open goes to Danzo.
+- **Model:** Danzo asked for **Fable 5.1** directly (2026-10-07), overriding the "last rung" rule for this work.
+- **Where it stands (2026-10-07, evening):** step 2 BUILT on `world-expansion`: `WorldPlans`/`WorldVillages`/`WorldPlaces`,
+  `WorldGen` the hub (205 lines, allow-list entry gone), 256 x 256, 16 villages, OFFSET 33, `GEN_VERSION` 2, Viewport
+  multi-tile sprites, previews rewritten, 64 scenes exported, `roblox build` run (Danzo uploads). Tests and lint green.
+  Next: Danzo's Studio Play + upload, then the QA loop on `docs/qa/world-expansion-p2.md`; then steps 3–4.
+- **Blocked routine work:** H12 (paused by Danzo) and the phase 2 QA loop (paused).
+
 ## Resolved
 
 ### H10 — A rider's leg is counted across folded turns, so a natural ride pays a fraction — 2026-10-06 — RESOLVED

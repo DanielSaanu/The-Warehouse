@@ -1,5 +1,6 @@
 -- The rung 2 part 2 shared modules: items, combat, reputation, trade, ecology, calamity, talk, routing, flood.
 local WorldGen = __require("WorldGen")
+local Grid = __require("Grid")
 local TileTypes = __require("TileTypes")
 local Rng = __require("Rng")
 local Items = __require("Items")
@@ -93,13 +94,14 @@ end
 do
 	local rng = Rng.new(11)
 	local rg = Ecology.init(world, rng)
-	assert(rg.cols == 6 and rg.rows == 6 and #rg.list == 36, "6x6 regions")
+	local rc, rr = math.ceil(world.width / WorldGen.REGION), math.ceil(world.height / WorldGen.REGION)
+	assert(rg.cols == rc and rg.rows == rr and #rg.list == rc * rr, "one region per 16x16 square")
 	local t0 = Ecology.totals(rg)
 	assert(t0.deer > 20 and t0.boar > 5 and t0.wolf >= 3, ("initial counts deer %d boar %d wolf %d"):format(t0.deer, t0.boar, t0.wolf))
 	for _ = 1, 200 do Ecology.dailyTick(rg, rng) end
 	local t = Ecology.totals(rg)
-	assert(t.deer >= 10 and t.deer <= 36 * Ecology.CAP.deer, "deer stay in a sane band: " .. t.deer)
-	assert(t.wolf >= 1 and t.wolf <= 36 * Ecology.CAP.wolf, "wolves stay in a sane band: " .. t.wolf)
+	assert(t.deer >= 10 and t.deer <= #rg.list * Ecology.CAP.deer, "deer stay in a sane band: " .. t.deer)
+	assert(t.wolf >= 1 and t.wolf <= #rg.list * Ecology.CAP.wolf, "wolves stay in a sane band: " .. t.wolf)
 	assert(t.boar >= 3, "boar survive: " .. t.boar)
 	for _, r in ipairs(rg.list) do
 		assert(r.deer >= 0 and r.boar >= 0 and r.wolf >= 0, "no negative counts")
@@ -115,7 +117,7 @@ do
 	for _ = 1, 3 do assert(Calamity.applyOverlay(world, rg, "beast_tide") == nil, "a tide has no tiles") end
 	assert(rg.list[1].tide and rg.list[36].tide, "the tide is felt everywhere")
 	assert(Ecology.totals(rg).wolf == surged, "re-applying the overlay (what a load does) never adds wolves")
-	assert(rg.list[36].wolf >= 2, "even the far corner has wolves during a tide")
+	assert(rg.list[#rg.list].wolf >= 2, "even the far corner has wolves during a tide")
 	Ecology.endTide(rg)
 	assert(not rg.list[1].tide, "tide ends")
 	assert(#Ecology.describe(rg.list[1]) > 10, "wildlife line")
@@ -184,15 +186,17 @@ do
 	assert(Movement.canStep(world, sx, sy, sx, sy - 1) and not Movement.canStep(world, sx, sy, sx, sy - 1, occ), "occupied tiles block")
 end
 
--- Villages look different: hunter tents and a totem, plunderer huts and a skull post, farmers unchanged.
+-- Villages look different: hunter huts and totems, plunderer huts and skull posts, the farmers' town plundered
+-- (two burnt huts). Sixteen villages since the world expansion, so counts are floors, not exact.
 do
 	local count = {}
 	for i = 1, world.width * world.height do local o = world.object[i]; if o ~= 0 then count[o] = (count[o] or 0) + 1 end end
-	assert((count[O.hut_hunter.id] or 0) >= 4 and (count[O.totem.id] or 0) == 1, "hunter village dressing")
-	assert((count[O.hut_plunderer.id] or 0) >= 4 and (count[O.skull_post.id] or 0) == 1, "plunderer village dressing")
-	assert((count[O.hut.id] or 0) >= 1 and (count[O.hut_burnt.id] or 0) == 3, "farmer village dressing")
+	assert((count[O.hut_hunter.id] or 0) >= 4 and (count[O.totem.id] or 0) >= 1, "hunter village dressing")
+	assert((count[O.hut_plunderer.id] or 0) >= 4 and (count[O.skull_post.id] or 0) >= 1, "plunderer village dressing")
+	assert((count[O.hut.id] or 0) >= 1 and (count[O.hut_burnt.id] or 0) >= 2, "farmer village dressing")
+	local open = Grid.flood(world, world.spawn.x, world.spawn.y)
 	for _, v in ipairs(world.villages) do
-		assert(WorldGen.reachable(world, world.spawn.x, world.spawn.y, v.spawn.x, v.spawn.y), "landmarks do not block " .. v.name)
+		assert(open[WorldGen.index(world, v.spawn.x, v.spawn.y)], "landmarks do not block " .. v.name)
 	end
 end
 

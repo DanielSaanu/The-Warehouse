@@ -69,7 +69,7 @@ do
 	for i, t in ipairs(w.tribes) do gained += t.population - before[i] end
 	-- population also drifts +1 a day per tribe (capped at 60; these start at 10, so the cap is never reached)
 	assert(gained == born + 28 * #w.tribes, ("population heard about every birth: gained %d, born %d"):format(gained, born))
-	assert(livingCount(w) == 18 + born, "the registry holds the adults plus every baby")
+	assert(livingCount(w) == 6 * #world.villages + born, "the registry holds the adults plus every baby")
 end
 
 -- Groups: a collapsed caravan walks its route, turns at the far end, pauses, and comes home.

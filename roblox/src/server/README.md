@@ -16,12 +16,13 @@ Read this first. Update it in the same commit as any move. Sizes are line counts
 | `Calendar.lua` | `meta.gameSeconds`, the ONE clock: `now()`, `clock()`, `setDay()`, `skipTo()` (catch-up adds its lump to `meta.gameSeconds` directly, in `Tick.catchUp`) | 60 |
 | `Restore.lua` | `Sim.state` <-> a save: `snapshot()`, and `apply(data, slept)` = the RESTORE constructor (bodies, routes, stamped tiles, overlay, `Map.reencode`) | 199 |
 | `Bands.lua` | groups (caravan, squad, band): making the rows, their transient half, bodies in and out (`materialise`, `collapse`), the 1 Hz tick, turning for home, what a fight does to a group (`carryKill`, `lose`, `addCarry`). Abstract movement stays in `shared/Tick.groups` | 241 |
-| `Ride.lua` | rung 3 part 4: a player riding with a group. The ask (`topic`), riders as scratch (`g.riders`, `ps.ride`, never saved), the 1 Hz rider tick (walked, lag and the leader's wait, walking off), pay and the `rode` rumour at an arrival, blocked blows, kill goods into the pot. Rules are pure in `shared/Belong.lua` | 249 |
+| `Ride.lua` | rung 3 part 4: a player riding with a group. The ask (`topic`), riders as scratch (`g.riders`, `ps.ride`, never saved), the 1 Hz rider tick (walked, lag and the leader's wait, walking off), pay and the `rode` rumour at an arrival, blocked blows, kill goods into the pot, the `whatnow` topic. Rules are pure in `shared/Belong.lua` | 288 |
+| `RoadTalk.lua` | part 4 phase 2: barks to riders. Gathers the facts each second (a member down, the leader spooked, wolves / bandits / deer in sight, the end near, you joined / lag / are hurt, road talk) and has a member ON THE RIDER'S SCREEN say one ("Bera: Wolves, east!"). Rules pure in `shared/Barks.lua`; owns `g.talk`, `ps.barks`, never saved | 138 |
 | `Walk.lua` | bodies walking (H9, a slice of B2): `followPath` (one step; blocked = swap with its own, detour, or wait) and `groupStep` (the leader on the route, the rest within 2 tiles, behind it). Rules pure in `shared/Steer.lua` and `Tick.leaderStep` | 115 |
 | `Sim.lua` | everything else, for now: entities, AI, fighting, calamities, the tick loops | 1152 |
 | `Sides.lua` | who takes whose side in a fight (your own group never goes for you while you ride) | 294 |
 | `Villagers.lua` | a villager's day: out to a plot in the morning, home to a hut door at night, home at a run from wolves and strange bandits; scans huts and plots off the map. What the farms YIELD is `shared/Farms.lua` (pure, in `Tick.daily`, saved as `tribes[].plots`) | 152 |
-| `Interact.lua` | the F key: talk, trade, rest, gifts; a group leader's `ride` / `leave` topics go to `Ride` | 357 |
+| `Interact.lua` | the F key: talk, trade, rest, gifts; a group leader's `ride` / `leave` and anyone in your group's `whatnow` go to `Ride` | 363 |
 | `Debug.lua` | the test console (Workspace attribute `Debug`); DEV mode only. `arrive <group>` forces an arrival through Ride and Bands | 334 |
 | `Dev.lua` | development mode, read once at boot: `Dev.on` (Studio, and `Workspace.DevMode` not unticked; rule in `shared/DevMode.lua`) | 16 |
 
@@ -83,7 +84,9 @@ Read this first. Update it in the same commit as any move. Sizes are line counts
 - [x] **QA loop on all of the above** (2026-09-21): two Opus rounds, 8 then 8.5 against a bar of 8.5 - `docs/qa/track-b1-summary.md`.
       That loop also covered `State.lua` and `Tiles.lua`, which had been parked without a review.
 - [ ] **B1 (rest)** the calamity half of `Calendar`. Members as `{ player = userId }` is part 4, not here.
-- [ ] **B2** `Bodies`, `Brains`, `Fighting`. **B3** name the owners (R2/R3). **B4** split `WorldGen.lua`.
+- [ ] **B2** `Bodies`, `Brains`, `Fighting`. **B3** name the owners (R2/R3).
+- [x] **B4** split `WorldGen.lua` (2026-10-07, with the world expansion step 2): `Grid`, `WorldLand`, `WorldPlans`,
+      `WorldVillages`, `WorldRoads`, `WorldPlaces`; `WorldGen` is the 205-line hub and re-exports every old name.
 
 - [x] **Part 4 phase 0 (un-parked by Danzo, 2026-10-05, H7 Q4; built 2026-10-05, `Sim.lua` 1255 → 1225, ceiling kept at
       1255 until phase 1 lands; no QA loop yet):** move "what a fight does to a group" (`killEntity`'s

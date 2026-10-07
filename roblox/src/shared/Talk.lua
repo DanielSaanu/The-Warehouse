@@ -192,6 +192,7 @@ end
 function Talk.joinNo(answer: string, c: RideContext): string
 	if answer == "busy" then return "Not now." end
 	if answer == "asked" then return "I gave you my answer." end
+	if answer == "walked" then return "You walked off on us. Not today." end
 	if answer == "full" then return "We're full up." end
 	if answer == "grudge" then return "Not after what you did. Not with my people." end
 	if answer == "heard" then return ("I heard about the %s. No."):format(c.reason or "killing") end
@@ -205,6 +206,25 @@ function Talk.arrival(c: RideContext): string
 	local heard = if c.heard then ("%s will hear you rode with us. "):format(c.dest) else ""
 	local onward = if c.scarce then ("They're short of %s here."):format(c.scarce) else ""
 	return pay .. heard .. onward
+end
+
+Talk.TOPIC_LABELS.whatnow = "Ask what now"
+
+export type WhatNow = { kind: string, dest: string, home: string, left: number, pause: boolean?, homeward: boolean?, boss: string? }
+
+--- "What now", asked of anyone in your group (phase 2). The leader says the plan and how far; a member says what
+--- the boss told them. `left` is route tiles to the end they are walking to.
+function Talk.whatNow(role: string, c: WhatNow): string
+	local far = if c.left <= 10 then "Not far now." else ("About %d paces yet."):format(c.left)
+	local job = if c.kind == "squad" and not c.homeward then "Hit what we hit; the hides go home."
+		elseif c.kind == "squad" then "Keep the wolves off the kill."
+		else "If bandits come, stand by me."
+	local plan = if c.kind == "squad" and not c.homeward then ("We're out for deer in %s."):format(c.dest)
+		elseif c.kind == "squad" then ("We're heading home to %s with the kill."):format(c.dest)
+		else ("We're bound for %s."):format(c.dest)
+	if c.pause then return ("We rest here a while, then on to %s."):format(c.dest) end
+	if role == "leader" then return plan .. " " .. far .. " " .. job end
+	return ("%s says %s %s"):format(c.boss or "The boss", plan:sub(1, 1):lower() .. plan:sub(2), far)
 end
 
 --- Leaving, said by the leader. Never a failure notice.

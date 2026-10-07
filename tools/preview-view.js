@@ -1,38 +1,24 @@
 #!/usr/bin/env node
-// What the player sees: crop the painted world to the COLS x ROWS viewport around a tile, draw the player,
-// optionally tint for night. Usage: node tools/preview-view.js [world.txt] [x] [y] [scale] [night 0..1]
-import fs from 'node:fs/promises';
+// What the player sees: the COLS x ROWS viewport around a tile, the player drawn on it, optionally tinted for night.
+// Usage: node tools/preview-view.js [exports/world_1.txt] [x] [y] [scale] [night 0..1]   (x, y default to the spawn)
 import path from 'node:path';
 import { makeNodeEnv, savePng } from '../src/node-env.js';
-import { renderScene } from '../src/render.js';
-import { loadScene } from '../src/store.js';
 import { ROOT } from '../src/paths.js';
+import { loadMap, paintMap, tileCache } from './mapfile.js';
 
 const COLS = 16, ROWS = 12;
-const CHAR = { ' ': ['grass'], ',': ['tall_grass'], '.': ['path'], '~': ['water_0'], '-': ['river_0'], '=': ['ford'], '#': ['farm'],
-  'T': ['grass', 'tree'], '^': ['grass', 'rock'], 'O': ['grass', 'cave'], 'H': ['grass', 'hut'], 'B': ['grass', 'hut_burnt'],
-  'W': ['grass', 'wall'], 'G': ['path', 'gate'], 'S': ['grass', 'stall'], 'b': ['grass', 'bed'],
-  'h': ['grass', 'hut_hunter'], 'n': ['grass', 'hut_plunderer'], 'L': ['grass', 'totem'], 'X': ['grass', 'skull_post'],
-  'c': ['grass', 'camp_lit_0'], 'g': ['grass', 'bag'], '%': ['flood'], '!': ['grass', 'sign'], '@': ['path'] };
-
 const [file = 'exports/world_1.txt', xs, ys, scaleS = '5', nightS = '0'] = process.argv.slice(2);
-const rows = (await fs.readFile(path.resolve(ROOT, file), 'utf8')).replace(/\n+$/, '').split('\n');
-let px = Number(xs), py = Number(ys);
-if (!px || !py) { for (let y = 0; y < rows.length; y++) { const i = rows[y].indexOf('@'); if (i >= 0) { px = i + 1; py = y + 1; } } }
+const map = await loadMap(file);
+const px = Number(xs) || map.sx, py = Number(ys) || map.sy;
 const scale = Number(scaleS) || 5, night = Number(nightS) || 0;
 const env = makeNodeEnv();
-const tiles = new Map();
-async function tile(name) { if (!tiles.has(name)) tiles.set(name, (await renderScene(await loadScene(name), env, { strict: true })).canvas); return tiles.get(name); }
+const tile = tileCache(env);
 const cx = px - 0.5, cy = py - 0.5;               // continuous centre, as the client camera does
 const vx = cx - COLS / 2, vy = cy - ROWS / 2;      // top-left in continuous tile coords
 const canvas = env.createCanvas(COLS * 16, ROWS * 16);
 const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false;
-for (let r = -1; r <= ROWS; r++) for (let c = -1; c <= COLS; c++) {
-  const tx = Math.floor(vx) + c + 1, ty = Math.floor(vy) + r + 1;
-  const ch = rows[ty - 1]?.[tx - 1];
-  const layers = ch == null ? ['water'] : (CHAR[ch] || ['grass']);
-  for (const l of layers) ctx.drawImage(await tile(l), Math.round((tx - 1 - vx) * 16), Math.round((ty - 1 - vy) * 16));
-}
+const tx0 = Math.floor(vx), ty0 = Math.floor(vy); // first tile drawn (1-based tile tx0 + 1 starts at pixel (tx0 - vx) * 16)
+await paintMap(ctx, map, tile, tx0, ty0, tx0 + COLS + 1, ty0 + ROWS + 1, Math.round((tx0 - 1 - vx) * 16), Math.round((ty0 - 1 - vy) * 16));
 ctx.drawImage(await tile('player_down_0'), Math.round((px - 1 - vx) * 16), Math.round((py - 1 - vy) * 16));
 if (night > 0) { ctx.fillStyle = `rgba(10,14,40,${night})`; ctx.fillRect(0, 0, canvas.width, canvas.height); }
 const out = env.createCanvas(canvas.width * scale, canvas.height * scale);

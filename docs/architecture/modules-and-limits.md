@@ -12,7 +12,7 @@ shared/  (pure Luau — the only code `npm test` can run; `test/luau/run.js:12`)
   Gossip.lua       rumours, who knows what, standing per holder, grudge        ~200   NEW (rung 3 part 3)
   Calamity.lua     + applyOverlay / the one-time half as data                 (exists)
   DayCycle.lua     + day/fraction from gameSeconds                            (exists)
-  WorldGen.lua     877 → generate / query / encode                              (B4)
+  WorldGen.lua     877 → 205: hub over Grid / WorldLand / WorldPlans / WorldVillages / WorldRoads / WorldPlaces (B4 done 2026-10-07)
 
 server/
   Map.lua          the generated map: init, get, walkable, encoded   (exists as World.lua, 37)
@@ -44,7 +44,7 @@ identity. `Persistence` measures the real byte size with `HttpService:JSONEncode
 ## 4b. The codebase has a second reader, and it has a context window
 
 **H1. A hard ceiling of 400 lines, target 250** — a check in `npm test`. Generated files exempt. Every allow-list
-entry names what deletes it: `Sim.lua` 1617 (B1–B3), `WorldGen.lua` 877 (B4), `Hud.lua` 1021 and
+entry names what deletes it: `Sim.lua` 1617 (B1–B3), `WorldGen.lua` 877 (B4, done: 205), `Hud.lua` 1021 and
 `Client.client.lua` 653 (rung 3 part 5, the client split), `Viewport.lua` 429 (rung 4, or never: one job, 29 over).
 **H2.** The first fifteen lines say what the file owns, and what it deliberately does not do.
 **H3.** One job per file, and the filename is the job.
