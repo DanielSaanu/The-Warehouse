@@ -94,25 +94,30 @@ function WorldLand.build(world: World, rng: Rng.Rng): Land
 						world.ground[i] = G.tall_grass.id
 						if detail:chance(0.35) then world.object[i] = O.reeds.id end
 					end
-				elseif e > 0.70 then
-					world.object[i] = O.rock.id
 				elseif e > 0.62 then
-					-- hills: broken ground, boulders, dead trees
-					world.ground[i] = G.grass_2.id
+					-- the hills: stony ground you walk over, boulders and dead trees standing sparse on it, and small crags
+					-- of solid rock only at the very top (where the cave mouths go)
+					world.ground[i] = G.rocky.id
 					local r = detail:float()
-					if r < 0.06 then world.object[i] = O.boulder.id
-					elseif r < 0.10 then world.object[i] = O.boulder_mossy.id
+					if e > 0.84 then world.object[i] = O.rock.id
+					elseif r < 0.05 then world.object[i] = O.boulder.id
+					elseif r < 0.08 then world.object[i] = O.boulder_mossy.id
 					elseif r < 0.18 then world.object[i] = if detail:chance(0.5) then O.rocks_grey.id else O.rocks_brown.id
-					elseif r < 0.21 then world.object[i] = O.dead_tree.id
-					elseif r < 0.22 then world.object[i] = O.dead_tree_tall.id end
+					elseif r < 0.20 then world.object[i] = O.dead_tree.id
+					elseif r < 0.21 then world.object[i] = O.dead_tree_tall.id end
 				elseif m > 0.56 and e > 0.3 then
-					if detail:chance(0.45 + (m - 0.56) * 2) then
+					-- the forest: its floor says "forest"; the trees stand on a spaced lattice (never two side by side), so a
+					-- forest is dense to look at and always walkable, like a wood you weave through
+					world.ground[i] = G.forest_floor.id
+					if (x + 2 * y) % 3 == 0 and detail:chance(0.7 + (m - 0.56) * 2) then
 						local r = detail:float()
 						local pineOdds = if e > 0.5 then 0.45 else 0.18
 						world.object[i] = if r < pineOdds then (if detail:chance(0.3) then O.pine_tall.id else O.pine.id)
 							elseif r < pineOdds + 0.08 then O.tree_autumn.id else O.tree.id
-					elseif detail:chance(0.06) then
+					elseif detail:chance(0.05) then
 						world.object[i] = O.mushrooms.id
+					elseif detail:chance(0.02) then
+						world.object[i] = O.bush.id
 					end
 				elseif m > 0.50 and e > 0.3 then
 					-- the forest's edge: bushes, berries, stumps, a fallen log
@@ -182,19 +187,27 @@ function WorldLand.fords(world: World, frng: Rng.Rng, riverX: { number })
 	end
 end
 
---- Cave mouths: rock tiles flanked by rock with open ground directly south that the player can walk to from the
---- spawn. Placed after the roads (which clear rocks). Collect every candidate, then pick a few far apart.
+--- Cave mouths: a small crag (a 3 x 2 mound of rock) with the cave in the middle of its south face, on the stony
+--- ground of the hills, with open ground south of it that the player can walk to from the spawn. Placed after the
+--- roads and the places. Collect every spot the mound fits, then pick a few far apart.
 function WorldLand.caves(world: World, crng: Rng.Rng)
 	local w, h = world.width, world.height
 	local want = math.max(3, math.floor(w * h / 13000))
 	local open = Grid.flood(world, world.spawn.x, world.spawn.y)
 	local candidates: { Pos } = {}
-	for y = 3, h - 3 do
+	for y = 4, h - 3 do
 		for x = 3, w - 2 do
-			if Grid.object(world, x, y) == O.rock.id and Grid.object(world, x, y + 1) == 0 and Grid.ground(world, x, y + 1) ~= G.water.id
-				and Grid.object(world, x - 1, y) == O.rock.id and Grid.object(world, x + 1, y) == O.rock.id
-				and open[idx(w, x, y + 1)] then
-				table.insert(candidates, { x = x, y = y })
+			if Grid.ground(world, x, y) == G.rocky.id and Grid.object(world, x, y + 1) == 0 and Grid.ground(world, x, y + 1) ~= G.water.id
+				and Grid.ground(world, x, y + 1) ~= G.path.id and open[idx(w, x, y + 1)] and not Grid.villageAt(world, x, y, 4) then
+				local clear = true
+				for dy = -1, 0 do
+					for dx = -1, 1 do
+						local o = Grid.object(world, x + dx, y + dy)
+						local g = Grid.ground(world, x + dx, y + dy)
+						if g == G.path.id or g == G.water.id or (o ~= 0 and o ~= O.rock.id and not TileTypes.Object[o].decor and o < O.pine.id) then clear = false end
+					end
+				end
+				if clear then table.insert(candidates, { x = x, y = y }) end
 			end
 		end
 	end
@@ -211,6 +224,7 @@ function WorldLand.caves(world: World, crng: Rng.Rng)
 			if math.abs(p.x - c.x) + math.abs(p.y - c.y) < 14 then farEnough = false break end
 		end
 		if farEnough then
+			for dx = -1, 1 do setO(world, c.x + dx, c.y - 1, O.rock.id); setO(world, c.x + dx, c.y, O.rock.id) end
 			setO(world, c.x, c.y, O.cave.id)
 			table.insert(placed, c)
 		end

@@ -18,7 +18,7 @@ local WorldGen = require(Shared:WaitForChild("WorldGen"))
 local Config = require(Shared:WaitForChild("Config"))
 
 local ART = 16   -- art pixels per tile
-local MARGIN = 2 -- tiles of pool beyond each edge of the window
+local MARGIN = 3 -- tiles of pool beyond each edge of the window: a 48-tall sprite anchored 3 rows below it still shows
 -- Ground that animates: current sprite name -> its base. Frame 0 is what TileTypes names, so a freshly painted
 -- tile is always valid and only joins the animation on the next flip.
 local ANIM_GROUND = { water_0 = "water", water_1 = "water", river_0 = "river", river_1 = "river" } :: { [string]: string }

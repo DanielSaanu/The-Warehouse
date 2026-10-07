@@ -19,16 +19,13 @@ local Items = require(Shared:WaitForChild("Items"))
 local Sprites = require(Shared:WaitForChild("Sprites"))
 local Viewport = require(script.Parent:WaitForChild("Viewport"))
 local Hud = require(script.Parent:WaitForChild("Hud"))
+local Minimap = require(script.Parent:WaitForChild("Minimap"))
 
 local player = Players.LocalPlayer
 local myId = player.UserId
 local playerGui = player:WaitForChild("PlayerGui")
 
-pcall(function()
-	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
-	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, false)
-	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
-end)
+pcall(function() for _, t in ipairs({ Enum.CoreGuiType.Backpack, Enum.CoreGuiType.Health, Enum.CoreGuiType.PlayerList }) do StarterGui:SetCoreGuiEnabled(t, false) end end)
 
 -- The GUI exists before anything can yield, so a problem is never a silent blank screen.
 -- Two ScreenGuis: a black backdrop that covers the whole screen including Roblox's top bar, and the game itself,
@@ -92,6 +89,7 @@ end
 local world: WorldGen.World? = nil
 local vp: Viewport.Viewport? = nil
 local hud = nil
+local minimap: Minimap.Minimap? = nil
 local O = TileTypes.ObjectByName
 
 -- epoch: bumped by the server on every correction; moves carry it so stale in-flight moves are ignored.
@@ -129,15 +127,12 @@ local TRIBE_WORD = { farmer = "farmers", hunter = "hunters", plunderer = "plunde
 local SIDE_ONLY = { deer = true, boar = true, wolf = true }
 -- Who takes a gift: mirrors GIFTABLE in server/Interact.lua.
 local GIFTABLE = { villager = true, guard = true, merchant = true, caravan_master = true, survivor = true, pregnant = true }
-local KEY_LEGEND = "WASD move  ·  click swing  ·  F act  ·  E bag  ·  Tab standing  ·  X close"
+local KEY_LEGEND = "WASD move  ·  click swing  ·  F act  ·  E bag  ·  M map  ·  Tab standing  ·  X close"
 local TOUCH_LEGEND = "tap the map to travel"
 local TOUCH = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
 --- The item in the selected hot bar slot, mirroring Interact.held on the server.
-local function heldItem(): string?
-	local slot = selected and inv.slots[selected]
-	return if slot then slot.item else nil
-end
+local function heldItem(): string? local slot = selected and inv.slots[selected] return if slot then slot.item else nil end
 
 --- Sprite name for a body facing a way. Animals only have left/right art.
 local function spriteFor(base: string, facing: string, frame: number): string
@@ -315,9 +310,7 @@ local function pressDir(dir: string)
 	if vp then vp:setMarker(nil) end
 end
 
-local function releaseDir(dir: string)
-	for i = #held, 1, -1 do if held[i] == dir then table.remove(held, i) end end
-end
+local function releaseDir(dir: string) for i = #held, 1, -1 do if held[i] == dir then table.remove(held, i) end end end
 
 local function closePanels()
 	if not hud then return end
@@ -376,6 +369,7 @@ WorldInit.OnClientEvent:Connect(function(encoded, meState, others, clock, sheetI
 		onBag = toggleBag,
 		onStanding = function() hud:toggleStanding(rep, tribeNames) end,
 	}, TOUCH)
+	minimap = Minimap.new(v.overlay, w, TOUCH)
 	me.x, me.y, me.facing, me.sentFacing = meState.x, meState.y, meState.facing, meState.facing
 	me.epoch = meState.epoch or 0
 	v:addEntity(myId, spriteFor("player", me.facing, 0), me.x, me.y)
@@ -562,6 +556,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		if UserInputService:GetFocusedTextBox() then return end
 		if key == Enum.KeyCode.F or key == Enum.KeyCode.Return then interact() return end
 		if key == Enum.KeyCode.E then toggleBag() return end
+		if key == Enum.KeyCode.M then if minimap then minimap:toggle() end return end
 		if key == Enum.KeyCode.Tab then if hud then hud:toggleStanding(rep, tribeNames) end return end
 		if key == Enum.KeyCode.Space then attack() return end
 		local slot = SLOT_KEYS[key]
@@ -626,6 +621,7 @@ RunService.RenderStepped:Connect(function()
 	local e = v:getEntity(myId)
 	if e then v:setCamera(e.px + 0.5, e.py + 0.5) end
 	v:refresh()
+	if minimap and e then minimap:update(e.px + 1, e.py + 1) end
 
 	-- Clock: interpolate between the server's once-a-second updates so dusk and dawn fade smoothly.
 	local frac = clockFrac + (now - clockAt) / Config.DAY_SECONDS

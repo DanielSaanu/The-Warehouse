@@ -1,8 +1,8 @@
 --!strict
--- Roads and signs (the generator's third pass; docs/plans/world-expansion.md "Build order" 2). Pure Luau.
+-- Roads (the generator's third pass; docs/plans/world-expansion.md "Build order" 2). Pure Luau.
 -- A* over the tile grid with a cost per tile, a road TREE between villages (every village joined to its neighbours,
--- not all to all: at 16 villages all-to-all is 120 roads), a road out of every gate no tree edge chose, and the
--- signs: one at every village exit and every ford.
+-- not all to all: at 16 villages all-to-all is 120 roads), a road out of every gate no tree edge chose, and a road
+-- onto both banks of every ford. The signs are WorldSigns (they read the finished roads).
 local Grid = require(script.Parent.Grid)
 local TileTypes = require(script.Parent.TileTypes)
 
@@ -38,13 +38,15 @@ local function walkCost(world: World, x: number, y: number): number
 	return if Grid.ground(world, x, y) == G.river.id then 3 else 1
 end
 
+--- A caravan keeps to the roads: off the road costs five times a road tile, so it leaves one only to cut a real
+--- corner, and it does not wade when there is a ford.
 local function roadCost(world: World, x: number, y: number): number
 	if not Grid.walkable(world, x, y) then return math.huge end
 	local g = Grid.ground(world, x, y)
 	if g == G.path.id or g == G.ford.id then return 0.5 end
-	if g == G.river.id then return 4 end -- a caravan does not wade when there is a ford
-	if g == G.tall_grass.id then return 1.5 end
-	return 1.2
+	if g == G.river.id then return 8 end
+	if g == G.tall_grass.id then return 3 end
+	return 2.5
 end
 
 -- Binary min-heap keyed on f.
@@ -152,13 +154,32 @@ local function findPath(world: World, sx: number, sy: number, tx: number, ty: nu
 		or WorldRoads.astar(world, sx, sy, tx, ty, stepCost, avoid) -- the box was too tight (a lake in the way): the whole map
 end
 
+local function carveTile(world: World, i: number)
+	local g, o = world.ground[i], world.object[i]
+	local od = TileTypes.Object[o]
+	if o == O.tree.id or o == O.rock.id or (od and od.decor) then world.object[i] = 0 end
+	if g == G.water.id then world.ground[i] = G.ford.id
+	elseif g ~= G.ford.id and o ~= O.gate.id and o ~= O.palisade_gate.id then world.ground[i] = G.path.id end
+end
+
+--- Lay a road two tiles wide: the A* tile and, beside it, the tile east of a north-south step or south of an
+--- east-west step (both at a turn). The second tile is skipped where something built stands, or inside a village:
+--- a road widens through the wilds, not through a wall.
 local function carveRoad(world: World, path: { number })
-	for _, i in ipairs(path) do
-		local g, o = world.ground[i], world.object[i]
-		local od = TileTypes.Object[o]
-		if o == O.tree.id or o == O.rock.id or (od and od.decor) then world.object[i] = 0 end
-		if g == G.water.id then world.ground[i] = G.ford.id
-		elseif g ~= G.ford.id and o ~= O.gate.id then world.ground[i] = G.path.id end
+	local w = world.width
+	for k, i in ipairs(path) do
+		carveTile(world, i)
+		local x, y = (i - 1) % w + 1, math.floor((i - 1) / w) + 1
+		local nxt = path[k + 1] or path[k - 1]
+		if nxt then
+			local nx = (nxt - 1) % w + 1
+			local sx, sy = if nx == x then x + 1 else x, if nx == x then y else y + 1
+			if Grid.inBounds(world, sx, sy) and sx < w and sy < world.height and not Grid.villageAt(world, sx, sy, 0) then
+				local o = Grid.object(world, sx, sy)
+				local od = TileTypes.Object[o]
+				if o == 0 or o == O.tree.id or o == O.rock.id or (od and od.decor) then carveTile(world, idx(w, sx, sy)) end
+			end
+		end
 	end
 end
 
@@ -271,116 +292,37 @@ function WorldRoads.build(world: World)
 			Grid.setG(world, g.exit.x, g.exit.y, G.path.id)
 		end
 	end
+	WorldRoads.fordRoads(world)
 end
 
--- ---------- signs ----------
--- Wooden signs are how a stranger learns where the roads go without a human telling them (docs/qa/rung2-part4.md).
--- They are placed by rule, not by hand: one at every gate or road exit of a village, one at every river crossing.
-local TRIBE_LINE = { farmer = "Farmers.", hunter = "Hunters.", plunderer = "Raiders. Keep clear." } :: { [string]: string }
-
-local function signSpot(world: World, x: number, y: number): boolean
-	if not Grid.inBounds(world, x, y) then return false end
-	local g = Grid.ground(world, x, y)
-	if Grid.object(world, x, y) ~= 0 then return false end
-	if g ~= G.grass.id and g ~= G.grass_2.id and g ~= G.tall_grass.id and g ~= G.farm.id then return false end
-	local open = 0
-	for dy = -1, 1 do
-		for dx = -1, 1 do
-			if not (dx == 0 and dy == 0) and Grid.walkable(world, x + dx, y + dy) then open += 1 end
-		end
-	end
-	return open >= 5
-end
-
---- Put a sign on the best free tile near (x, y). Returns true if one went up.
-local function putSign(world: World, x: number, y: number, text: string): boolean
-	for r = 1, 2 do
-		for dy = -r, r do
-			for dx = -r, r do
-				if math.max(math.abs(dx), math.abs(dy)) == r and signSpot(world, x + dx, y + dy) then
-					local i = idx(world.width, x + dx, y + dy)
-					world.object[i] = O.sign.id
-					local signs = world.signs
-					if signs then signs[i] = text end
-					return true
-				end
-			end
-		end
-	end
-	return false
-end
-
---- Where roads leave a village: its gates, or (for an open village) the path tiles on the ring just outside its
---- footprint. Exits closer than 3 tiles to one already found are the same road and are skipped.
-local function villageExits(world: World, v: Village): { Pos }
-	local out: { Pos } = {}
-	local function add(x: number, y: number)
-		for _, p in ipairs(out) do
-			if math.abs(p.x - x) + math.abs(p.y - y) < 3 then return end
-		end
-		table.insert(out, { x = x, y = y })
-	end
-	if #v.gates > 0 then
-		for _, g in ipairs(v.gates) do add(g.exit.x, g.exit.y) end
-		return out
-	end
-	for x = v.x0 - 1, v.x1 + 1 do
-		if Grid.ground(world, x, v.y0 - 1) == G.path.id then add(x, v.y0 - 1) end
-		if Grid.ground(world, x, v.y1 + 1) == G.path.id then add(x, v.y1 + 1) end
-	end
-	for y = v.y0 - 1, v.y1 + 1 do
-		if Grid.ground(world, v.x0 - 1, y) == G.path.id then add(v.x0 - 1, y) end
-		if Grid.ground(world, v.x1 + 1, y) == G.path.id then add(v.x1 + 1, y) end
-	end
-	return out
-end
-
---- The village this road exit points at: the one whose direction from the village centre best matches the
---- direction the road leaves in, nearer ones preferred (a hamlet's sign names the next place, not the far capital).
-local function signpostTarget(world: World, v: Village, exit: Pos): Village?
-	local ex, ey = exit.x - v.cx, exit.y - v.cy
-	local elen = math.max(1, math.sqrt(ex * ex + ey * ey))
-	local best: Village? = nil
-	local bestScore = -math.huge
-	for _, o in ipairs(world.villages) do
-		if o ~= v then
-			local ox, oy = o.cx - v.cx, o.cy - v.cy
-			local olen = math.max(1, math.sqrt(ox * ox + oy * oy))
-			local score = (ox * ex + oy * ey) / (elen * olen) - olen / (4 * world.width)
-			if score > bestScore then best, bestScore = o, score end
-		end
-	end
-	return best
-end
-
-function WorldRoads.signs(world: World, compass: (number, number) -> string)
-	world.signs = {}
-	for _, v in ipairs(world.villages) do
-		for _, exit in ipairs(villageExits(world, v)) do
-			local o = signpostTarget(world, v, exit)
-			if o then
-				local dir: string = compass(o.cx - v.cx, o.cy - v.cy)
-				local line: string = TRIBE_LINE[o.tribeType] or ""
-				putSign(world, exit.x, exit.y, o.name .. ", " .. dir .. ". " .. line)
-			end
-		end
-	end
-	-- One sign per crossing: ford tiles that touch each other are the same ford.
+--- The ford clusters: touching ford tiles are one crossing. Each is { x0, x1, y } for its widest row (the row whose
+--- banks the road should meet) and `road`, true when any tile of the crossing has a road beside it, in map order.
+export type Ford = { x0: number, x1: number, y: number, road: boolean }
+function WorldRoads.fords(world: World): { Ford }
+	local w, h = world.width, world.height
 	local seen: { [number]: boolean } = {}
-	for y = 2, world.height - 1 do
-		for x = 2, world.width - 1 do
-			local i = idx(world.width, x, y)
+	local out: { Ford } = {}
+	for y = 2, h - 1 do
+		for x = 2, w - 1 do
+			local i = idx(w, x, y)
 			if world.ground[i] == G.ford.id and not seen[i] then
 				local queue, head = { { x = x, y = y } }, 1
+				local rows: { [number]: { number } } = {}
+				local road = false
 				seen[i] = true
 				while head <= #queue do
 					local c = queue[head]
 					head += 1
+					local r = rows[c.y]
+					if not r then rows[c.y] = { c.x, c.x } else r[1] = math.min(r[1], c.x); r[2] = math.max(r[2], c.x) end
+					for _, d in ipairs(DIRS) do
+						if Grid.ground(world, c.x + d[1], c.y + d[2]) == G.path.id then road = true end
+					end
 					for dy = -1, 1 do
 						for dx = -1, 1 do
 							local nx, ny = c.x + dx, c.y + dy
 							if Grid.inBounds(world, nx, ny) then
-								local ni = idx(world.width, nx, ny)
+								local ni = idx(w, nx, ny)
 								if world.ground[ni] == G.ford.id and not seen[ni] then
 									seen[ni] = true
 									table.insert(queue, { x = nx, y = ny })
@@ -389,7 +331,43 @@ function WorldRoads.signs(world: World, compass: (number, number) -> string)
 						end
 					end
 				end
-				putSign(world, x, y, "Ford. Wolves at night. Stay on the road.")
+				local best: Ford = { x0 = x, x1 = x, y = y, road = road }
+				for ry, r in pairs(rows) do
+					if r[2] - r[1] > best.x1 - best.x0 or (r[2] - r[1] == best.x1 - best.x0 and ry < best.y) then best = { x0 = r[1], x1 = r[2], y = ry, road = road } end
+				end
+				table.insert(out, best)
+			end
+		end
+	end
+	return out
+end
+
+--- The nearest road tile to (x, y) on one side of the river (`side` < 0: west of x, > 0: east), outside any village.
+local function nearestRoad(world: World, x: number, y: number, side: number, reach: number): Pos?
+	local w, h = world.width, world.height
+	local bx, by, bestD = 0, 0, math.huge
+	for yy = math.max(2, y - reach), math.min(h - 1, y + reach) do
+		for xx = math.max(2, x - reach), math.min(w - 1, x + reach) do
+			local d = math.abs(xx - x) + math.abs(yy - y)
+			if d > 0 and d < bestD and (xx - x) * side > 0 and world.ground[idx(w, xx, yy)] == G.path.id and not Grid.villageAt(world, xx, yy, 0) then
+				bx, by, bestD = xx, yy, d
+			end
+		end
+	end
+	return if bestD < math.huge then { x = bx, y = by } else nil
+end
+
+--- Every natural ford gets a road on both banks, joined to the nearest road on that side: the river is crossed
+--- wherever it can be, not only where the tree happened to go, so a walk to the next village is not a march to the
+--- far north and back (QA round 1).
+function WorldRoads.fordRoads(world: World)
+	local avoid = world.villages
+	for _, f in ipairs(WorldRoads.fords(world)) do
+		if not f.road then
+			for _, bank in ipairs({ { x = f.x0 - 1, side = -1 }, { x = f.x1 + 1, side = 1 } }) do
+				local road = nearestRoad(world, bank.x, f.y, bank.side, 60)
+				local path = if road then findPath(world, bank.x, f.y, road.x, road.y, avoid) else nil
+				if path then carveRoad(world, path) end
 			end
 		end
 	end

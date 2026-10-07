@@ -269,6 +269,9 @@ function Save.applyPlayer(ps, data, worldId: string?): (number?, number?)
 	if worldId ~= nil and data.metWorld == worldId then
 		for _, id in ipairs(data.met or {}) do ps.met[id] = true end
 	end
+	-- Nor does a tile: after a world reset (a GEN_VERSION bump, a bigger map) the old x, y may be rock or river, so
+	-- the caller falls back to the rest point. A key saved before worlds had ids keeps its tile.
+	if worldId ~= nil and data.metWorld ~= nil and data.metWorld ~= worldId then return nil, nil end
 	return data.x, data.y
 end
 

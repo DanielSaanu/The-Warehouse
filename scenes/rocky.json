@@ -1,0 +1,15 @@
+{
+  "name": "rocky",
+  "width": 16,
+  "height": 16,
+  "background": "transparent",
+  "pixelated": true,
+  "layers": [
+    {
+      "id": "t",
+      "name": "rocky",
+      "type": "image",
+      "src": "sprites/rocky.txt"
+    }
+  ]
+}

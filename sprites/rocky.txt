@@ -1,0 +1,18 @@
+# name: rocky
+# palette: . = transparent, s = #7d7a66, t = #8d8a74, k = #5f5c4c, g = #6c7a4f, w = #9a977f
+ssssssssssssssss
+sssstsssssssssss
+ssskwksssssgssss
+ssssksssssssssss
+sssssssssstsssss
+ssssssssssssssss
+sgsssssskwksssss
+ssssssssssksssss
+ssssssssssssssss
+ssssstsssssssssg
+ssssssssssssssss
+sskwksssssssssss
+ssssksssssstssss
+ssssssssssssssss
+sssssssssgssssss
+ssssssssssssssss

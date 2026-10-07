@@ -22,6 +22,10 @@ TileTypes.Ground = {
 	-- The river is waded, not swum: slow going, but the map does not funnel every crossing to a ford. Lakes stay `water`.
 	[9] = { id = 9, name = "river", sprite = "river_0", walk = true, speed = 0.35, hides = false },
 	[10] = { id = 10, name = "scorched", sprite = "scorched_ground", walk = true, speed = 1.0, hides = false },
+	-- Biome ground: the forest and the hills are told by their floor, with trees and boulders standing sparse on it,
+	-- so a forest is walked through and a hill walked over (Danzo, 2026-10-07: no walls of trees, no plugs of rock).
+	[11] = { id = 11, name = "forest_floor", sprite = "forest_floor", walk = true, speed = 0.95, hides = false },
+	[12] = { id = 12, name = "rocky", sprite = "rocky", walk = true, speed = 0.9, hides = false },
 } :: { [number]: GroundDef }
 
 local function obj(id: number, name: string, solid: boolean, extra: { [string]: any }?): ObjectDef

@@ -95,9 +95,9 @@ for _, seed in ipairs({ 1, 7, 42, 2026, 3, 99, 123456 }) do
 	-- The order the server relies on until step 3: [1] the farmers' town (the start), [2] the hunters' great lodge,
 	-- [3] the plunderers' stronghold.
 	local v1, v2, v3 = world.villages[1], world.villages[2], world.villages[3]
-	assert(v1.tribeType == "farmer" and v1.tier == "large" and #v1.gates == 3, "villages[1] is the walled farmer town with three gates")
+	assert(v1.tribeType == "farmer" and v1.tier == "large" and #v1.gates == 6, "villages[1] is the walled farmer town with three double gates")
 	assert(v2.tribeType == "hunter" and v2.tier == "large" and #v2.gates == 0, "villages[2] is the open hunter great lodge")
-	assert(v3.tribeType == "plunderer" and v3.tier == "large" and #v3.gates == 2, "villages[3] is the stronghold with two gates")
+	assert(v3.tribeType == "plunderer" and v3.tier == "large" and #v3.gates == 4, "villages[3] is the stronghold with two double gates")
 	assert(world.spawn.x == v1.spawn.x and world.spawn.y == v1.spawn.y, "the world spawn is the town's")
 	-- One flood fill from the spawn answers every "can I walk there" below (a BFS per pair would be 16x slower).
 	local open = Grid.flood(world, world.spawn.x, world.spawn.y)
@@ -121,6 +121,18 @@ for _, seed in ipairs({ 1, 7, 42, 2026, 3, 99, 123456 }) do
 			assert(WorldGen.ground(world, g.exit.x, g.exit.y) == G.path.id, "gate exit is not a road in " .. v.name)
 			assert(reach(g.exit.x, g.exit.y), "gate of " .. v.name .. " leads nowhere")
 		end
+	end
+	-- The breach in the town's south-west corner is a way in: the gap in the wall, the tile inside and the tile
+	-- outside are all walkable and all joined to the spawn (the woodpile once sealed it, QA round 1).
+	do
+		local bx, by = v1.x0 + 1, v1.y1
+		assert(WorldGen.walkable(world, bx, by) and reach(bx, by), "the breach is walkable and joined")
+		assert(WorldGen.walkable(world, bx, by - 1) and reach(bx, by - 1), "inside the breach")
+		assert(WorldGen.walkable(world, bx, by + 1) and reach(bx, by + 1), "outside the breach")
+	end
+	-- Every ford carries a road: the river is crossed wherever it can be, not only where the tree went.
+	for _, f in ipairs(WorldRoads.fords(world)) do
+		assert(f.road, ("ford at %d-%d,%d has no road beside it, seed %d"):format(f.x0, f.x1, f.y, seed))
 	end
 	-- The road tree joins every village (the edges alone, before any A* ran).
 	do

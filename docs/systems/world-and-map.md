@@ -16,15 +16,19 @@ keeps one map per server and sends every joining client an encoded copy. Plan: `
   (a test proves every `=` belongs to exactly one footprint). Read this to see what a village looks like.
 - `shared/WorldVillages.lua` placement (Danzo's sketch positions scaled to the map, nudged onto dry ground clear of
   other villages) and stamping. `villages[1..3]` are the farmers' town, the hunters' great lodge, the stronghold.
-- `shared/WorldRoads.lua` A* with a search box, the road tree (Prim plus a few loops), a road out of every gate,
-  `route` for everything that walks, the signs.
+- `shared/WorldRoads.lua` A* with a search box, the road tree (Prim plus a few loops), a road out of every gate and
+  onto both banks of every ford, roads two tiles wide, `route` for everything that walks.
 - `shared/WorldPlaces.lua` the places between villages, 2–5 tiles off a road, 30 tiles apart.
+- `shared/WorldSigns.lua` a sign at every village exit and every ford, naming where the road or the water leads.
 - `shared/TileTypes.lua` defines the ground and object tiles. Ids are small integers (under 94), so a map is one byte
   per tile. `foot` is a multi-tile object's footprint; its sprite may be taller than its footprint.
 - `shared/Rng.lua` is a seeded xorshift32 and the only randomness source. `shared/Names.lua` makes people and place names.
 - `server/Map.lua` holds the one `WorldGen.World` and `Map.encoded`. `Map.village(id)` looks up a village by id.
 - `client/Viewport.lua` draws a sprite wider or taller than a tile with its bottom-left on the anchor tile and
   `ZIndex = ty`, so a hall's roof hangs over the row behind and the south draws over the north. `part` draws nothing.
+- `client/Minimap.lua` the whole map in a corner (one cell per 8 x 8 tiles, village markers, the player's dot); M or a tap enlarges it.
+- Biomes are told by their floor (`forest_floor`, `rocky` in `TileTypes`): trees stand on a spaced lattice so a forest
+  is always walkable, hills carry sparse boulders, and solid rock is only the crags that hold the cave mouths.
 
 **Tunables** (`shared/Config.lua`): `WORLD_SEED` (0 = random each server), `WORLD_WIDTH`, `WORLD_HEIGHT` (256),
 `REGION` (region size in tiles). The village list and positions are `WorldPlans.PLANS`.

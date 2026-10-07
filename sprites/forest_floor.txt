@@ -1,0 +1,18 @@
+# name: forest_floor
+# palette: . = transparent, g = #3f6b3a, d = #345c31, k = #2b4a2a, l = #4e8a44, b = #6b4a2e
+gggggggggggggggg
+ggdgggggggggdggg
+gdkdgggglgggkggg
+ggdggggggggggggg
+gggggggggggggggg
+ggggggggdggggggg
+gggbgggdkdgggggg
+gggggggggdgggggg
+gggggggggggggggg
+gggggglggggggdgg
+gdgggggggggggkdg
+dkdggggggggggdgg
+ggdggggggggggggg
+gggggggggbgggggg
+ggggggdggggggggg
+ggggggggggglgggg

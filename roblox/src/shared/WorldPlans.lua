@@ -50,25 +50,28 @@ WorldPlans.LEGEND = {
 -- ---------- villages: three tribes, three tiers (docs/plans/world-expansion.md "Village tiers") ----------
 WorldPlans.VILLAGES = {
 	farmer = {
-		-- The walled town, the start: gates north, east and south; plundered (two burnt huts, the wall breached in the
-		-- south-west corner where the raiders broke in). Hall, granary, storehouse, windmill, market row, knights post.
+		-- The walled town, the start: towers at the corners, double gates north, east and south, a two-tile main street
+		-- and a plaza at the crossing; plundered (two burnt huts, the wall breached in the south-west corner where the
+		-- raiders broke in). Hall, granary, storehouse, windmill, well, market row, knights post, lantern-lit.
 		large = {
-			"WWWWWWWGWWWWWWWW",
-			"W.FFFF.p.==..hhW",
-			"WeFFFF.p.1=..hhW",
-			"W......p....b.lW",
-			"Wh.===.p..==.hhW",
-			"Wh.A==.p..2=.hhW",
-			"W.l....p......lW",
-			"W.mSm.p@pppppppG",
-			"W......p...w...W",
-			"WBh....p..hh.==W",
-			"W.h.k..p..hh.5=W",
-			"W......p.......W",
-			"WyFFFF.p.FFFFi.W",
-			"WvFFFF.p.FFFF..W",
-			"DZB....p.......W",
-			"WZDWWWWGWWWWWWWW",
+			"oWWWWWWWGGWWWWWWWo",
+			"W.FFFFF.pp.==..hhW",
+			"WeFFFFF.pp.1=..hhW",
+			"W.......pp..l....W",
+			"W.===..lpp..==.hhW",
+			"W.A==...pp..2=.hhW",
+			"W.......pp..b....W",
+			"W.mSm..pppppp.l..W",
+			"W.l....ppppppppppG",
+			"W......pp@pppppppG",
+			"WBhh...pppppp..hhW",
+			"W.hh...lpp.w...hhW",
+			"W..k....pp.....==W",
+			"W.......pp.....5=W",
+			"WyFFFFF.pp.FFFF..W",
+			"W.FFFFF.pp.FFFFi.W",
+			"DZB.....pp.......W",
+			"WZDWWWWWGGWWWWWWWo",
 		},
 		-- A village: huts, fields, a market stall, a store.
 		mid = {
@@ -93,24 +96,26 @@ WorldPlans.VILLAGES = {
 		},
 	},
 	hunter = {
-		-- The great lodge in the pines: longhouse, trophy hall, tannery, muster ground, lookout tree, hiring board.
+		-- The great lodge in the pines: two-tile ways crossing at the fire, longhouse, trophy hall, tannery, muster
+		-- ground, lookout tree, hiring board, smokehouse.
 		large = {
-			"TTT,...p..,TTTTT",
-			"T.hh...p.....==T",
-			"T.hh.d.p.d...7=T",
-			",......p......,T",
-			"T.h....p.....h.T",
-			"T..===.p..==...T",
-			"Td.A==.p..4=..dT",
-			"T......p.......T",
-			"ppppppp@pppppppp",
-			"T.....cpc......T",
-			"T.==...p..==...T",
-			"T.3=.t.p..9=.s.T",
-			"T.hh...p.b...hhT",
-			"T.hh.n.p..S..hhT",
-			"T,.....p......,T",
-			"TTTT,..p..,TTTTT",
+			"TTT,....pp..,TTTTT",
+			"T.hh....pp.....==T",
+			"T.hh.d..pp.d...7=T",
+			",.......pp......,T",
+			"T.h.....pp....h..T",
+			"T..===..pp..==...T",
+			"Td.A==..pp..4=..dT",
+			"T.......pp.......T",
+			"pppppppppppppppppp",
+			"pppppppp@ppppppppp",
+			"T.....c.pp.c.....T",
+			"T.==....pp..==...T",
+			"T.3=.t..pp..9=.s.T",
+			"T.hh....pp.b...hhT",
+			"T.hh.n..pp..S..hhT",
+			"T,......pp......,T",
+			"TTTT,...pp..,TTTTT",
 		},
 		-- A lodge: huts, a tannery, a totem, a muster ground.
 		mid = {
@@ -135,33 +140,36 @@ WorldPlans.VILLAGES = {
 		},
 	},
 	plunderer = {
-		-- The stronghold: a palisade with towers at the corners, gates north and south, a war hall, tents, cages, loot.
+		-- The stronghold: a palisade with towers at the corners, double gates north and south, a two-tile way between
+		-- them, a war hall, tents, cages, loot heaps, skull posts.
 		large = {
-			"oPPPPPQPPPPo",
-			"P.==..p.==.P",
-			"P.8=..p.8=.P",
-			"P.....p....P",
-			"P.....p.h..P",
-			"P.===.p.h..P",
-			"PgA==.p...xP",
-			"P.....p...xP",
-			"Pt...cpc.t.P",
-			"Pxx...@..g.P",
-			"Pxx...p.hh.P",
-			"P.b...p.hh.P",
-			"P.S...p....P",
-			"oPPPPPQPPPPo",
+			"oPPPPPQQPPPPPo",
+			"P.==...pp.==.P",
+			"P.8=...pp.8=.P",
+			"P......pp....P",
+			"P.....gpp.h..P",
+			"P.===..pp.h..P",
+			"P.A==..pp...xP",
+			"Pg.....pp...xP",
+			"Pt...c.pp.c.tP",
+			"Pxx....@p..g.P",
+			"Pxx....pp.hh.P",
+			"Pb.....pp.hh.P",
+			"PS.....pp....P",
+			"P......pp....P",
+			"P......pp....P",
+			"oPPPPPQQPPPPPo",
 		},
 		-- A camp: huts in a stockade, a lookout, stolen goods.
 		mid = {
 			"oPPPPQPPPo",
-			"P.h..p.h.P",
-			"P.h..p.h.P",
-			"Px...p..xP",
-			"Pt..c@c.bP",
-			"Px...p..SP",
-			"P.hh.p.g.P",
-			"P.hh.p...P",
+			"Ph...p..hP",
+			"Ph...p..hP",
+			"P.x..p.x.P",
+			"P...c@c..P",
+			"Pt.x.p..bP",
+			"Phh..p.gSP",
+			"Phh..p...P",
 			"oPPPPQPPPo",
 		},
 		-- A hideout: two tents, a skull post, a loot pile.
@@ -170,7 +178,7 @@ WorldPlans.VILLAGES = {
 			"..8=.8=",
 			"t..p..x",
 			"ppp@ppp",
-			".c.pS.x",
+			"c..pS.x",
 			"R.bp..R",
 		},
 	},
@@ -236,20 +244,23 @@ end
 
 --- Prove a layout is drawable: rectangular, every character known, every multi-tile footprint inside the layout
 --- and made of exactly its anchor plus `=` tiles, every `=` owned by exactly one anchor, and (for a village) one
---- spawn, one bed, one stall. Returns nil when it is fine, else what is wrong.
+--- spawn, one bed, one stall, and every walkable tile reachable from the spawn (no sealed pocket a merchant could
+--- be put in). Returns nil when it is fine, else what is wrong.
 function WorldPlans.check(rows: { string }, tribe: string, village: boolean): string?
 	local th = #rows
 	if th == 0 then return "empty" end
 	local tw = #rows[1]
 	local owners: { [string]: number } = {}
+	local solid: { [string]: boolean } = {}   -- footprint tiles of solid anchors
 	local spawns, beds, stalls = 0, 0, 0
+	local spawnAt: { number }? = nil
 	for r, row in ipairs(rows) do
 		if #row ~= tw then return ("row %d is %d wide, row 1 is %d"):format(r, #row, tw) end
 		for c = 1, tw do
 			local ch = row:sub(c, c)
 			local t = WorldPlans.LEGEND[ch]
 			if not t then return ("unknown character %q at %d,%d"):format(ch, c, r) end
-			if t.spawn then spawns += 1 end
+			if t.spawn then spawns += 1; spawnAt = { c, r } end
 			if t.bed then beds += 1 end
 			if t.stall then stalls += 1 end
 			local name = WorldPlans.objectName(ch, tribe)
@@ -264,6 +275,7 @@ function WorldPlans.check(rows: { string }, tribe: string, village: boolean): st
 							local key = cc .. "," .. rr
 							if owners[key] then return ("two footprints share %s"):format(key) end
 							owners[key] = 1
+							if def.solid then solid[key] = true end
 							if not (dx == 0 and dy == 0) and rows[rr]:sub(cc, cc) ~= "=" then
 								return ("%s at %d,%d needs '=' at %d,%d"):format(name, c, r, cc, rr)
 							end
@@ -280,6 +292,36 @@ function WorldPlans.check(rows: { string }, tribe: string, village: boolean): st
 	end
 	if village and (spawns ~= 1 or beds ~= 1 or stalls ~= 1) then
 		return ("a village needs one spawn, one bed, one stall (has %d, %d, %d)"):format(spawns, beds, stalls)
+	end
+	-- every tile a person can stand on connects to the spawn inside the layout itself
+	if village and spawnAt then
+		local function open(c: number, r: number): boolean
+			if c < 1 or r < 1 or c > tw or r > th then return false end
+			local ch = rows[r]:sub(c, c)
+			local t = WorldPlans.LEGEND[ch]
+			if not t then return false end
+			local g = TileTypes.GroundByName[t.ground or "grass"]
+			if not g or not g.walk then return false end
+			if t.body then return not solid[c .. "," .. r] end
+			local name = WorldPlans.objectName(ch, tribe)
+			local def = if name then TileTypes.ObjectByName[name] else nil
+			return not (def and def.solid)
+		end
+		local seen: { [string]: boolean } = { [spawnAt[1] .. "," .. spawnAt[2]] = true }
+		local queue = { spawnAt }
+		while #queue > 0 do
+			local cur = table.remove(queue) :: { number }
+			for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+				local c, r = cur[1] + d[1], cur[2] + d[2]
+				local key = c .. "," .. r
+				if not seen[key] and open(c, r) then seen[key] = true; table.insert(queue, { c, r }) end
+			end
+		end
+		for r = 1, th do
+			for c = 1, tw do
+				if open(c, r) and not seen[c .. "," .. r] then return ("tile %d,%d is a sealed pocket"):format(c, r) end
+			end
+		end
 	end
 	return nil
 end

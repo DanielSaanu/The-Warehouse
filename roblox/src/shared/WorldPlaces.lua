@@ -16,6 +16,18 @@ type Pos = Grid.Pos
 local G = TileTypes.GroundByName
 local O = TileTypes.ObjectByName
 
+-- What a place may be stamped over: the wild things. Anything else standing there (a sign, a cave, a building) keeps its tile.
+local CLEARABLE: { [number]: boolean } = {}
+for _, name in ipairs({ "tree", "rock", "pine", "pine_tall", "tree_autumn", "dead_tree", "dead_tree_tall", "boulder", "boulder_mossy",
+	"bush", "berry_bush", "stump", "fallen_log" }) do
+	local def = O[name]
+	if def then CLEARABLE[def.id] = true end
+end
+for id = 1, 127 do
+	local def = TileTypes.Object[id]
+	if def and def.decor then CLEARABLE[id] = true end
+end
+
 local FROM_VILLAGE = 8  -- a road tile this close to a village is the village's own approach, not the wilds
 local APART = 30        -- tiles between two places
 local DIRS = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }
@@ -30,7 +42,7 @@ local function fits(world: World, x0: number, y0: number, tw: number, th: number
 			local ring = x < x0 or y < y0 or x >= x0 + tw or y >= y0 + th
 			local g, o = Grid.ground(world, x, y), Grid.object(world, x, y)
 			if g ~= G.grass.id and g ~= G.grass_2.id and g ~= G.tall_grass.id and not (ring and g == G.path.id) then return false end
-			if o ~= 0 and o ~= O.tree.id and o ~= O.rock.id and o < O.pine.id then return false end
+			if o ~= 0 and not CLEARABLE[o] then return false end
 			if Grid.villageAt(world, x, y, 2) then return false end
 		end
 	end

@@ -9,8 +9,9 @@
 --   WorldLand      noise, river, lakes, marsh, hills, forest; later the fords, the caves, the wadeable river
 --   WorldPlans     the village layouts and place stamps as ASCII, with their legend (pure data)
 --   WorldVillages  where the sixteen villages go and how a layout is stamped
---   WorldRoads     A*, the road tree, the signs; `route` for everything that walks
+--   WorldRoads     A*, the road tree, a road onto every ford; `route` for everything that walks
 --   WorldPlaces    the shrine, the burnt village, the ruins between villages
+--   WorldSigns     a sign at every village exit and every ford
 local Rng = require(script.Parent.Rng)
 local TileTypes = require(script.Parent.TileTypes)
 local Grid = require(script.Parent.Grid)
@@ -18,6 +19,7 @@ local WorldLand = require(script.Parent.WorldLand)
 local WorldVillages = require(script.Parent.WorldVillages)
 local WorldRoads = require(script.Parent.WorldRoads)
 local WorldPlaces = require(script.Parent.WorldPlaces)
+local WorldSigns = require(script.Parent.WorldSigns)
 
 local WorldGen = {}
 -- Bump when generate() would grow a DIFFERENT map from the same seed: Save.decode refuses saves from another one.
@@ -80,7 +82,7 @@ function WorldGen.generate(seed: number, width: number?, height: number?): World
 	WorldPlaces.build(world, rng:fork(11))
 	WorldLand.caves(world, rng:fork(8))
 	WorldLand.finishRiver(world, land.riverTiles)
-	WorldRoads.signs(world, WorldGen.compass)
+	WorldSigns.build(world, WorldGen.compass)
 	return world
 end
 
@@ -176,7 +178,7 @@ function WorldGen.decode(e: Encoded): World
 end
 
 -- ---------- debug ----------
-local ASCII_G = { [G.grass.id] = " ", [G.grass_2.id] = " ", [G.tall_grass.id] = ",", [G.path.id] = ".", [G.water.id] = "~", [G.river.id] = "-", [G.ford.id] = "=", [G.farm.id] = "#", [G.flood.id] = "%", [G.scorched.id] = ":" }
+local ASCII_G = { [G.grass.id] = " ", [G.grass_2.id] = " ", [G.tall_grass.id] = ",", [G.path.id] = ".", [G.water.id] = "~", [G.river.id] = "-", [G.ford.id] = "=", [G.farm.id] = "#", [G.flood.id] = "%", [G.scorched.id] = ":", [G.forest_floor.id] = "_", [G.rocky.id] = "`" }
 local ASCII_O = { [O.tree.id] = "T", [O.rock.id] = "^", [O.cave.id] = "O", [O.hut.id] = "H", [O.hut_burnt.id] = "B", [O.wall.id] = "W", [O.gate.id] = "G", [O.stall.id] = "S", [O.bed.id] = "b",
 	[O.hut_hunter.id] = "h", [O.hut_plunderer.id] = "n", [O.totem.id] = "L", [O.skull_post.id] = "X", [O.camp_lit.id] = "c", [O.camp_out.id] = "c", [O.bag.id] = "g", [O.sign.id] = "!",
 	[O.part.id] = "+", [O.part_open.id] = "+", [O.palisade.id] = "P", [O.palisade_gate.id] = "Q", [O.pine.id] = "T", [O.pine_tall.id] = "T", [O.tree_autumn.id] = "T", [O.dead_tree.id] = "t", [O.dead_tree_tall.id] = "t" }
