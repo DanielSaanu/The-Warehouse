@@ -98,6 +98,9 @@ function Minimap.new(parent: Instance, world: WorldGen.World, touch: boolean): M
 	local dot = square(frame, "you", Color3.fromRGB(255, 255, 255), 33)
 	dot.AnchorPoint = Vector2.new(0.5, 0.5)
 	dot.Size = UDim2.fromScale(0.02, 0.02)
+	local dotMin = Instance.new("UISizeConstraint")
+	dotMin.MinSize = Vector2.new(5, 5)
+	dotMin.Parent = dot
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = Color3.fromRGB(0, 0, 0)
 	stroke.Thickness = 1.5

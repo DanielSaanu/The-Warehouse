@@ -146,8 +146,9 @@ function WorldLand.build(world: World, rng: Rng.Rng): Land
 		end
 	end
 	-- Crags: solid rock in blocks bigger than a dozen tiles is a wall of identical boulders. Thin every big block to
-	-- scattered rocks and boulders on the stony ground, so the hills stay walkable and read as hills.
-	do
+	-- scattered rocks and boulders on the stony ground, so the hills stay walkable and read as hills. Twice, so what
+	-- the first pass leaves standing is checked again (QA round 3: a hash that kept whole rows).
+	for _ = 1, 2 do
 		local seen: { [number]: boolean } = {}
 		for y = 2, h - 1 do
 			for x = 2, w - 1 do
@@ -171,7 +172,7 @@ function WorldLand.build(world: World, rng: Rng.Rng): Land
 					if #comp > 12 then
 						for _, ci in ipairs(comp) do
 							local cx, cy = (ci - 1) % w + 1, math.floor((ci - 1) / w) + 1
-							local keep = (cx * 7 + cy * 13) % 7 == 0
+							local keep = (cx * 31 + cy * 17 + cx * cy) % 9 == 0
 							if not keep then
 								local r = detail:float()
 								world.object[ci] = if r < 0.25 then O.boulder.id elseif r < 0.4 then O.rocks_grey.id else 0

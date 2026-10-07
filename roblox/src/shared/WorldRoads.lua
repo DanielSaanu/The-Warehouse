@@ -283,12 +283,15 @@ function WorldRoads.build(world: World)
 	for vi, v in ipairs(villages) do
 		for _, g in ipairs(v.gates) do
 			if not usedGates[g] then
-				-- Join the nearest road tile outside every village; the search box keeps it local.
+				-- Join the nearest road tile in the half-plane the gate faces (a gate that faces nothing keeps a one-tile
+				-- stub rather than a road that loops round its own wall); the search box keeps it local.
+				local fx, fy = g.exit.x - g.x, g.exit.y - g.y
 				local bx, by, bestD = 0, 0, math.huge
 				for y = math.max(2, g.exit.y - 40), math.min(h - 1, g.exit.y + 40) do
 					for x = math.max(2, g.exit.x - 40), math.min(w - 1, g.exit.x + 40) do
 						local d = math.abs(x - g.exit.x) + math.abs(y - g.exit.y)
-						if d > 0 and d < bestD and world.ground[idx(w, x, y)] == G.path.id and not Grid.villageAt(world, x, y, 0) then
+						local ahead = (x - g.exit.x) * fx + (y - g.exit.y) * fy
+						if d > 0 and d < bestD and ahead >= 0 and world.ground[idx(w, x, y)] == G.path.id and not Grid.villageAt(world, x, y, 0) then
 							bx, by, bestD = x, y, d
 						end
 					end

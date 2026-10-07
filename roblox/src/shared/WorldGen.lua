@@ -183,7 +183,7 @@ local ASCII_O = { [O.tree.id] = "T", [O.rock.id] = "^", [O.cave.id] = "O", [O.hu
 	[O.hut_hunter.id] = "h", [O.hut_plunderer.id] = "n", [O.totem.id] = "L", [O.skull_post.id] = "X", [O.camp_lit.id] = "c", [O.camp_out.id] = "c", [O.bag.id] = "g", [O.sign.id] = "!",
 	[O.part.id] = "+", [O.part_open.id] = "+", [O.palisade.id] = "P", [O.palisade_gate.id] = "Q", [O.pine.id] = "T", [O.pine_tall.id] = "T", [O.tree_autumn.id] = "T", [O.dead_tree.id] = "t", [O.dead_tree_tall.id] = "t" }
 
---- One character per tile, for a quick look in a log. Big buildings are their anchor's initial plus `+` for the rest.
+--- One character per tile, for a quick look in a log. Unlisted solid objects are `*`, decor `'`, footprint bodies `+`.
 function WorldGen.ascii(world: World): string
 	local lines = {}
 	for y = 1, world.height do
@@ -194,7 +194,7 @@ function WorldGen.ascii(world: World): string
 			local ch = ASCII_O[o] or ASCII_G[world.ground[i]] or "?"
 			if o ~= 0 and not ASCII_O[o] then
 				local def = TileTypes.Object[o]
-				ch = if def and def.decor then "'" elseif def then def.name:sub(1, 1):upper() else "?"
+				ch = if def and def.decor then "'" elseif def then "*" else "?"
 			end
 			if x == world.spawn.x and y == world.spawn.y then ch = "@" end
 			row[x] = ch

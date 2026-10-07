@@ -136,6 +136,32 @@ for _, seed in ipairs({ 1, 7, 42, 2026, 3, 99, 123456 }) do
 		assert(f.x1 - f.x0 >= 1 or WorldGen.ground(world, f.x0, f.y - 1) == G.ford.id or WorldGen.ground(world, f.x0, f.y + 1) == G.ford.id,
 			("a one-tile ford at %d,%d is a fake crossing, seed %d"):format(f.x0, f.y, seed))
 	end
+	-- Crags are small: no block of solid rock away from the map's rock border is over a dozen tiles (cave mounds are 6).
+	do
+		local seenRock = {}
+		for i = 1, W * H do
+			if world.object[i] == O.rock.id and not seenRock[i] then
+				local x0, y0 = (i - 1) % W + 1, math.floor((i - 1) / W) + 1
+				if x0 > 1 and y0 > 1 and x0 < W and y0 < H then
+					local comp, head, border = { i }, 1, false
+					seenRock[i] = true
+					while head <= #comp do
+						local ci = comp[head]; head += 1
+						local cx, cy = (ci - 1) % W + 1, math.floor((ci - 1) / W) + 1
+						for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+							local nx, ny = cx + d[1], cy + d[2]
+							if nx == 1 or ny == 1 or nx == W or ny == H then border = true
+							else
+								local ni = Grid.idx(W, nx, ny)
+								if world.object[ni] == O.rock.id and not seenRock[ni] then seenRock[ni] = true; table.insert(comp, ni) end
+							end
+						end
+					end
+					assert(border or #comp <= 12, ("a crag of %d rock tiles at %d,%d, seed %d"):format(#comp, x0, y0, seed))
+				end
+			end
+		end
+	end
 	-- The road tree joins every village (the edges alone, before any A* ran).
 	do
 		local edges = WorldRoads.edges(world.villages)

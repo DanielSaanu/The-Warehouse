@@ -39,14 +39,15 @@ end
 --- Put a sign on the best free tile near (x, y). Returns true if one went up. The same words within six tiles
 --- (two exits of one village pointing the same way) are one sign, not two.
 local recent: { { x: number, y: number, text: string } } = {}
-local function putSign(world: World, x: number, y: number, text: string): boolean
+local function putSign(world: World, x: number, y: number, text: string, outside: Village?): boolean
 	for _, p in ipairs(recent) do
 		if p.text == text and math.abs(p.x - x) + math.abs(p.y - y) <= 6 then return false end
 	end
 	for r = 1, 2 do
 		for dy = -r, r do
 			for dx = -r, r do
-				if math.max(math.abs(dx), math.abs(dy)) == r and signSpot(world, x + dx, y + dy) then
+				local inV = outside ~= nil and Grid.villageAt(world, x + dx, y + dy, 0) == outside -- never inside the wall
+				if math.max(math.abs(dx), math.abs(dy)) == r and not inV and signSpot(world, x + dx, y + dy) then
 					local i = idx(world.width, x + dx, y + dy)
 					world.object[i] = O.sign.id
 					local signs = world.signs
@@ -85,9 +86,15 @@ local function villageExits(world: World, v: Village): { Pos }
 	return out
 end
 
---- The village this road exit leads to: walk the road tiles from the exit (never back through `v`) and name the
---- first other village the road touches. A road that reaches nowhere else names the village nearest in the
---- direction it leaves in.
+--- How far outside a village's footprint a tile is (0 inside or on it).
+local function ringDist(v: Village, x: number, y: number): number
+	return math.max(v.x0 - x, x - v.x1, v.y0 - y, y - v.y1, 0)
+end
+
+--- The village this road exit leads to: walk the road tiles from the exit and name the first other village the
+--- road touches. Near the village the walk may only step outward or sideways, so it must leave by its own exit
+--- and cannot run round the ring road to a road on the far side (QA round 3). A road that reaches nowhere else
+--- names the village nearest in the direction it leaves in.
 local function signpostTarget(world: World, v: Village, exit: Pos): Village?
 	local w = world.width
 	local seen: { [number]: boolean } = { [idx(w, exit.x, exit.y)] = true }
@@ -97,11 +104,13 @@ local function signpostTarget(world: World, v: Village, exit: Pos): Village?
 		head += 1
 		local here = Grid.villageAt(world, c.x, c.y, 1)
 		if here and here ~= v then return here end
+		local cd = ringDist(v, c.x, c.y)
 		for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
 			local nx, ny = c.x + d[1], c.y + d[2]
 			local g = Grid.ground(world, nx, ny)
 			local i = idx(w, nx, ny)
-			if (g == G.path.id or g == G.ford.id) and not seen[i] and not (Grid.villageAt(world, nx, ny, 0) == v) then
+			local nd = ringDist(v, nx, ny)
+			if (g == G.path.id or g == G.ford.id) and not seen[i] and nd > 0 and (nd > 3 or nd >= cd) then
 				seen[i] = true
 				table.insert(queue, { x = nx, y = ny })
 			end
@@ -112,8 +121,8 @@ local function signpostTarget(world: World, v: Village, exit: Pos): Village?
 	local best: Village? = nil
 	local bestScore = -math.huge
 	for _, o in ipairs(world.villages) do
-		if o ~= v then
-			local ox, oy = o.cx - v.cx, o.cy - v.cy
+		local ox, oy = o.cx - v.cx, o.cy - v.cy
+		if o ~= v and ox * ex + oy * ey > 0 then -- only somewhere ahead of the exit
 			local olen = math.max(1, math.sqrt(ox * ox + oy * oy))
 			local score = (ox * ex + oy * ey) / (elen * olen) - olen / (4 * world.width)
 			if score > bestScore then best, bestScore = o, score end
@@ -131,7 +140,7 @@ function WorldSigns.build(world: World, compass: (number, number) -> string)
 			if o then
 				local dir: string = compass(o.cx - v.cx, o.cy - v.cy)
 				local line: string = TRIBE_LINE[o.tribeType] or ""
-				putSign(world, exit.x, exit.y, o.name .. ", " .. dir .. ". " .. line)
+				putSign(world, exit.x, exit.y, o.name .. ", " .. dir .. ". " .. line, v)
 			end
 		end
 	end

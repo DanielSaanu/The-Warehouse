@@ -75,6 +75,7 @@ WorldPlans.VILLAGES = {
 		},
 		-- A village: huts, fields, a market stall, a store.
 		mid = {
+			"..........",
 			".FFFpy===.",
 			"eFFFp.h==.",
 			"....p.==..",
@@ -87,6 +88,7 @@ WorldPlans.VILLAGES = {
 		},
 		-- A hamlet: a few huts, one field, a well. No walls.
 		small = {
+			".......",
 			"===.FF.",
 			"h==.FF.",
 			"...p.b.",
@@ -119,6 +121,7 @@ WorldPlans.VILLAGES = {
 		},
 		-- A lodge: huts, a tannery, a totem, a muster ground.
 		mid = {
+			"..........",
 			"T===.p===T",
 			".h==.ph==.",
 			".==.tp.d..",
@@ -131,6 +134,7 @@ WorldPlans.VILLAGES = {
 		},
 		-- A camp: a few huts, a drying rack, a fire.
 		small = {
+			".......",
 			"T===..T",
 			".h==.d.",
 			"...p.b.",
