@@ -17,7 +17,8 @@ Read this first. Update it in the same commit as any move. Sizes are line counts
 | `Restore.lua` | `Sim.state` <-> a save: `snapshot()`, and `apply(data, slept)` = the RESTORE constructor (bodies, routes, stamped tiles, overlay, `Map.reencode`) | 199 |
 | `Bands.lua` | groups (caravan, squad, band): making the rows, their transient half, bodies in and out (`materialise`, `collapse`), the 1 Hz tick, turning for home, what a fight does to a group (`carryKill`, `lose`, `addCarry`). Abstract movement stays in `shared/Tick.groups` | 241 |
 | `Ride.lua` | rung 3 part 4: a player riding with a group. The ask (`topic`), riders as scratch (`g.riders`, `ps.ride`, never saved), the 1 Hz rider tick (walked, lag and the leader's wait, walking off), pay and the `rode` rumour at an arrival, blocked blows, kill goods into the pot. Rules are pure in `shared/Belong.lua` | 249 |
-| `Sim.lua` | everything else, for now: entities, AI, fighting, calamities, the tick loops | 1227 |
+| `Walk.lua` | bodies walking (H9, a slice of B2): `followPath` (one step; blocked = swap with its own, detour, or wait) and `groupStep` (the leader on the route, the rest within 2 tiles, behind it). Rules pure in `shared/Steer.lua` and `Tick.leaderStep` | 115 |
+| `Sim.lua` | everything else, for now: entities, AI, fighting, calamities, the tick loops | 1152 |
 | `Sides.lua` | who takes whose side in a fight (your own group never goes for you while you ride) | 294 |
 | `Villagers.lua` | a villager's day: out to a plot in the morning, home to a hut door at night, home at a run from wolves and strange bandits; scans huts and plots off the map. What the farms YIELD is `shared/Farms.lua` (pure, in `Tick.daily`, saved as `tribes[].plots`) | 152 |
 | `Interact.lua` | the F key: talk, trade, rest, gifts; a group leader's `ride` / `leave` topics go to `Ride` | 357 |
@@ -90,6 +91,13 @@ Read this first. Update it in the same commit as any move. Sizes are line counts
       this slice: B2, B3 and B4 stay parked. Plan: `docs/plans/rung3-part4-belonging.md`; goals `docs/qa/rung3-part4-p0-room.md`.
       QA 9/10 (`docs/qa/rung3-part4-p0-room-summary.md`). Phase 1 spent 3 of the 31 lines (`Sim.lua` 1227, ceiling
       lowered 1255 → 1228 by the test's own count).
+
+- [x] **H9: `groupStep` + `followPath` (un-parked by Danzo, 2026-10-06, only this slice of B2):** carved into `Walk.lua`
+      and fixed there. `Sim.lua` 1227 → 1152 (ceiling 1228 → 1153 by the test's count). The old side-step could never
+      fire (4-way steps, "strictly closer" by Chebyshev); now a leader swaps with its own idle people and anyone detours
+      round a crowd (`shared/Steer.lua`); `Tick.leaderStep` moves `pos` only on where the leader stands; a hunt on an
+      unreachable quarry gives up. Studio-checked (ringed leader, two taken road tiles, unreachable boar). Detail:
+      `docs/systems/population.md` "Walking in a crowd (H9)". The rest of B2 (`Bodies`, `Brains`, `Fighting`) stays parked.
 
 **Parked on purpose (Danzo, 2026-09-18): do not continue Track B without asking.** What is carved so far is tested
 and smoke-tested in Studio but **no QA reviewer has looked at it** — run `/qa-loop` on it before building on it.

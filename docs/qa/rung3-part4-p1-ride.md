@@ -60,13 +60,15 @@ desertion, betrayal, `ctx.withGroup`), phase 4 (first to spot it). The squad's c
 - A rider's standing line appears only when the WORD changes (`Standing.announce`); a +2 at Kenstow is visible in
   the standing panel and in the master's arrival line, not as its own notice.
 - Coin is minted at payout, as trade and loot already are.
-- **A materialised leader stalls in a crowd, and its `pos` runs on without it** (older than part 4, handoff H9). When
-  the leader's planned path is dropped at its first blocked step, `Tick.leaderStep` still advances `pos` on the plan,
-  so the record walks while the body stands; seen at Glenworth's and Kenstow's squares, and a squad stuck hunting an
-  unreachable boar. It makes a full Studio ride flaky: use Debug `arrive <group>` (Ride pays, then `Bands.turn`) to
-  test the arrival. A test harness that parks the player on the leader's next tile causes the stall (→ T5).
+- **Fixed before this loop (handoff H9, 2026-10-06, branch `h9-sim-carve`): a leader stalled in a crowd while its
+  `pos` ran on.** `followPath`/`groupStep` are now `server/Walk.lua`: a leader swaps with its own idle people, any body
+  detours round a crowd (`shared/Steer.lua`), `pos` moves only on where the leader stands (`Tick.leaderStep`), and a
+  hunt on an unreachable quarry gives up. Detail: `docs/systems/population.md` "Walking in a crowd (H9)". A full
+  Glenworth → Kenstow ride should now work without Debug `arrive`; a player (or anyone) standing still in a village
+  GATE still holds the caravan, by design. Do not park the harness on the leader's next tile (→ T5).
 - Fixed on the way: a leader beside a TAKEN end tile now turns (`Tick.leaderStep`; tested in `belong.test.luau`).
 
 ## Useful Debug commands
 
 `group caravan|squad`, `summon <group>`, `teleport x y`, `state`, `day`, `strike <entityId> [dmg]`.
+`summon` collapses a materialised group first, which silently ends any ride with it (a Debug artifact).

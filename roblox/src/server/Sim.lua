@@ -23,6 +23,7 @@ local DayCycle = require(Shared:WaitForChild("DayCycle"))
 local Families = require(Shared:WaitForChild("Families"))
 local Tick = require(Shared:WaitForChild("Tick"))
 local Headlines = require(Shared:WaitForChild("Headlines"))
+local Steer = require(Shared:WaitForChild("Steer"))
 local Standing = require(script.Parent:WaitForChild("Standing"))
 local Sides = require(script.Parent:WaitForChild("Sides"))
 local Debug = require(script.Parent:WaitForChild("Debug"))
@@ -34,6 +35,7 @@ local Tiles = require(script.Parent:WaitForChild("Tiles"))
 local Villagers = require(script.Parent:WaitForChild("Villagers"))
 local Bands = require(script.Parent:WaitForChild("Bands"))
 local Ride = require(script.Parent:WaitForChild("Ride"))
+local Walk = require(script.Parent:WaitForChild("Walk")) -- followPath, groupStep (H9)
 local Calendar = require(script.Parent:WaitForChild("Calendar"))
 
 local Sim = {}
@@ -165,46 +167,6 @@ local function pathTo(e, tx: number, ty: number, maxNodes: number?, roads: boole
 	if not p then e.path = nil return false end
 	setPath(e, p)
 	return true
-end
-
---- Take the next step of the entity's path if it is due. Blocked steps wait (and re-path after a moment).
-local function followPath(e, now: number)
-	if not e.path or now < e.nextStepAt or e.speed <= 0 then return end
-	local step = e.path[e.pathI]
-	if not step then e.path = nil return end
-	if not Movement.canStep(world, e.x, e.y, step.x, step.y, Sim.occupied) then
-		-- Someone is in the way. Roads are one tile wide, so a single person standing on one used to stop a whole
-		-- caravan indefinitely: the route says "next tile", the next tile is occupied, and re-planning returns the
-		-- same road. So step around instead — any free neighbour that gets us closer to where the path goes next.
-		e.blockedCount = (e.blockedCount or 0) + 1
-		faceEntity(e, Combat.dirTo(e.x, e.y, step.x, step.y))
-		local goal = e.path[e.pathI + 1] or step
-		local best, bestD = nil, math.min(cheb(e.x, e.y, goal.x, goal.y), cheb(step.x, step.y, goal.x, goal.y) + 1)
-		for _, d in pairs(Movement.DIRS) do
-			local nx, ny = e.x + d[1], e.y + d[2]
-			if freeTile(nx, ny) then
-				local dd = cheb(nx, ny, goal.x, goal.y)
-				if dd < bestD then best, bestD = { x = nx, y = ny }, dd end
-			end
-		end
-		if best and e.blockedCount >= 2 then
-			-- slip past them, then carry on to the rest of the route from there
-			placeEntity(e, best.x, best.y, Combat.dirTo(e.x, e.y, best.x, best.y))
-			e.nextStepAt = now + Movement.stepTime(world, best.x, best.y) / e.speed
-			e.blockedCount = 0
-			if e.path[e.pathI + 1] then e.pathI += 1 else e.path = nil end
-			return
-		end
-		e.nextStepAt = now + 0.3
-		if e.blockedCount > 4 then e.path = nil e.blockedCount = 0 end
-		return
-	end
-	e.blockedCount = 0
-	local facing = Combat.dirTo(e.x, e.y, step.x, step.y)
-	placeEntity(e, step.x, step.y, facing)
-	e.nextStepAt = now + Movement.stepTime(world, step.x, step.y) / e.speed
-	e.pathI += 1
-	if e.pathI > #e.path then e.path = nil end
 end
 
 -- ---------- players ----------
@@ -793,7 +755,7 @@ local function pickNpcTarget(e, now: number)
 	end
 	local best, bestD = nil, range
 	for _, o in pairs(S.entities) do
-		if o ~= e and now >= o.invulnUntil and not o.broken and (taken[o.id] or 0) < 2 and Sides.preysOn(e, o) then
+		if o ~= e and now >= o.invulnUntil and not o.broken and (taken[o.id] or 0) < 2 and not Steer.shuns(e, o.id, now) and Sides.preysOn(e, o) then
 			local d = cheb(e.x, e.y, o.x, o.y)
 			if d < bestD then best, bestD = o, d end
 		end
@@ -835,48 +797,9 @@ local function huntStep(e, now: number)
 				if dd < bestD then best, bestD = { x = nx, y = ny }, dd end
 			end
 		end
-		if best then pathTo(e, best.x, best.y, 200) end
-	end
-end
-
---- Group members: the leader walks the route; the others follow the leader's trail.
-local function groupStep(e, g, now: number)
-	if g.kind == "band" and g.target and S.players[g.target] and Sides.sheltered(S.players[g.target], e) then
-		g.target, g.aggroUntil = nil, 0
-	end
-	-- Running for home: no aggro, no hunting, just go.
-	if now < (g.retreatUntil or 0) then g.target, g.aggroUntil = nil, 0 end
-	if g.target and now < g.aggroUntil and S.players[g.target] and not S.players[g.target].dead and not e.broken then
-		e.state, e.target, e.aggroUntil = "chase", g.target, g.aggroUntil
-		markAggression(e, g.target)
-		return
-	end
-	if e.id == g.leader then
-		if Ride.holds(g) then return end -- part 4: waiting for a rider who fell behind (Ride.tick faces them)
-		if now < g.pauseUntil or (S.calamity.active and S.calamity.kind == "flood" and g.kind == "caravan") then
-			wanderStep(e, now)
-			return
-		end
-		-- the route rule is Tick.leaderStep (pure, tested): `pos` moves only when the bodies do (H6)
-		local act = Tick.leaderStep(g, e.x, e.y, e.path ~= nil, { free = freeTile, step = function(r) setPath(e, { r }) end,
-			path = function(x, y, budget) return pathTo(e, x, y, budget, true) end })
-		if act == "turn" then Ride.arrive(g) Bands.turn(g) elseif act == "lost" then Bands.collapse(g) end
-	else
-		local leader = S.entities[g.leader]
-		if not leader then
-			-- promote
-			g.leader = e.id
-			return
-		end
-		-- keep within 2 tiles of the leader
-		if cheb(e.x, e.y, leader.x, leader.y) > 2 and (not e.path or now - e.lastPathAt > 1) then
-			local spot = nearestFree(leader.x, leader.y, 2)
-			if spot then pathTo(e, spot.x, spot.y, 200) end
-		elseif not e.path and rng:chance(0.2) then
-			e.home = { x = leader.x, y = leader.y }
-			e.radius = 2
-			wanderStep(e, now)
-		end
+		-- an unreachable quarry (across the river) is given up after a few tries, not hunted for minutes (H9)
+		if best and pathTo(e, best.x, best.y, 200) then e.misses = 0
+		elseif Steer.missed(e, o.id, now) then e.state, e.npcTarget, e.windupAt = "idle", nil, nil end
 	end
 end
 
@@ -936,7 +859,7 @@ local function think(e, now: number)
 	end
 	if e.group then
 		local g = S.groups[e.group]
-		if g then groupStep(e, g, now) return end
+		if g then Walk.groupStep(e, g, now) return end
 	end
 	if e.kind == "baby" then return end
 	if e.role == "survivor" then
@@ -1152,6 +1075,8 @@ function Sim.init(saved, slept: number?): (boolean, string?)
 		groupScratch = Bands.scratch, getRng = function() return rng end })
 	Bands.bind({ world = world, rng = rng, newEntity = newEntity, removeEntity = removeEntity, nearestFree = nearestFree, anyPlayerWithin = anyPlayerWithin })
 	Ride.face = faceEntity
+	Walk.bind({ world = world, rng = rng, placeEntity = placeEntity, faceEntity = faceEntity, freeTile = freeTile, pathTo = pathTo,
+		wanderStep = wanderStep, markAggression = markAggression })
 	Villagers.bind({ pathTo = pathTo, wanderStep = wanderStep, isNight = Sim.isNight })
 	if saved then
 		local ok, why = Restore.apply(saved, slept)
@@ -1185,7 +1110,7 @@ function Sim.start()
 					local ok, err = pcall(think, e, now)
 					if not ok then warn("[Sim] think " .. e.kind .. ": " .. tostring(err)) e.state = "idle" e.path = nil end
 				end
-				followPath(e, now)
+				Walk.followPath(e, now)
 			end
 			if now - lastInterest > 0.25 then lastInterest = now tickInterest() end
 			if now - lastWild > 1 then

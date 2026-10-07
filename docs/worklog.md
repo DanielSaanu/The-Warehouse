@@ -51,3 +51,11 @@ paid for. The detail belongs in commits and the docs; this is the timeline.
   (34 sprites, all `"export": false`, sheet unchanged); `scenes/preview_expansion_art.json` shows them beside Kenney tiles.
 - 2026-10-05 · `claude/nifty-pascal-3ryiwv`: every borrowed item is now a crop scene (89, outlined to match Kenney Tiny);
   7 more drawn (palisade + gate, cage, ruined watchtower, roadside shrine, bridge, battle debris). All export:false, sheet unchanged.
+- 2026-10-06 · `h9-sim-carve` (heavy, H9): `groupStep`/`followPath` carved into `server/Walk.lua` (Sim 1227 → 1152); a leader
+  swaps with its own, bodies detour round crowds, hunts give up (`shared/Steer.lua`); `pos` moves only on where the leader
+  stands (`Tick.leaderStep`). 12 test blocks (10 failed on the old code first; 2 are guards); Studio-checked. → `docs/systems/population.md`, learnings S8.
+- 2026-10-06 — qa round 1 (7/10) on rung3-part4-p1-ride: a late joiner no longer gets paid for road they never walked (Ride counts every group's leg), a walk-out spends the day's ask, a far rider at arrival gets a line, squad line points at the leader.
+- 2026-10-06 — H10 (heavy, qa round 2 fix) on h9-sim-carve: a ride's leg resets on any turn, folded or not (pure `Belong.legStep`, jumps over 6 tiles are not road); test failed first; Studio natural leg `rode 54 of 54`, 7 coin, Kenstow +2; "off the goods". → `docs/qa/archive/rung3-part4-p1-ride-round2.md`, learnings Q4.
+- 2026-10-06 — qa round 3 (7/10) on rung3-part4-p1-ride: a rider reading a talk window is not counted as lagging or walking off; squad members name their leader; the leader keeps the window after a topic.
+- 2026-10-06 — qa summary rung3-part4-p1-ride: 7 / 6 / 7, target 8 not reached; rounds archived. → `docs/qa/rung3-part4-p1-ride-summary.md`.
+- 2026-10-06 — qa round 4 (8/10, Danzo's extra round) on rung3-part4-p1-ride: a rider reading a window is waited for and the ride never ends silently; "1 hide". → `docs/qa/rung3-part4-p1-ride-summary.md`.

@@ -52,7 +52,7 @@ group), squad ≥ 15 (earn it with a trade or a gift), band ≥ −10 (they will
 with the same facts.
 
 **The yes line** names destination, job and pay in one breath, built from the group record:
-caravan "Walk with us to Kenstow. Keep bandits off the carts. Your share's paid when we get there." Squad "We're
+caravan "Walk with us to Kenstow. Keep bandits off the goods. Your share's paid when we get there." Squad "We're
 out for deer by the east wood. Hit what we hit. Hides go home, you get a cut." Band "We wait for the farm road.
 When we go, you go. Loot's split at camp." (`Talk.joinYes(kind, ctx)`; `Talk.lua` has room.)
 
@@ -203,6 +203,10 @@ Each is one branch, one goals file in `docs/qa/`, one QA loop. Luau gates every 
   turned). Studio: ask, yes, no with a reason, the day's ask, the wait and face, walking off (−3), the pot and the
   7-coin pay all seen; Kenstow hearing it is covered by test only, because the leader stalled outside the village
   (an older pathing fault, handoff H9).
+- **The leg (H10, 2026-10-06):** a leg is the road since the group's last TURN, wherever that turn happened (folded,
+  materialised, a squad turning laden): pure `Belong.legStep` resets `walked` and each rider's `rode` on any change
+  of `dir`, and a `pos` jump over `Belong.JUMP` (6) is not road. Studio, natural leg after two folded ones:
+  `rode 54 of 54`, 7 coin, a `rode` rumour, Kenstow +2. Detail: `docs/qa/archive/rung3-part4-p1-ride-round2.md`.
 
 **Phase 2: the obvious layer**
 - What: `Barks.lua` with the first eight facts and the fade; `whatnow` on every member; road talk lines.

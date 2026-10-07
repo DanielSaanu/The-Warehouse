@@ -6,7 +6,7 @@
 -- collapse), the 1 Hz decision of which (tick), the server's side of turning for home (turn), and what a fight does
 -- to a group (carryKill, lose: called from Sim's killEntity, rung 3 part 4 phase 0).
 -- Does NOT move a collapsed group (shared/Tick.groups: pure, shared with catch-up) or steer a materialised one
--- (Sim's groupStep). Carved verbatim out of Sim.lua.
+-- (Walk.groupStep). Carved verbatim out of Sim.lua.
 -- Bound, not required, for the entity constructors, which still live in Sim (B2 moves them to Bodies).
 --   Bands.init()                                 -- a new world: the three groups
 --   local p = Bands.pos(g)                       -- where it is, bodies or not
@@ -67,7 +67,7 @@ end
 function Bands.scratch(g)
 	g.entities, g.leader, g.trail, g.materialised = {}, nil, {}, false
 	g.target, g.aggroUntil, g.lastSeen = nil, 0, nil
-	g.riders, g.walked, g.lastPos, g.waitLeft, g.holding = {}, 0, g.pos, 0, false -- part 4: players riding along (Ride.lua)
+	g.riders, g.walked, g.lastPos, g.lastDir, g.waitLeft, g.holding = {}, 0, g.pos, g.dir, 0, false -- part 4: Ride.lua
 end
 
 local function makeGroup(id: string, kind: string, tribeIdx: number, from: WorldGen.Pos, to: WorldGen.Pos, specs, pauses)
