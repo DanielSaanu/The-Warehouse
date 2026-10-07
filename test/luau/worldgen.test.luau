@@ -203,7 +203,9 @@ for _, seed in ipairs({ 1, 7, 42, 2026, 3, 99, 123456 }) do
 	assert(fordRows >= 2, "only one river crossing, seed " .. seed)
 	local c = counts(world)
 	assert((c.river or 0) > 400, "no river")
-	assert((c.tree or 0) + (c.pine or 0) > 2000, "no forest")
+	-- forests are deliberately sparse (one tree in three lattice cells, none diagonal to another), but there are still a lot of them
+	assert((c.tree or 0) + (c.pine or 0) + (c.pine_tall or 0) + (c.tree_autumn or 0) > 1200, "no forest")
+	assert((c.forest_floor or 0) > 4000, "no forest floor")
 	assert((c.path or 0) > 400, "no roads")
 	assert((c.ford or 0) > 0, "roads never cross the river")
 	assert((c.cave or 0) >= 3, "no caves")
