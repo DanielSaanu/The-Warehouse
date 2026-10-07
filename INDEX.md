@@ -24,8 +24,8 @@ to (`roblox/default.project.json`).
 - [`docs/RUNG3.md`](docs/RUNG3.md): the rung 3 build plan, parts 1–7 (part 3 = gossip spec). Before rung 3 work.
 - [`docs/ROBLOX_SETUP.md`](docs/ROBLOX_SETUP.md): installing Rojo, connecting Studio, Open Cloud key, uploading. Setup or toolchain problems.
 - [`docs/PUBLISH.md`](docs/PUBLISH.md): making the game public, credits owed, the post-sprite-change routine. Before publishing.
-- [`docs/research/`](docs/research/): outside research behind a design (other games, how and why it worked, the shortcomings). `belonging-*.md` feed rung 3 part 4.
-- [`docs/plans/`](docs/plans/): build plans written ahead of a part. `rung3-part4-belonging.md` = rung 3 part 4's phases and open questions (H7). `first-week-and-toys.md` = options for the first week and the post-rung-3 toy list (H12, awaiting Danzo).
+- [`docs/research/`](docs/research/): outside research behind a design (other games, how and why it worked, the shortcomings). `belonging-*.md` feed rung 3 part 4; `making-it-fun/` (hub `README.md`, six docs, sources) feeds the world expansion (H13) and H12.
+- [`docs/plans/`](docs/plans/): build plans written ahead of a part. `rung3-part4-belonging.md` = rung 3 part 4's phases and open questions (H7). `first-week-and-toys.md` = options for the first week and the post-rung-3 toy list (H12, paused). `world-expansion.md` = the 256 x 256 map, 16 villages and big buildings, from Danzo's board (H13, building).
 - [`docs/art-sources.md`](docs/art-sources.md): free 16×16 packs vetted for the world expansion, their licences and credits, and what must be drawn by hand. Before borrowing art.
 - [`docs/qa/`](docs/qa/): QA goals files and `*-summary.md` per PR. Read the summary for the area you touch; never `archive/`.
 - [`docs/REFACTOR-SURVEY.md`](docs/REFACTOR-SURVEY.md): the 2026-09-27 survey: instance tree, requires, remote call sites, secrets check.

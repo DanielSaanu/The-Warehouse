@@ -84,6 +84,21 @@ Resolution (added by the heavy agent under the same entry):
   (b) ranks eight toys, top three: bait and lure, say things (tell/warn/lie), the first hireling. Stays OPEN until
   Danzo picks (three questions at the end of the doc).
 
+### H13 — World expansion: 256 x 256 map, 16 villages, multi-tile buildings — 2026-10-07 — OPEN
+- **Trigger:** 1 (design inside the plan), 2 (`shared/WorldGen.lua`, the renderer and sprite/scene format),
+  3 (a tribe holds many villages: save format), 6 (WorldGen and tick cost at 7x the area)
+- **Doc:** `docs/plans/world-expansion.md` (copied from Danzo's "World Expansion Plan" board, with his calls)
+- **Observed:** Danzo, 2026-10-07: "pause on all of that and focus on adding more elements that make the world
+  entertaining to be in we should start with the map and buildings … swap to fable 5.1 and run a qa loop to do the
+  stuff in the commit". His calls: 256 x 256, 16 villages as drawn, interiors later (big outsides first).
+- **Evidence:** branch `world-expansion` from 65d3c1f; art in 1d4098e and bc183f3 (all `export: false`).
+- **Routine session's read (guess):** build order phases 2–4 plus multi-tile buildings, in that order; save
+  format bump is fine (development mode). Write a goals file in `docs/qa/` before the loop.
+- **Decision needed:** how to split it into reviewable steps; anything the plan leaves open goes to Danzo.
+- **Model:** Danzo asked for **Fable 5.1** directly (2026-10-07), overriding the "last rung" rule for this work.
+- **Where it stands (2026-10-07, after the PC crash):** research hub done; Grid/WorldLand/WorldRoads written, unwired; design for the rest recorded in the plan ("Build notes for step 2"). Next session starts there.
+- **Blocked routine work:** H12 (paused by Danzo) and the phase 2 QA loop (paused).
+
 ## Resolved
 
 ### H10 — A rider's leg is counted across folded turns, so a natural ride pays a fraction — 2026-10-06 — RESOLVED
