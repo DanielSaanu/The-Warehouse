@@ -175,9 +175,10 @@ local function carveRoad(world: World, path: { number })
 			local nx = (nxt - 1) % w + 1
 			local sx, sy = if nx == x then x + 1 else x, if nx == x then y else y + 1
 			if Grid.inBounds(world, sx, sy) and sx < w and sy < world.height and not Grid.villageAt(world, sx, sy, 0) then
-				local o = Grid.object(world, sx, sy)
+				local o, g = Grid.object(world, sx, sy), Grid.ground(world, sx, sy)
 				local od = TileTypes.Object[o]
-				if o == 0 or o == O.tree.id or o == O.rock.id or (od and od.decor) then carveTile(world, idx(w, sx, sy)) end
+				-- never into water: a second tile of ford beside a road along a bank is a fake crossing
+				if g ~= G.water.id and (o == 0 or o == O.tree.id or o == O.rock.id or (od and od.decor)) then carveTile(world, idx(w, sx, sy)) end
 			end
 		end
 	end
@@ -226,6 +227,14 @@ function WorldRoads.edges(villages: { Village }): { { number } }
 		inTree[bj] = true
 		table.insert(out, { bi, bj })
 		joined[key(bi, bj)] = true
+	end
+	-- the king's roads: the three capitals are joined to each other whatever the tree did, so the walk from the town
+	-- to the great lodge (the first thing the game asks for) is a road, not a tour of every hamlet
+	for _, pair in ipairs({ { 1, 2 }, { 1, 3 }, { 2, 3 } }) do
+		if n >= pair[2] and not joined[key(pair[1], pair[2])] then
+			table.insert(out, { pair[1], pair[2] })
+			joined[key(pair[1], pair[2])] = true
+		end
 	end
 	-- extras: the shortest unjoined pairs, as long as both ends are still lightly connected
 	local degree: { [number]: number } = {}
@@ -296,7 +305,7 @@ function WorldRoads.build(world: World)
 end
 
 --- The ford clusters: touching ford tiles are one crossing. Each is { x0, x1, y } for its widest row (the row whose
---- banks the road should meet) and `road`, true when any tile of the crossing has a road beside it, in map order.
+--- banks the road should meet) and `road`, true when BOTH bank tiles of that row are road, in map order.
 export type Ford = { x0: number, x1: number, y: number, road: boolean }
 function WorldRoads.fords(world: World): { Ford }
 	local w, h = world.width, world.height
@@ -308,16 +317,12 @@ function WorldRoads.fords(world: World): { Ford }
 			if world.ground[i] == G.ford.id and not seen[i] then
 				local queue, head = { { x = x, y = y } }, 1
 				local rows: { [number]: { number } } = {}
-				local road = false
 				seen[i] = true
 				while head <= #queue do
 					local c = queue[head]
 					head += 1
 					local r = rows[c.y]
 					if not r then rows[c.y] = { c.x, c.x } else r[1] = math.min(r[1], c.x); r[2] = math.max(r[2], c.x) end
-					for _, d in ipairs(DIRS) do
-						if Grid.ground(world, c.x + d[1], c.y + d[2]) == G.path.id then road = true end
-					end
 					for dy = -1, 1 do
 						for dx = -1, 1 do
 							local nx, ny = c.x + dx, c.y + dy
@@ -331,10 +336,11 @@ function WorldRoads.fords(world: World): { Ford }
 						end
 					end
 				end
-				local best: Ford = { x0 = x, x1 = x, y = y, road = road }
+				local best: Ford = { x0 = x, x1 = x, y = y, road = false }
 				for ry, r in pairs(rows) do
-					if r[2] - r[1] > best.x1 - best.x0 or (r[2] - r[1] == best.x1 - best.x0 and ry < best.y) then best = { x0 = r[1], x1 = r[2], y = ry, road = road } end
+					if r[2] - r[1] > best.x1 - best.x0 or (r[2] - r[1] == best.x1 - best.x0 and ry < best.y) then best = { x0 = r[1], x1 = r[2], y = ry, road = false } end
 				end
+				best.road = Grid.ground(world, best.x0 - 1, best.y) == G.path.id and Grid.ground(world, best.x1 + 1, best.y) == G.path.id
 				table.insert(out, best)
 			end
 		end
@@ -365,9 +371,12 @@ function WorldRoads.fordRoads(world: World)
 	for _, f in ipairs(WorldRoads.fords(world)) do
 		if not f.road then
 			for _, bank in ipairs({ { x = f.x0 - 1, side = -1 }, { x = f.x1 + 1, side = 1 } }) do
-				local road = nearestRoad(world, bank.x, f.y, bank.side, 60)
-				local path = if road then findPath(world, bank.x, f.y, road.x, road.y, avoid) else nil
-				if path then carveRoad(world, path) end
+				if Grid.ground(world, bank.x, f.y) ~= G.path.id then
+					local road = nearestRoad(world, bank.x, f.y, bank.side, 60)
+					local path = if road then findPath(world, bank.x, f.y, road.x, road.y, avoid) else nil
+					if path then carveRoad(world, path) end
+					Grid.setG(world, bank.x, f.y, G.path.id) -- the bank tile itself, whatever the search did
+				end
 			end
 		end
 	end

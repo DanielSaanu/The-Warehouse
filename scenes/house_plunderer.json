@@ -1,0 +1,127 @@
+{
+  "name": "house_plunderer",
+  "width": 48,
+  "height": 48,
+  "background": "transparent",
+  "pixelated": true,
+  "notes": "Borrowed: Kenney Tiny Town, CC0: grey roof TT (0-2,4-5) over a stone wall TT (4-5,7). Footprint 3x2.",
+  "layers": [
+    {
+      "id": "r0",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 0,
+        "y": 64,
+        "w": 16,
+        "h": 16
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "s0",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 0,
+        "y": 80,
+        "w": 16,
+        "h": 16
+      },
+      "x": 0,
+      "y": 16
+    },
+    {
+      "id": "r1",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 16,
+        "y": 64,
+        "w": 16,
+        "h": 16
+      },
+      "x": 16,
+      "y": 0
+    },
+    {
+      "id": "s1",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 16,
+        "y": 80,
+        "w": 16,
+        "h": 16
+      },
+      "x": 16,
+      "y": 16
+    },
+    {
+      "id": "r2",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 32,
+        "y": 64,
+        "w": 16,
+        "h": 16
+      },
+      "x": 32,
+      "y": 0
+    },
+    {
+      "id": "s2",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 32,
+        "y": 80,
+        "w": 16,
+        "h": 16
+      },
+      "x": 32,
+      "y": 16
+    },
+    {
+      "id": "w0",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 64,
+        "y": 112,
+        "w": 16,
+        "h": 16
+      },
+      "x": 0,
+      "y": 32
+    },
+    {
+      "id": "w1",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 80,
+        "y": 112,
+        "w": 16,
+        "h": 16
+      },
+      "x": 16,
+      "y": 32
+    },
+    {
+      "id": "w2",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 64,
+        "y": 112,
+        "w": 16,
+        "h": 16
+      },
+      "x": 32,
+      "y": 32
+    }
+  ]
+}

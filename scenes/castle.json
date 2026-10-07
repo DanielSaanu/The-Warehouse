@@ -1,0 +1,166 @@
+{
+  "name": "castle",
+  "width": 64,
+  "height": 48,
+  "background": "transparent",
+  "pixelated": true,
+  "notes": "Borrowed: Kenney Tiny Town, CC0. Castle wall TT (3-6,8) over the arch gate TT (3-4,9-10) and wall TT (5,9-10). Footprint 4x3.",
+  "layers": [
+    {
+      "id": "b1",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 48,
+        "y": 128,
+        "w": 16,
+        "h": 16
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "b2",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 64,
+        "y": 128,
+        "w": 16,
+        "h": 16
+      },
+      "x": 16,
+      "y": 0
+    },
+    {
+      "id": "b3",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 80,
+        "y": 128,
+        "w": 16,
+        "h": 16
+      },
+      "x": 32,
+      "y": 0
+    },
+    {
+      "id": "b4",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 96,
+        "y": 128,
+        "w": 16,
+        "h": 16
+      },
+      "x": 48,
+      "y": 0
+    },
+    {
+      "id": "m1",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 80,
+        "y": 144,
+        "w": 16,
+        "h": 16
+      },
+      "x": 0,
+      "y": 16
+    },
+    {
+      "id": "m2",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 48,
+        "y": 144,
+        "w": 16,
+        "h": 16
+      },
+      "x": 16,
+      "y": 16
+    },
+    {
+      "id": "m3",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 64,
+        "y": 144,
+        "w": 16,
+        "h": 16
+      },
+      "x": 32,
+      "y": 16
+    },
+    {
+      "id": "m4",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 80,
+        "y": 144,
+        "w": 16,
+        "h": 16
+      },
+      "x": 48,
+      "y": 16
+    },
+    {
+      "id": "l1",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 80,
+        "y": 160,
+        "w": 16,
+        "h": 16
+      },
+      "x": 0,
+      "y": 32
+    },
+    {
+      "id": "l2",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 48,
+        "y": 160,
+        "w": 16,
+        "h": 16
+      },
+      "x": 16,
+      "y": 32
+    },
+    {
+      "id": "l3",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 64,
+        "y": 160,
+        "w": 16,
+        "h": 16
+      },
+      "x": 32,
+      "y": 32
+    },
+    {
+      "id": "l4",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 80,
+        "y": 160,
+        "w": 16,
+        "h": 16
+      },
+      "x": 48,
+      "y": 32
+    }
+  ]
+}

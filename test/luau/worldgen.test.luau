@@ -66,8 +66,8 @@ do
 	local world = { seed = 0, width = 8, height = 8, ground = table.create(64, G.grass.id), object = table.create(64, 0), villages = {}, spawn = { x = 1, y = 1 } }
 	Grid.place(world, 3, 5, O.town_hall.id)
 	assert(Grid.object(world, 3, 5) == O.town_hall.id, "anchor")
-	assert(Grid.object(world, 4, 5) == O.part.id and Grid.object(world, 5, 4) == O.part.id and Grid.object(world, 3, 4) == O.part.id, "3x2 body above and right of the anchor")
-	assert(Grid.object(world, 3, 6) == 0 and Grid.object(world, 6, 5) == 0 and Grid.object(world, 2, 5) == 0, "nothing outside the footprint")
+	assert(Grid.object(world, 6, 5) == O.part.id and Grid.object(world, 5, 4) == O.part.id and Grid.object(world, 3, 3) == O.part.id, "4x3 body above and right of the anchor")
+	assert(Grid.object(world, 3, 6) == 0 and Grid.object(world, 7, 5) == 0 and Grid.object(world, 2, 5) == 0 and Grid.object(world, 3, 2) == 0, "nothing outside the footprint")
 	assert(not Grid.walkable(world, 4, 4), "a hall's body is solid")
 	Grid.place(world, 1, 2, O.muster_ring.id)
 	assert(Grid.object(world, 2, 1) == O.part_open.id and Grid.walkable(world, 2, 1), "a ring is stood on")
@@ -132,7 +132,9 @@ for _, seed in ipairs({ 1, 7, 42, 2026, 3, 99, 123456 }) do
 	end
 	-- Every ford carries a road: the river is crossed wherever it can be, not only where the tree went.
 	for _, f in ipairs(WorldRoads.fords(world)) do
-		assert(f.road, ("ford at %d-%d,%d has no road beside it, seed %d"):format(f.x0, f.x1, f.y, seed))
+		assert(f.road, ("ford at %d-%d,%d has no road on both banks, seed %d"):format(f.x0, f.x1, f.y, seed))
+		assert(f.x1 - f.x0 >= 1 or WorldGen.ground(world, f.x0, f.y - 1) == G.ford.id or WorldGen.ground(world, f.x0, f.y + 1) == G.ford.id,
+			("a one-tile ford at %d,%d is a fake crossing, seed %d"):format(f.x0, f.y, seed))
 	end
 	-- The road tree joins every village (the edges alone, before any A* ran).
 	do
@@ -147,6 +149,8 @@ for _, seed in ipairs({ 1, 7, 42, 2026, 3, 99, 123456 }) do
 		end
 		for i = 1, #world.villages do assert(seen[i], "road tree misses village " .. i) end
 		assert(#edges < 30, "a tree plus a few loops, not all-to-all")
+		local function has(a, b) for _, e in ipairs(edges) do if (e[1] == a and e[2] == b) or (e[1] == b and e[2] == a) then return true end end return false end
+		assert(has(1, 2) and has(1, 3) and has(2, 3), "the capitals are joined to each other")
 	end
 	-- Multi-tile objects are whole: every `part` tile belongs to exactly one anchor, every footprint tile is a part.
 	do
@@ -204,7 +208,7 @@ for _, seed in ipairs({ 1, 7, 42, 2026, 3, 99, 123456 }) do
 	assert((c.ford or 0) > 0, "roads never cross the river")
 	assert((c.cave or 0) >= 3, "no caves")
 	assert((c.town_hall or 0) == 1 and (c.longhouse or 0) == 1 and (c.war_hall or 0) == 1, "one hall per capital")
-	assert((c.hut or 0) + (c.hut_hunter or 0) + (c.hut_plunderer or 0) > 100, "huts everywhere")
+	assert((c.hut or 0) + (c.hut_hunter or 0) + (c.hut_plunderer or 0) > 30, "houses everywhere (3x2 each, counted by anchor)")
 	-- The places between villages: at least one of each kind on the map.
 	for _, name in ipairs({ "roadside_shrine", "ruined_watchtower", "abandoned_tent", "battle_debris", "ash_pile" }) do
 		assert((c[name] or 0) >= 1, "no " .. name .. ", seed " .. seed)

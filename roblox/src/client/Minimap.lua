@@ -69,7 +69,7 @@ function Minimap.new(parent: Instance, world: WorldGen.World, touch: boolean): M
 	frame.BackgroundTransparency = 0.15
 	frame.BorderSizePixel = 0
 	frame.SizeConstraint = Enum.SizeConstraint.RelativeYY -- square, sized by the screen's height
-	frame.ZIndex = 30
+	frame.ZIndex = 25 -- under the HUD's panels; the client also hides it while one is open
 	frame.Parent = parent
 	local pad = Instance.new("UIPadding")
 	pad.PaddingTop, pad.PaddingBottom, pad.PaddingLeft, pad.PaddingRight = UDim.new(0, 3), UDim.new(0, 3), UDim.new(0, 3), UDim.new(0, 3)
@@ -87,6 +87,9 @@ function Minimap.new(parent: Instance, world: WorldGen.World, touch: boolean): M
 		m.AnchorPoint = Vector2.new(0.5, 0.5)
 		m.Position = UDim2.fromScale(v.cx / world.width, v.cy / world.height)
 		m.Size = UDim2.fromScale(s, s)
+		local minSize = Instance.new("UISizeConstraint") -- a hamlet is still a dot you can see on a phone
+		minSize.MinSize = Vector2.new(5, 5)
+		minSize.Parent = m
 		local stroke = Instance.new("UIStroke")
 		stroke.Color = Color3.fromRGB(20, 20, 30)
 		stroke.Thickness = 1

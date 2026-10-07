@@ -36,19 +36,20 @@ end
 local function foot(w: number, h: number): { w: number, h: number } return { w = w, h = h } end
 
 -- 0 = nothing. `interact` is the F prompt verb when the player faces the object. Ids 1-17 are the original set and
--- are never renumbered (a saved camp or bag is stamped back by id).
+-- are never renumbered (a saved camp or bag is stamped back by id). The houses (4, 5, 10, 11) became 3x2 on
+-- 2026-10-07 so the insides can follow (Danzo): the ids and names stayed, the sprite and footprint changed.
 TileTypes.Object = {
 	[1] = obj(1, "tree", true),
 	[2] = obj(2, "rock", true),
 	[3] = obj(3, "cave", true),
-	[4] = obj(4, "hut", true),
-	[5] = obj(5, "hut_burnt", true),
+	[4] = obj(4, "hut", true, { sprite = "house", foot = foot(3, 2) }),                 -- a farmer house, 48x48: 3x2 with the roof over the row behind
+	[5] = obj(5, "hut_burnt", true, { sprite = "house_burnt", foot = foot(3, 2) }),
 	[6] = obj(6, "wall", true),
 	[7] = obj(7, "gate", false),
 	[8] = obj(8, "stall", true),
 	[9] = obj(9, "bed", true, { interact = "Rest" }),
-	[10] = obj(10, "hut_hunter", true),
-	[11] = obj(11, "hut_plunderer", true),
+	[10] = obj(10, "hut_hunter", true, { sprite = "house_hunter", foot = foot(3, 2) }),
+	[11] = obj(11, "hut_plunderer", true, { sprite = "house_plunderer", foot = foot(3, 2) }),
 	[12] = obj(12, "totem", true),
 	[13] = obj(13, "skull_post", true),
 	[14] = obj(14, "camp_lit", true, { sprite = "camp_lit_0", interact = "Rest" }),
@@ -59,7 +60,7 @@ TileTypes.Object = {
 	[18] = obj(18, "part", true, { sprite = "" }),
 	[19] = obj(19, "part_open", false, { sprite = "" }),
 	-- buildings (the world expansion). Footprint in tiles; the sprite may be taller.
-	[20] = obj(20, "town_hall", true, { foot = foot(3, 2) }),      -- 48x48: a stone hall, the roof over the row behind
+	[20] = obj(20, "town_hall", true, { sprite = "castle", foot = foot(4, 3) }), -- 64x48: the town's castle, a gatehouse of stone
 	[21] = obj(21, "longhouse", true, { foot = foot(3, 2) }),      -- 48x32
 	[22] = obj(22, "war_hall", true, { foot = foot(3, 2) }),       -- 48x32
 	[23] = obj(23, "granary", true, { foot = foot(2, 2) }),        -- 32x32

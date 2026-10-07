@@ -1,0 +1,118 @@
+{
+  "name": "house_burnt",
+  "width": 48,
+  "height": 32,
+  "background": "transparent",
+  "pixelated": true,
+  "notes": "Borrowed: Kenney Tiny Town, CC0: the farmer house with its top gone, charred. Footprint 3x2.",
+  "layers": [
+    {
+      "id": "s0",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 64,
+        "y": 80,
+        "w": 16,
+        "h": 16
+      },
+      "x": 0,
+      "y": 0,
+      "tint": {
+        "color": "#232326",
+        "mode": "multiply",
+        "amount": 0.8
+      }
+    },
+    {
+      "id": "s1",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 80,
+        "y": 80,
+        "w": 16,
+        "h": 16
+      },
+      "x": 16,
+      "y": 0,
+      "tint": {
+        "color": "#232326",
+        "mode": "multiply",
+        "amount": 0.8
+      }
+    },
+    {
+      "id": "s2",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 96,
+        "y": 80,
+        "w": 16,
+        "h": 16
+      },
+      "x": 32,
+      "y": 0,
+      "tint": {
+        "color": "#232326",
+        "mode": "multiply",
+        "amount": 0.8
+      }
+    },
+    {
+      "id": "w0",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 0,
+        "y": 112,
+        "w": 16,
+        "h": 16
+      },
+      "x": 0,
+      "y": 16,
+      "tint": {
+        "color": "#232326",
+        "mode": "multiply",
+        "amount": 0.8
+      }
+    },
+    {
+      "id": "w1",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 16,
+        "y": 112,
+        "w": 16,
+        "h": 16
+      },
+      "x": 16,
+      "y": 16,
+      "tint": {
+        "color": "#232326",
+        "mode": "multiply",
+        "amount": 0.8
+      }
+    },
+    {
+      "id": "w2",
+      "type": "image",
+      "src": "library/kenney/tiny-town/Tilemap__tilemap_packed.png",
+      "crop": {
+        "x": 0,
+        "y": 112,
+        "w": 16,
+        "h": 16
+      },
+      "x": 32,
+      "y": 16,
+      "tint": {
+        "color": "#232326",
+        "mode": "multiply",
+        "amount": 0.8
+      }
+    }
+  ]
+}

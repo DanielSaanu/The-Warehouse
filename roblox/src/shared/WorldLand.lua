@@ -109,7 +109,11 @@ function WorldLand.build(world: World, rng: Rng.Rng): Land
 					-- the forest: its floor says "forest"; the trees stand on a spaced lattice (never two side by side), so a
 					-- forest is dense to look at and always walkable, like a wood you weave through
 					world.ground[i] = G.forest_floor.id
-					if (x + 2 * y) % 3 == 0 and detail:chance(0.7 + (m - 0.56) * 2) then
+					-- no tree beside another (the lattice) and none diagonal to one above (checked, since rows go north
+					-- to south), so no line of trees ever walls the way; the crowns of the 32-tall pines still touch
+					local upL, upR = Grid.object(world, x - 1, y - 1), Grid.object(world, x + 1, y - 1)
+					local function isTree(o: number): boolean return o == O.tree.id or o == O.pine.id or o == O.pine_tall.id or o == O.tree_autumn.id end
+					if (x + 2 * y) % 3 == 0 and not isTree(upL) and not isTree(upR) and detail:chance(0.7 + (m - 0.56) * 2) then
 						local r = detail:float()
 						local pineOdds = if e > 0.5 then 0.45 else 0.18
 						world.object[i] = if r < pineOdds then (if detail:chance(0.3) then O.pine_tall.id else O.pine.id)
@@ -137,6 +141,43 @@ function WorldLand.build(world: World, rng: Rng.Rng): Land
 					world.object[i] = if r < 0.4 then O.flower_red.id elseif r < 0.7 then O.flower_purple.id else O.flower_white.id
 				elseif detail:chance(0.006) then
 					world.object[i] = O.bush.id
+				end
+			end
+		end
+	end
+	-- Crags: solid rock in blocks bigger than a dozen tiles is a wall of identical boulders. Thin every big block to
+	-- scattered rocks and boulders on the stony ground, so the hills stay walkable and read as hills.
+	do
+		local seen: { [number]: boolean } = {}
+		for y = 2, h - 1 do
+			for x = 2, w - 1 do
+				local i0 = idx(w, x, y)
+				if world.object[i0] == O.rock.id and not seen[i0] then
+					local comp: { number } = { i0 }
+					seen[i0] = true
+					local head = 1
+					while head <= #comp do
+						local ci = comp[head]
+						head += 1
+						local cx, cy = (ci - 1) % w + 1, math.floor((ci - 1) / w) + 1
+						for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+							local nx, ny = cx + d[1], cy + d[2]
+							if nx > 1 and ny > 1 and nx < w and ny < h then
+								local ni = idx(w, nx, ny)
+								if world.object[ni] == O.rock.id and not seen[ni] then seen[ni] = true; table.insert(comp, ni) end
+							end
+						end
+					end
+					if #comp > 12 then
+						for _, ci in ipairs(comp) do
+							local cx, cy = (ci - 1) % w + 1, math.floor((ci - 1) / w) + 1
+							local keep = (cx * 7 + cy * 13) % 7 == 0
+							if not keep then
+								local r = detail:float()
+								world.object[ci] = if r < 0.25 then O.boulder.id elseif r < 0.4 then O.rocks_grey.id else 0
+							end
+						end
+					end
 				end
 			end
 		end
@@ -197,8 +238,11 @@ function WorldLand.caves(world: World, crng: Rng.Rng)
 	local candidates: { Pos } = {}
 	for y = 4, h - 3 do
 		for x = 3, w - 2 do
+			-- the mouth and the two tiles south of it are open and reached from the south, so the mound's own rock never
+			-- closes the only way in
 			if Grid.ground(world, x, y) == G.rocky.id and Grid.object(world, x, y + 1) == 0 and Grid.ground(world, x, y + 1) ~= G.water.id
-				and Grid.ground(world, x, y + 1) ~= G.path.id and open[idx(w, x, y + 1)] and not Grid.villageAt(world, x, y, 4) then
+				and Grid.ground(world, x, y + 1) ~= G.path.id and open[idx(w, x, y + 1)] and open[idx(w, x, y + 2)]
+				and Grid.object(world, x - 1, y + 1) == 0 and Grid.object(world, x + 1, y + 1) == 0 and not Grid.villageAt(world, x, y, 4) then
 				local clear = true
 				for dy = -1, 0 do
 					for dx = -1, 1 do

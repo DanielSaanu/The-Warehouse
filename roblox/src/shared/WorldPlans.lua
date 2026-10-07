@@ -6,11 +6,11 @@
 --
 -- Legend. Ground: `.` grass, `,` tall grass, `p` path, `@` spawn (path), `F` farm, `Z` scorched. Walls: `W` wall,
 -- `G` gate, `P` palisade, `Q` palisade gate (a gate on the template's edge is where a road leaves). Single tiles:
--- `h` the tribe's hut, `B` burnt hut, `S` stall (exactly one), `b` bed (exactly one), `w` well, `c` firepit, `k` knights
+-- `h` the tribe's house (3 x 2, as Kenney drew it, anchored like the halls), `B` burnt house (3 x 2), `S` stall (exactly one), `b` bed (exactly one), `w` well, `c` firepit, `k` knights
 -- post, `o` watchtower, `s` smokehouse, `d` drying rack, `x` loot heap, `g` cage, `n` hiring board, `l` lantern, `y` hay,
 -- `v` woodpile, `e` scarecrow, `i` beehive, `m` awning, `t` landmark (totem / skull post), `T` tree (tree / pine / dead
 -- tree), `R` boulder, `D` rubble. Multi-tile objects stand on their ANCHOR, the bottom-left tile of the footprint, and
--- the rest of the footprint is `=`: `A` hall (town hall / longhouse / war hall, 3 x 2), `1` granary, `2` storehouse,
+-- the rest of the footprint is `=`: `A` hall (the farmers' castle 4 x 3; longhouse / war hall 3 x 2), `1` granary, `2` storehouse,
 -- `3` tannery, `4` trophy hall, `5` windmill, `7` lookout tree, `8` tent, `9` muster ring (all 2 x 2). Places add:
 -- `*` shrine, `u` ruined watchtower, `U` broken wall, `f` broken fence, `a` ash, `j` bones, `K` skull, `r` arrows,
 -- `q` debris, `+` grave cross, `|` tombstone, `C` cold camp, `L` fallen log, `M` mushrooms, `0` abandoned tent (2 x 2),
@@ -55,44 +55,44 @@ WorldPlans.VILLAGES = {
 		-- raiders broke in). Hall, granary, storehouse, windmill, well, market row, knights post, lantern-lit.
 		large = {
 			"oWWWWWWWGGWWWWWWWo",
-			"W.FFFFF.pp.==..hhW",
-			"WeFFFFF.pp.1=..hhW",
-			"W.......pp..l....W",
-			"W.===..lpp..==.hhW",
-			"W.A==...pp..2=.hhW",
-			"W.......pp..b....W",
-			"W.mSm..pppppp.l..W",
+			"W.FFFFF.pp.==....W",
+			"WeFFFFF.pp.1=.===W",
+			"W.====..pp....h==W",
+			"W.====.lpp.==....W",
+			"W.A===..pp.2=....W",
+			"W.......pp..b.===W",
+			"W.mSm..pppppp.h==W",
 			"W.l....ppppppppppG",
 			"W......pp@pppppppG",
-			"WBhh...pppppp..hhW",
-			"W.hh...lpp.w...hhW",
-			"W..k....pp.....==W",
-			"W.......pp.....5=W",
-			"WyFFFFF.pp.FFFF..W",
+			"W===...pppppp.===W",
+			"WB==.l.lpp.w..h==W",
+			"W===k...pp.......W",
+			"WB==....pp.....==W",
+			"WyFFFFF.pp.FFFF5=W",
 			"W.FFFFF.pp.FFFFi.W",
-			"DZB.....pp.......W",
+			"DZ......pp.......W",
 			"WZDWWWWWGGWWWWWWWo",
 		},
 		-- A village: huts, fields, a market stall, a store.
 		mid = {
-			".FFFp.hh..",
-			"eFFFp.hh.y",
+			".FFFpy===.",
+			"eFFFp.h==.",
 			"....p.==..",
-			"hh..p.2=.b",
-			"pppp@ppppp",
-			"hh.lp.S...",
-			"...wp..hh.",
-			"FFF.p..hhi",
-			"FFF.p.....",
+			"===.p.2=.b",
+			"h==p@ppppp",
+			"....pS....",
+			"===wp.===.",
+			"h==.p.h==.",
+			"FFF.p....i",
 		},
 		-- A hamlet: a few huts, one field, a well. No walls.
 		small = {
-			".hh.FF.",
-			"...pFF.",
-			"hh.p..h",
+			"===.FF.",
+			"h==.FF.",
+			"...p.b.",
 			"ppp@ppp",
-			".w.pb.h",
-			".S.p...",
+			".w.p===",
+			".S.ph==",
 		},
 	},
 	hunter = {
@@ -100,43 +100,43 @@ WorldPlans.VILLAGES = {
 		-- ground, lookout tree, hiring board, smokehouse.
 		large = {
 			"TTT,....pp..,TTTTT",
-			"T.hh....pp.....==T",
-			"T.hh.d..pp.d...7=T",
+			"T===....pp.....==T",
+			"Th==.d..pp.d...7=T",
 			",.......pp......,T",
-			"T.h.....pp....h..T",
-			"T..===..pp..==...T",
-			"Td.A==..pp..4=..dT",
+			"T===....pp....===T",
+			"Th==.===pp.==.h==T",
+			"Td...A==pp.4=...dT",
 			"T.......pp.......T",
 			"pppppppppppppppppp",
 			"pppppppp@ppppppppp",
-			"T.....c.pp.c.....T",
-			"T.==....pp..==...T",
-			"T.3=.t..pp..9=.s.T",
-			"T.hh....pp.b...hhT",
-			"T.hh.n..pp..S..hhT",
+			"T.t...c.pp.c...s.T",
+			"T....==.pp.==....T",
+			"T....3=.pp.9=....T",
+			"T===....pp.b..===T",
+			"Th==.n..pp..S.h==T",
 			"T,......pp......,T",
 			"TTTT,...pp..,TTTTT",
 		},
 		-- A lodge: huts, a tannery, a totem, a muster ground.
 		mid = {
-			"T.hh.p..hT",
-			"..hh.p..h.",
-			".==..p.d..",
+			"T===.p===T",
+			".h==.ph==.",
+			".==.tp.d..",
 			".3=..p...b",
 			"ppppp@pppp",
-			".t..cp.==.",
-			"hh...p.9=.",
-			"hh.S.p..hh",
-			"T....p..hh",
+			"....cp===.",
+			"===..ph==.",
+			"h==S.p.==.",
+			".....p.9=T",
 		},
 		-- A camp: a few huts, a drying rack, a fire.
 		small = {
-			"T.hh..T",
-			"..hh.d.",
+			"T===..T",
+			".h==.d.",
 			"...p.b.",
 			"ppp@ppp",
-			".c.p.S.",
-			"Thhp..T",
+			".===.S.",
+			"Th==.cT",
 		},
 	},
 	plunderer = {
@@ -144,17 +144,17 @@ WorldPlans.VILLAGES = {
 		-- them, a war hall, tents, cages, loot heaps, skull posts.
 		large = {
 			"oPPPPPQQPPPPPo",
-			"P.==...pp.==.P",
-			"P.8=...pp.8=.P",
-			"P......pp....P",
-			"P.....gpp.h..P",
-			"P.===..pp.h..P",
+			"P.==...pp....P",
+			"P.8=...pp....P",
+			"P......pp.===P",
+			"P.....gpp.h==P",
+			"P.===..pp....P",
 			"P.A==..pp...xP",
 			"Pg.....pp...xP",
-			"Pt...c.pp.c.tP",
-			"Pxx....@p..g.P",
-			"Pxx....pp.hh.P",
-			"Pb.....pp.hh.P",
+			"Pt...c.pp.cgtP",
+			"Pxx....@p....P",
+			"Pxx....pp.===P",
+			"Pb.....pp.h==P",
 			"PS.....pp....P",
 			"P......pp....P",
 			"P......pp....P",
@@ -163,13 +163,14 @@ WorldPlans.VILLAGES = {
 		-- A camp: huts in a stockade, a lookout, stolen goods.
 		mid = {
 			"oPPPPQPPPo",
-			"Ph...p..hP",
-			"Ph...p..hP",
-			"P.x..p.x.P",
+			"P....p...P",
+			"P===.p===P",
+			"Ph==.ph==P",
+			"P.x..p.xtP",
 			"P...c@c..P",
-			"Pt.x.p..bP",
-			"Phh..p.gSP",
-			"Phh..p...P",
+			"P....p..bP",
+			"P===.p.gSP",
+			"Ph==.p...P",
 			"oPPPPQPPPo",
 		},
 		-- A hideout: two tents, a skull post, a loot pile.
@@ -207,11 +208,11 @@ WorldPlans.PLACES = {
 	order = { "shrine", "burnt_village", "ruined_watchtower", "abandoned_camp", "battlefield" },
 	shrine = { "l.l", ".*.", ",.," },
 	burnt_village = {
-		"ZBZ.ZDZ",
-		"ZaZZBZa",
-		"Z.ZZZZZ",
-		"fZBZaZf",
-		".ZZDZZ.",
+		"Z===.D.",
+		"ZB==.a.",
+		"f.ZZ===",
+		".aZZB==",
+		".ZDZZZ.",
 	},
 	ruined_watchtower = {
 		".DU..",
@@ -233,6 +234,13 @@ WorldPlans.PLACES = {
 		",.K.r.,",
 	},
 } :: { [string]: any }
+
+--- Rows a sprite reaches above its footprint (a 48-tall house on 2 rows: 1). Kept here, next to the layouts that
+--- must leave that row clear; the renderer reads the real sprite size from the sheet.
+WorldPlans.OVERHANG = { hut = 1, hut_hunter = 1, hut_plunderer = 1, windmill = 1, knights_post = 1, smokehouse = 1, watchtower = 1,
+	ruined_watchtower = 1, lookout_tree = 1, pine = 1, pine_tall = 1, tree_autumn = 1, dead_tree_tall = 2, roadside_shrine = 1 } :: { [string]: number }
+--- What may stand on the row a roof hangs over: the wild things. Never a wall (Danzo: walls do not cut through houses).
+WorldPlans.BEHIND_OK = { tree = true, pine = true, pine_tall = true, dead_tree = true, boulder = true, rubble = true, broken_wall = true } :: { [string]: boolean }
 
 --- The object a template character puts down for this tribe, by name, or nil for none.
 function WorldPlans.objectName(ch: string, tribe: string): string?
@@ -292,6 +300,31 @@ function WorldPlans.check(rows: { string }, tribe: string, village: boolean): st
 	end
 	if village and (spawns ~= 1 or beds ~= 1 or stalls ~= 1) then
 		return ("a village needs one spawn, one bed, one stall (has %d, %d, %d)"):format(spawns, beds, stalls)
+	end
+	-- a tall sprite's roof must not land on another building: it would hide its door (walls, trees and rock may sit
+	-- behind a roof; that is just what is behind it)
+	for r, row in ipairs(rows) do
+		for c = 1, tw do
+			local name = WorldPlans.objectName(row:sub(c, c), tribe)
+			local over = if name then WorldPlans.OVERHANG[name] else nil
+			if over and name then
+				local def = TileTypes.ObjectByName[name]
+				local fw, fh = if def.foot then def.foot.w else 1, if def.foot then def.foot.h else 1
+				for k = 1, over do
+					local rr = r - fh - k + 1
+					for cc = c, c + fw - 1 do
+						if rr >= 1 and cc <= tw then
+							local ch = rows[rr]:sub(cc, cc)
+							local under = WorldPlans.objectName(ch, tribe)
+							local tower = name == "watchtower" and (under == "wall" or under == "palisade") -- a tower stands IN the wall
+							if ch == "=" or (under and not WorldPlans.BEHIND_OK[under] and not tower) then
+								return ("%s at %d,%d hangs its roof over %s at %d,%d"):format(name, c, r, under or "a footprint", cc, rr)
+							end
+						end
+					end
+				end
+			end
+		end
 	end
 	-- every tile a person can stand on connects to the spawn inside the layout itself
 	if village and spawnAt then

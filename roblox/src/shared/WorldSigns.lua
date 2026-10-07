@@ -25,6 +25,7 @@ local function signSpot(world: World, x: number, y: number): boolean
 	if not Grid.inBounds(world, x, y) then return false end
 	local g = Grid.ground(world, x, y)
 	if Grid.object(world, x, y) ~= 0 then return false end
+	if Grid.object(world, x, y - 1) == O.cave.id then return false end -- never on a cave's doorstep
 	if g ~= G.grass.id and g ~= G.grass_2.id and g ~= G.tall_grass.id and g ~= G.farm.id then return false end
 	local open = 0
 	for dy = -1, 1 do
@@ -84,9 +85,28 @@ local function villageExits(world: World, v: Village): { Pos }
 	return out
 end
 
---- The village this road exit points at: the one whose direction from the village centre best matches the
---- direction the road leaves in, nearer ones preferred (a hamlet's sign names the next place, not the far capital).
+--- The village this road exit leads to: walk the road tiles from the exit (never back through `v`) and name the
+--- first other village the road touches. A road that reaches nowhere else names the village nearest in the
+--- direction it leaves in.
 local function signpostTarget(world: World, v: Village, exit: Pos): Village?
+	local w = world.width
+	local seen: { [number]: boolean } = { [idx(w, exit.x, exit.y)] = true }
+	local queue, head = { exit }, 1
+	while head <= #queue do
+		local c = queue[head]
+		head += 1
+		local here = Grid.villageAt(world, c.x, c.y, 1)
+		if here and here ~= v then return here end
+		for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+			local nx, ny = c.x + d[1], c.y + d[2]
+			local g = Grid.ground(world, nx, ny)
+			local i = idx(w, nx, ny)
+			if (g == G.path.id or g == G.ford.id) and not seen[i] and not (Grid.villageAt(world, nx, ny, 0) == v) then
+				seen[i] = true
+				table.insert(queue, { x = nx, y = ny })
+			end
+		end
+	end
 	local ex, ey = exit.x - v.cx, exit.y - v.cy
 	local elen = math.max(1, math.sqrt(ex * ex + ey * ey))
 	local best: Village? = nil
@@ -129,8 +149,8 @@ function WorldSigns.build(world: World, compass: (number, number) -> string)
 		end
 		local east, west = nearest(1), nearest(-1)
 		local parts = { "Ford." }
-		if east then table.insert(parts, east.name .. " east, " .. compass(east.cx - fx1, east.cy - fy) .. ".") end
-		if west then table.insert(parts, west.name .. " west, " .. compass(west.cx - fx0, west.cy - fy) .. ".") end
+		if east then table.insert(parts, "East bank: " .. east.name .. " (" .. compass(east.cx - fx1, east.cy - fy) .. ").") end
+		if west then table.insert(parts, "West bank: " .. west.name .. " (" .. compass(west.cx - fx0, west.cy - fy) .. ").") end
 		table.insert(parts, "Wolves at night.")
 		putSign(world, fx0, fy, table.concat(parts, " "))
 	end

@@ -621,7 +621,7 @@ RunService.RenderStepped:Connect(function()
 	local e = v:getEntity(myId)
 	if e then v:setCamera(e.px + 0.5, e.py + 0.5) end
 	v:refresh()
-	if minimap and e then minimap:update(e.px + 1, e.py + 1) end
+	if minimap and e then minimap:update(e.px + 1, e.py + 1) minimap:setVisible(not hud:anyOpen()) end
 
 	-- Clock: interpolate between the server's once-a-second updates so dusk and dawn fade smoothly.
 	local frac = clockFrac + (now - clockAt) / Config.DAY_SECONDS

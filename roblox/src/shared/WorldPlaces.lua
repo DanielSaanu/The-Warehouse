@@ -29,7 +29,7 @@ for id = 1, 127 do
 end
 
 local FROM_VILLAGE = 8  -- a road tile this close to a village is the village's own approach, not the wilds
-local APART = 30        -- tiles between two places
+local APART = 24        -- tiles between two places
 local DIRS = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }
 
 --- Can this stamp go down with its top-left at (x0, y0)? Dry open ground only: no water, no road or ford, nothing
