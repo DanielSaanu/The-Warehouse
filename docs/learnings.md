@@ -1,6 +1,6 @@
 # Learnings
 
-**Created:** 2026-09-23 · **Last updated:** 2026-10-06 (S9)
+**Created:** 2026-09-23 · **Last updated:** 2026-10-07 (S10)
 
 Rules that **generalise** — things a session got wrong once and should never get wrong again. One-off typos and
 trivia stay in the QA goals file or the commit message; they do not earn a line here.
@@ -87,6 +87,12 @@ a rider's "joined" bark and cleared the flag on the next tick, but every bark is
 open, and the yes window is always open the second after the yes, so the line could never show. Anything that can
 be silently dropped downstream (a gap, a fade, an open window, nobody on screen) must hand back whether it went out,
 and the caller clears on that. *(2026-10-06, handoff H11, caught in review before Studio.)*
+
+**S10 — A line that is only true from one speaker carries that constraint in the line's own data.** "Bandits! Guard
+the master!" was right from a guard and absurd from the master; the speaker picker only *preferred* a member, so
+whenever the master was nearest (or the only face on screen) he said it. A preference is not a guarantee: mark the
+rule (`member = true`) and let the pure picker skip it for that speaker, falling to the next line, so the rule is
+tested without Studio. *(2026-10-07, handoff H11.)*
 
 ## P — Persistence
 

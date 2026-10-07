@@ -41,6 +41,11 @@
   gossip QA loop:** agents go through each `docs/systems/*.md` and add an "Expansion: deficits at scale" section
   covering hard caps, linear scans, fixed ids, byte budgets and per-tick costs, each with file:line. Gossip's list
   comes from QA round 3. **Done 2026-10-05** (branch `docs/expansion-notes`): all nine system docs have the section.
+- **2026-10-07, Danzo, after riding the caravan Glenworth → Kenstow:** phase 2 works, and the 30-second test passed
+  ("i clearly understood what to do"). But the first week has dead air: a gap before anything points you at the
+  caravan, then just "be inside before day 7" for days, which is boring. And joining the caravan must NOT be the main
+  objective: after this rung the player needs more fun things to do and experiment with. → handoff H12 (proposal
+  first, no code).
 
 This file is the shared scratchpad. Type here in the UI (bottom pane) or in any editor. Claude reads it 
 the start of a session and works through it. Cross things out or delete them when done.

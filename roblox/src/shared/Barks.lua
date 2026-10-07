@@ -5,6 +5,8 @@
 -- Three rules: the most specific line wins (the rule matching the most of the fact's fields, the Left 4 Dead way);
 -- nothing is said twice in a row; a TEACHING line is said TEACH times a session, then its short form SHORT times,
 -- then never again. The memory (`Barks.new`) lives on the player's session state and is never saved.
+-- A rule marked `member` names the leader from outside ("Guard the master!"): it is never said by the leader himself
+-- (a fact with `leader = true`); the next most specific rule speaks for him instead (H11 Studio, 2026-10-07).
 --   local mem = Barks.new()
 --   local line, fact = Barks.pick(mem, { { fact = "hostile", kind = "wolf", dir = "east" } }, now)
 local Barks = {}
@@ -18,8 +20,9 @@ Barks.GAP = { hostile = 8, prey = 8, hurt = 8, lag = 10, spooked = 12, joined = 
 Barks.ORDER = { "down", "hurt", "spooked", "hostile", "prey", "lag", "joined", "near", "arrived", "road" }
 
 export type Fact = { fact: string, kind: string?, group: string?, dir: string?, dest: string?, home: string?,
-	scarce: string?, name: string?, boss: string? }
-export type Rule = { fact: string, kind: string?, group: string?, lines: { string }, short: string?, teach: boolean? }
+	scarce: string?, name: string?, boss: string?, leader: boolean? }
+export type Rule = { fact: string, kind: string?, group: string?, lines: { string }, short: string?, teach: boolean?,
+	member: boolean? }
 export type Memory = { said: { [number]: number }, at: { [string]: number }, last: string?, lastAt: number?, start: number }
 
 -- A blank ({dest}) is filled from the fact; a line whose blank the fact cannot fill is skipped.
@@ -32,7 +35,7 @@ Barks.RULES = {
 	{ fact = "hostile", kind = "wolf", lines = { "Wolves! Close up.", "Wolves, {dir}! Close up." }, short = "Wolves!", teach = true },
 	{ fact = "hostile", kind = "bandit", lines = { "Bandits! Stand with us.", "Bandits, {dir}! Stand with us." }, short = "Bandits!", teach = true },
 	{ fact = "hostile", kind = "bandit", group = "caravan", lines = { "Bandits! Guard the master!", "Bandits, {dir}! Guard the master!" },
-		short = "Bandits!", teach = true },
+		short = "Bandits!", teach = true, member = true },
 	{ fact = "prey", lines = { "Deer, {dir}! Hit what we hit.", "Deer! With us, now." }, short = "Deer!", teach = true },
 	{ fact = "spooked", lines = { "{boss}'s spooked. We hold here.", "We hold here a moment." }, short = "Holding.", teach = true },
 	{ fact = "hurt", lines = { "You're bleeding. Eat something.", "You're hurt. Stay behind us." }, short = "Eat, if you can.", teach = true },
@@ -54,10 +57,12 @@ function Barks.urgent(fact: string): number
 end
 
 --- The rule for a fact: of the rules for this fact whose every field matches, the one matching the most fields.
+--- A `member` rule never matches a fact the leader is saying.
 function Barks.ruleFor(f: Fact): number?
 	local best, bestScore = nil, -1
 	for i, r in ipairs(Barks.RULES) do
-		if r.fact == f.fact and (r.kind == nil or r.kind == f.kind) and (r.group == nil or r.group == f.group) then
+		if r.fact == f.fact and (r.kind == nil or r.kind == f.kind) and (r.group == nil or r.group == f.group)
+			and not (r.member and f.leader) then
 			local score = (if r.kind then 1 else 0) + (if r.group then 1 else 0)
 			if score > bestScore then best, bestScore = i, score end
 		end

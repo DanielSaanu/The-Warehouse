@@ -69,6 +69,14 @@ line (Q8: only if the 30-second test fails). A move key closing a choiceless win
 - **"Seen"** is within 8 tiles of the leader. Bandits of another group are hostile to the caravan and the squad.
 - **Speakers** prefer a member over the leader for joined, near, arrived, road and spooked (the master does not
   call himself spooked).
+- **Hostile and prey prefer a member too, and "Guard the master!" is member-only** (H11 Studio item 1, fixed
+  2026-10-07, Danzo "yes send the fix"): Studio showed the master saying it himself, because the hostile fact had no
+  speaker preference and he stood nearest the bandit. Fix in two layers: `RoadTalk` adds `who = "member"` to hostile and
+  prey facts, and when the leader is the only face on screen `RoadTalk.say` marks the fact `leader = true`; in
+  `shared/Barks.lua` a rule marked `member = true` never matches such a fact, so the next most specific rule speaks
+  for him: "Bandits! Stand with us." (chosen over saying nothing: the threat is news and he is the face you see).
+  Test first (`barks.test.luau`, failed on the old code). Seen in Studio, seed 1, frozen: bandit 4 tiles from Gweno,
+  7 from the guards → "Brilo: Bandits! Guard the master!"; guards off screen → "Gweno: Bandits! Stand with us."
 
 ## Known limitations going in
 

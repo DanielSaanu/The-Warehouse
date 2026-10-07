@@ -54,7 +54,9 @@ function RoadTalk.say(ps, g, facts, now: number)
 	for _, f in ipairs(facts) do
 		f.by = f.by or speaker(g, ps, f.who, f.x or ps.x, f.y or ps.y)
 		if f.by then
-			if f.boss and f.by.id == g.leader then f.boss = nil end -- the master does not call himself spooked
+			if f.by.id == g.leader then -- the master does not call himself spooked, nor tell you to guard himself
+				f.boss, f.leader = nil, true
+			end
 			table.insert(heard, f)
 		end
 	end
@@ -82,7 +84,9 @@ local function groupFacts(g, l, where): { any }
 		local seen = e.kind == "wolf" or (e.kind == "bandit" and e.group ~= g.id) or (e.kind == "deer" and g.kind == "squad")
 		if seen and not t.seen[id] and e.hp > 0 and cheb(e.x, e.y, l.x, l.y) <= SEE then
 			t.seen[id] = true
-			table.insert(out, { fact = if e.kind == "deer" then "prey" else "hostile", kind = e.kind, group = g.kind, x = e.x, y = e.y })
+			-- a member calls it (a guard, not the master: "Guard the master!" is theirs to say), else whoever is on screen
+			table.insert(out, { fact = if e.kind == "deer" then "prey" else "hostile", kind = e.kind, group = g.kind,
+				who = "member", x = e.x, y = e.y })
 		end
 	end
 	local togo = where.left

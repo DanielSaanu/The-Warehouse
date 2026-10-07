@@ -27,7 +27,7 @@ Resolution (added by the heavy agent under the same entry):
 
 ## Open
 
-### H11 — Build rung 3 part 4 phase 2: the obvious layer (barks, "what now", road talk) — 2026-10-06 — OPEN
+### H11 — Build rung 3 part 4 phase 2: the obvious layer (barks, "what now", road talk) — 2026-10-06 — RESOLVED
 - **Trigger:** 1 (a new system with design choices inside an approved plan), 2 (likely a pure module in `shared/`)
 - **Doc:** `docs/plans/rung3-part4-belonging.md` "Phase 2" and "Slightly obvious what to do" (the guidance layer)
 - **Observed:** phase 1 is through QA (8/10 in round 4, `docs/qa/rung3-part4-p1-ride-summary.md`); Danzo said "phase2".
@@ -42,6 +42,47 @@ Resolution (added by the heavy agent under the same entry):
 - **Built 2026-10-06 (heavy), Studio checks pending:** `shared/Barks.lua` + `server/RoadTalk.lua`, `whatnow`, the
   walk-off re-ask, the squad leader's title; tests, lint, sourcemap, build green. Stays OPEN until Studio is seen.
   → plan "Phase 2", `docs/qa/rung3-part4-p2-guidance.md` "Builder's calls", learnings S9.
+- **Studio 2026-10-07 (routine, PC, DevMode, seed 1):** seen working: "Brilo: Stay by the master. Watch the road."
+  after the yes; lag "Keep up!" from the master; "Pelin: Gweno's spooked. We hold here."; road talk ("Glenworth's
+  short of tools, they say."); "Nearly at Glenworth." / "Made it." then the pay line (rode 53 of 53, 7 coin); `whatnow`
+  on a guard ("About 12 paces yet.") and the master at an end ("We rest here a while, then on to Glenworth."), not on a
+  squad hunter when not riding; "You walked off on us. Not today."; "Maren Greenton, squad leader". No Output errors.
+  **Open:** (1) a spawned bandit got "Gweno: Bandits! Guard the master!" said BY the master (the hostile speaker does
+  not prefer a member); (2) the lag fade x3/short/quiet not counted in Studio (log gaps), unit test only; (3) the
+  30-second test needs someone who has not read the plan. **(3) passed 2026-10-07: Danzo rode Glenworth → Kenstow
+  himself, "it worked! and i clearly understood what to do".** Minor: a guard barks as "Brilo" but his window says
+  "caravan guard"; a spook with no named threat when the fight is outside the 8-tile "seen" range.
+- **RESOLVED 2026-10-07 (heavy):** (1) fixed test-first and seen in Studio (a guard says "Guard the master!"; the
+  master alone on screen says "Bandits! Stand with us."); (2) and the minors go to the phase 2 QA loop.
+  → `docs/qa/rung3-part4-p2-guidance.md` "Builder's calls", learnings S10.
+
+### H12 — The first week has dead air, and the caravan must not be the whole game — 2026-10-07 — OPEN
+- **Trigger:** 1 (a design decision with several reasonable options; it adds to `docs/DESIGN.md`), 8 (Danzo's ask
+  reshapes what the opening and rung 3's end are for)
+- **Doc:** `docs/design/build-rungs.md` (rung 3 / rung 4), `docs/design/long-arc.md`, `docs/PRINCIPLES.md`;
+  the opening is `shared/Talk.lua` `Talk.survivor` + `Talk.goal` (GOAL_STAGES survivor → road → guard → sell → shelter)
+- **Observed:** Danzo, 2026-10-07, after playing phase 2: "there is a gap between starting and being told to join a
+  caravan and after where im just told to be inside for 7 days later which is boring admittedly also i dont want the
+  joining the caravan to be the main objective we need more fun things for the player to do and experiment with after
+  were done with this rung". Two problems: (a) the opening has dead stretches: nothing points from the survivor's
+  lines to the caravan, and after "Sell a hide" the goal line sits on "Be inside walls or by a fire before day 7" for
+  days with nothing to do; (b) beyond the caravan the player has too few things to try and play with.
+- **Evidence:** `roblox/src/shared/Talk.lua:96-119`; `server/Goals.lua`; rung 3 part 4 phases 3–4 still to build
+  (`docs/plans/rung3-part4-belonging.md`).
+- **Routine session's read (guess):** (a) is small and belongs now. The goal line could hand off to the caravan as one
+  of several things, and the dead days before the calamity need something to do. (b) is a "what comes after rung 3"
+  question: a short menu of toys and systems the player can experiment with (sandbox verbs, not more quests), ranked
+  by fun per build cost, that reuses what exists (witness/sides, gossip, groups, farms, wildlife, trade).
+- **Decision needed:** a proposal Danzo can pick from, NO code: (a) 2–3 options for filling the first week (what the
+  goal line and the people say, and what there is to do before day 7), with a recommendation; (b) a ranked list of
+  5–8 "fun things to experiment with" for after rung 3 (each: what the player does, why it is fun → PRINCIPLES IDs,
+  what existing systems it reuses, rough size, what it risks), and where each fits against rung 4 in `build-rungs.md`.
+  Write it as one new doc under `docs/plans/` (under ~300 lines). Do not edit DESIGN or build-rungs until Danzo picks.
+- **Blocked routine work:** none. Phase 3 of part 4 can go ahead in parallel.
+- **Proposal written 2026-10-07 (heavy):** `docs/plans/first-week-and-toys.md`. (a) recommends option B (the line
+  widens into one untried verb at a time, the guard answers "what now", the warning spreads by people from day 5);
+  (b) ranks eight toys, top three: bait and lure, say things (tell/warn/lie), the first hireling. Stays OPEN until
+  Danzo picks (three questions at the end of the doc).
 
 ## Resolved
 

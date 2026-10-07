@@ -30,6 +30,14 @@ assert(line and line:find("master"), "bandits on the caravan: guard the master: 
 mem = Barks.new()
 line = Barks.pick(mem, { { fact = "hostile", kind = "bandit", group = "squad" } }, 0)
 assert(line and line:find("Bandits") and not line:find("master"), "bandits on the squad: no master to guard")
+-- H11 Studio: the master himself must never say "Guard the master!"; spoken by the leader, a member-only line yields
+-- to the next most specific ("Bandits! Stand with us."), every time, through the fade too
+mem = Barks.new()
+for k = 1, 10 do
+	line = Barks.pick(mem, { { fact = "hostile", kind = "bandit", group = "caravan", leader = true } }, k * 100)
+	assert(line == nil or not line:find("master"), "the master does not tell you to guard himself: " .. tostring(line))
+	if k == 1 then assert(line and line:find("Bandits"), "he still calls the bandits: " .. tostring(line)) end
+end
 mem = Barks.new()
 line = Barks.pick(mem, { { fact = "hostile", kind = "boar", group = "squad" } }, 0)
 assert(line == Barks.RULES[Barks.ruleFor({ fact = "hostile" })].lines[1], "nothing more specific: the plain hostile line")
