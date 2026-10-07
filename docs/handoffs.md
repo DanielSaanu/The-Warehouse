@@ -96,7 +96,10 @@ Resolution (added by the heavy agent under the same entry):
   format bump is fine (development mode). Write a goals file in `docs/qa/` before the loop.
 - **Decision needed:** how to split it into reviewable steps; anything the plan leaves open goes to Danzo.
 - **Model:** Danzo asked for **Fable 5.1** directly (2026-10-07), overriding the "last rung" rule for this work.
-- **Where it stands (2026-10-07, after the PC crash):** research hub done; Grid/WorldLand/WorldRoads written, unwired; design for the rest recorded in the plan ("Build notes for step 2"). Next session starts there.
+- **Where it stands (2026-10-07, evening):** step 2 BUILT on `world-expansion`: `WorldPlans`/`WorldVillages`/`WorldPlaces`,
+  `WorldGen` the hub (205 lines, allow-list entry gone), 256 x 256, 16 villages, OFFSET 33, `GEN_VERSION` 2, Viewport
+  multi-tile sprites, previews rewritten, 64 scenes exported, `roblox build` run (Danzo uploads). Tests and lint green.
+  Next: Danzo's Studio Play + upload, then the QA loop on `docs/qa/world-expansion-p2.md`; then steps 3–4.
 - **Blocked routine work:** H12 (paused by Danzo) and the phase 2 QA loop (paused).
 
 ## Resolved

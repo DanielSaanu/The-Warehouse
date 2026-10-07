@@ -4,8 +4,13 @@
   "height": 16,
   "background": "transparent",
   "pixelated": true,
-  "export": false,
   "layers": [
+    {
+      "id": "g",
+      "name": "grass",
+      "type": "image",
+      "src": "sprites/grass.txt"
+    },
     {
       "id": "t",
       "name": "scorched_ground",

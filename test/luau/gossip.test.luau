@@ -565,7 +565,8 @@ do
 	end
 	local cost = jsonLen(Save.encode(w, stamp)) - before
 	local each = cost / PLAYERS
-	assert(each < 256, ("owed per absent player, owed at all %d holders: %.0f B"):format(#Gossip.holders(w), each))
+	-- it also grows with the holders (16 villages since the world expansion), so the budget is per holder: ~25 B each
+	assert(each < 32 * #Gossip.holders(w), ("owed per absent player, owed at all %d holders: %.0f B"):format(#Gossip.holders(w), each))
 	print(("   owed: %d absent players at all %d holders = %d B (%.0f B each)"):format(PLAYERS, #Gossip.holders(w), cost, each))
 end
 print("gossip ok")

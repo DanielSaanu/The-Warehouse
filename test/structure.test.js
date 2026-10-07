@@ -18,7 +18,6 @@ const CEILING = 400;
 const GENERATED = new Set(['shared/Sprites.lua', 'shared/SheetData.lua']);
 const ALLOWED = {
   'server/Sim.lua': 1153,          // Track B1-B3 carve it into Bodies / Brains / Fighting (Bands, Tiles, State, Standing are out)
-  'shared/WorldGen.lua': 880,      // Track B4: generate / query / encode
   'client/Hud.lua': 1025,          // rung 3 part 5, the client split
   'client/Client.client.lua': 660, // rung 3 part 5
   'client/Viewport.lua': 430,      // rung 4, or never: one job, 29 lines over

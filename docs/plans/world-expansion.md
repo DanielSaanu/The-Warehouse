@@ -1,6 +1,8 @@
 # World expansion: the bigger map, more villages, big buildings
 
 **Status:** approved to build 2026-10-07 (Danzo), branch `world-expansion` (cut from `rung3-part4-p2` at 65d3c1f).
+**Step 2 built 2026-10-07 (Fable)**: the 256 x 256 map, sixteen villages from `WorldPlans`, the road tree, the places,
+multi-tile buildings in the renderer, previews, tests (`docs/qa/world-expansion-p2.md` is the goals file). Steps 3–4 open.
 Handoff H13. Copied from Danzo's private design board "World Expansion Plan" (claude.ai artifact, 2026-10-05) so
 every session can read it; the board is now a picture of this doc, not the source.
 
@@ -99,14 +101,17 @@ sprite/scene format: trigger 2), and the board's large-village layouts used as t
 Interiors and floors (Danzo: later). The H12 first-week and toys work (paused). Tax, processions, hiring and
 hunting-party behaviour. Rung 3 part 4 phases 3–4.
 
-## Build notes for step 2 (Fable, 2026-10-07; the session was cut off by the usage limit before writing code)
+## Build notes for step 2 (Fable, 2026-10-07)
 
-Where it stands: `shared/Grid.lua` (query half), `shared/WorldLand.lua` (land, fords, caves, river) and
-`shared/WorldRoads.lua` (A*, road tree, signs) exist but nothing requires them; `WorldGen.lua` is untouched;
-`TileTypes.lua` has the new objects (ids 18-83, `foot`, `decor`, `part`/`part_open`). Lint: 1 type warning in WorldLand
-(line 71, give `idx(...)` a local first), 4 in WorldRoads (218: type the candidate rows; 360: `local best: Village? = nil`).
+**Built as written below, same day, after the crash.** What differs from the notes: the sheet still fits one 256 x 512
+image (177 sprites), not a second 1024; the places' margin ring may touch road (the shrine stands beside one; with a
+strict ring nothing was ever placed and the cycle never advanced, which the "one of each kind" test caught); the
+sim/tick/gossip tests that pinned 3 villages, 36 regions and 6 gossip holders now scale with the world. Generation is
+~300–400 ms at 256² in the standalone interpreter. Known limits to carry into QA: the server rosters 16 villages with
+the old roster; a spare gate's road may run along the outside of a palisade to reach the network; entities draw above
+roof overhangs.
 
-Decisions taken, so the next session builds rather than re-decides:
+Decisions taken (and kept):
 
 - **Modules**: `WorldPlans.lua` (pure data: the ASCII layouts and their legend), `WorldVillages.lua` (placement +
   stamping), `WorldPlaces.lua` (the places between villages). `WorldGen.lua` becomes a thin hub (< 400 lines, so its

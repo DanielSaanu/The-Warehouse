@@ -84,7 +84,9 @@ Read this first. Update it in the same commit as any move. Sizes are line counts
 - [x] **QA loop on all of the above** (2026-09-21): two Opus rounds, 8 then 8.5 against a bar of 8.5 - `docs/qa/track-b1-summary.md`.
       That loop also covered `State.lua` and `Tiles.lua`, which had been parked without a review.
 - [ ] **B1 (rest)** the calamity half of `Calendar`. Members as `{ player = userId }` is part 4, not here.
-- [ ] **B2** `Bodies`, `Brains`, `Fighting`. **B3** name the owners (R2/R3). **B4** split `WorldGen.lua`.
+- [ ] **B2** `Bodies`, `Brains`, `Fighting`. **B3** name the owners (R2/R3).
+- [x] **B4** split `WorldGen.lua` (2026-10-07, with the world expansion step 2): `Grid`, `WorldLand`, `WorldPlans`,
+      `WorldVillages`, `WorldRoads`, `WorldPlaces`; `WorldGen` is the 205-line hub and re-exports every old name.
 
 - [x] **Part 4 phase 0 (un-parked by Danzo, 2026-10-05, H7 Q4; built 2026-10-05, `Sim.lua` 1255 → 1225, ceiling kept at
       1255 until phase 1 lands; no QA loop yet):** move "what a fight does to a group" (`killEntity`'s

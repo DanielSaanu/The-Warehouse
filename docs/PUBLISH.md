@@ -49,8 +49,11 @@ already running keep the old build until they shut down.
 the game is described. Today that is:
 
 - Game icons by **lorc** — https://game-icons.net/ — CC-BY-3.0
+- "Objects for 16x16 tilesets": **Art by MrBeast. Commissioned by OpenGameArt.org (http://opengameart.org)** —
+  https://opengameart.org/content/objects-for-16x16-tilesets — CC-BY 3.0 (the ash, bones, rubble and skull tiles
+  of the places between villages, in the sheet since the world expansion, 2026-10-07)
 
-Every sprite actually in the sheet is drawn in this repo, so this is the only outstanding attribution. Re-check
+Everything else in the sheet is drawn in this repo or CC0 (Kenney, Mini World Sprites). Re-check
 `library/index.json` before each publish; if it has grown, the new CC-BY entries go on the page too.
 
 ## After any sprite change

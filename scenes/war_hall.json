@@ -4,7 +4,6 @@
   "height": 32,
   "background": "transparent",
   "pixelated": true,
-  "export": false,
   "layers": [
     {
       "id": "t",

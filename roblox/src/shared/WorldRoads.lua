@@ -209,19 +209,20 @@ function WorldRoads.edges(villages: { Village }): { { number } }
 	-- extras: the shortest unjoined pairs, as long as both ends are still lightly connected
 	local degree: { [number]: number } = {}
 	for _, e in ipairs(out) do degree[e[1]] = (degree[e[1]] or 0) + 1; degree[e[2]] = (degree[e[2]] or 0) + 1 end
-	local candidates: { { number } } = {}
+	type Cand = { a: number, b: number, d: number }
+	local candidates: { Cand } = {}
 	for i = 1, n do
 		for j = i + 1, n do
-			if not joined[key(i, j)] then table.insert(candidates, { i, j, dist(villages[i], villages[j]) }) end
+			if not joined[key(i, j)] then table.insert(candidates, { a = i, b = j, d = dist(villages[i], villages[j]) }) end
 		end
 	end
-	table.sort(candidates, function(a, b) return a[3] < b[3] end)
+	table.sort(candidates, function(a: Cand, b: Cand) return a.d < b.d end)
 	local extras = math.max(0, math.floor(n / 6))
 	for _, c in ipairs(candidates) do
 		if extras <= 0 then break end
-		if (degree[c[1]] or 0) <= 2 and (degree[c[2]] or 0) <= 2 and c[3] < 90 then
-			table.insert(out, { c[1], c[2] })
-			degree[c[1]] += 1; degree[c[2]] += 1
+		if (degree[c.a] or 0) <= 2 and (degree[c.b] or 0) <= 2 and c.d < 90 then
+			table.insert(out, { c.a, c.b })
+			degree[c.a] += 1; degree[c.b] += 1
 			extras -= 1
 		end
 	end
@@ -339,7 +340,8 @@ end
 local function signpostTarget(world: World, v: Village, exit: Pos): Village?
 	local ex, ey = exit.x - v.cx, exit.y - v.cy
 	local elen = math.max(1, math.sqrt(ex * ex + ey * ey))
-	local best, bestScore = nil, -math.huge
+	local best: Village? = nil
+	local bestScore = -math.huge
 	for _, o in ipairs(world.villages) do
 		if o ~= v then
 			local ox, oy = o.cx - v.cx, o.cy - v.cy
@@ -357,7 +359,9 @@ function WorldRoads.signs(world: World, compass: (number, number) -> string)
 		for _, exit in ipairs(villageExits(world, v)) do
 			local o = signpostTarget(world, v, exit)
 			if o then
-				putSign(world, exit.x, exit.y, ("%s, %s. %s"):format(o.name, compass(o.cx - v.cx, o.cy - v.cy), TRIBE_LINE[o.tribeType] or ""))
+				local dir: string = compass(o.cx - v.cx, o.cy - v.cy)
+				local line: string = TRIBE_LINE[o.tribeType] or ""
+				putSign(world, exit.x, exit.y, o.name .. ", " .. dir .. ". " .. line)
 			end
 		end
 	end

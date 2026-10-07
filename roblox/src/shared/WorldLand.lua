@@ -68,7 +68,8 @@ function WorldLand.build(world: World, rng: Rng.Rng): Land
 		local function carve(cx: number, cy: number)
 			if not Grid.inBounds(world, cx, cy) then return end
 			setG(world, cx, cy, G.water.id)
-			table.insert(riverTiles, idx(w, cx, cy))
+			local i = idx(w, cx, cy)
+			table.insert(riverTiles, i)
 		end
 		for y = 1, h do
 			if rrng:chance(0.35) then drift = rrng:int(-1, 1) end

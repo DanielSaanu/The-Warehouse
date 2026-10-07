@@ -1,38 +1,23 @@
 #!/usr/bin/env node
-// Paint an ASCII world dump (from `npm run test:luau`) with the real tiles: exports/world_1.txt -> exports/world_1.png
-import fs from 'node:fs/promises';
+// Paint the world dump from `npm run test:luau` with the real tiles: exports/world_1.txt -> exports/world_1.png.
+// Usage: node tools/preview-world.js [exports/world_1.txt] [scale] [x0 y0 x1 y1]   (a tile window, 1-based, inclusive)
 import path from 'node:path';
 import { makeNodeEnv, savePng } from '../src/node-env.js';
-import { renderScene } from '../src/render.js';
-import { loadScene } from '../src/store.js';
 import { ROOT } from '../src/paths.js';
+import { loadMap, paintMap, tileCache } from './mapfile.js';
 
-const CHAR = { ' ': ['grass'], ',': ['tall_grass'], '.': ['path'], '~': ['water_0'], '-': ['river_0'], '=': ['ford'], '#': ['farm'],
-  'T': ['grass', 'tree'], '^': ['grass', 'rock'], 'O': ['grass', 'cave'], 'H': ['grass', 'hut'], 'B': ['grass', 'hut_burnt'],
-  'W': ['grass', 'wall'], 'G': ['path', 'gate'], 'S': ['grass', 'stall'], 'b': ['grass', 'bed'],
-  'h': ['grass', 'hut_hunter'], 'n': ['grass', 'hut_plunderer'], 'L': ['grass', 'totem'], 'X': ['grass', 'skull_post'],
-  'c': ['grass', 'camp_lit_0'], 'g': ['grass', 'bag'], '%': ['flood'], '!': ['grass', 'sign'], '@': ['path', 'player_down_0'] };
-
-const file = process.argv[2] || 'exports/world_1.txt';
-const scale = Number(process.argv[3]) || 1;
-const text = await fs.readFile(path.resolve(ROOT, file), 'utf8');
-const rows = text.replace(/\n+$/, '').split('\n');
+const [file = 'exports/world_1.txt', scaleS = '1', ...win] = process.argv.slice(2);
+const scale = Number(scaleS) || 1;
+const map = await loadMap(file);
+const [x0, y0, x1, y1] = win.length === 4 ? win.map(Number) : [1, 1, map.w, map.h];
 const env = makeNodeEnv();
-const tiles = new Map();
-async function tile(name) {
-  if (!tiles.has(name)) tiles.set(name, (await renderScene(await loadScene(name), env, { strict: true })).canvas);
-  return tiles.get(name);
-}
-const W = Math.max(...rows.map(r => r.length)), H = rows.length;
-const canvas = env.createCanvas(W * 16, H * 16);
+const canvas = env.createCanvas((x1 - x0 + 1) * 16, (y1 - y0 + 1) * 16);
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
-for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-  const layers = CHAR[rows[y][x]] || ['grass'];
-  for (const l of layers) ctx.drawImage(await tile(l), x * 16, y * 16);
-}
+await paintMap(ctx, map, tileCache(env), x0, y0, x1, y1);
 let out = canvas;
 if (scale !== 1) { out = env.createCanvas(canvas.width * scale, canvas.height * scale); const c = out.getContext('2d'); c.imageSmoothingEnabled = false; c.drawImage(canvas, 0, 0, out.width, out.height); }
-const png = path.resolve(ROOT, file.replace(/\.txt$/, '') + (scale !== 1 ? `@${scale}x` : '') + '.png');
+const suffix = (win.length === 4 ? `_${x0}_${y0}_${x1}_${y1}` : '') + (scale !== 1 ? `@${scale}x` : '');
+const png = path.resolve(ROOT, file.replace(/\.txt$/, '') + suffix + '.png');
 await savePng(out, png);
-console.log(`${path.relative(ROOT, png)}  ${out.width}x${out.height}`);
+console.log(`${path.relative(ROOT, png)}  ${out.width}x${out.height}  (${map.w}x${map.h} tiles, spawn ${map.sx},${map.sy})`);
